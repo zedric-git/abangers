@@ -24,9 +24,26 @@ house listings, and landlords post/manage them. School team project,
 - Next.js (App Router), TypeScript strict, `src/` directory
 - Tailwind CSS + shadcn/ui (components are copied into `src/components/ui`,
   not an npm dependency — add new ones with `npx shadcn add <name>`)
-- Supabase: Postgres + Auth + Storage (see `src/lib/supabase/`)
+- Supabase: Postgres + Auth + Storage (see `src/lib/supabase/`). CLI is a
+  local devDependency, not global — always run it as `npx supabase <cmd>`.
 - React Hook Form + Zod for forms (`src/lib/validations/`)
 - npm (not yarn/pnpm — keep `package-lock.json` as the lockfile)
+
+## Known gotchas (things that look like bugs but aren't)
+
+- **Auth middleware lives in `src/proxy.ts`, not `src/middleware.ts`.**
+  Next.js 16 renamed this file convention. If you see `middleware.ts`
+  anywhere or a teammate re-creates one out of habit, that's the old
+  name — it will be silently ignored, not error, so sessions can quietly
+  stop refreshing. Rename it back to `proxy.ts` with
+  `npx @next/codemod@canary middleware-to-proxy .`
+- **CI runs `npx next typegen` before `tsc --noEmit`.** Next.js
+  auto-generates some types (e.g. `LayoutProps`) that only exist after
+  running `next dev`/`next build`/`next typegen` at least once. Don't
+  remove that step from `.github/workflows/ci.yml` or the type check
+  will fail on a clean checkout even when it passes on your machine.
+- **`main` is protected.** Pushes must go through a PR with a passing
+  CI check — including from the PM's own machine. Work on a branch.
 
 ## Non-negotiable rules
 
@@ -50,7 +67,8 @@ house listings, and landlords post/manage them. School team project,
    - `src/components/ui/` — shadcn primitives (don't hand-edit unless
      necessary; prefer re-running the CLI)
    - `src/components/` (other subfolders) — shared, composed components
-   - `src/lib/supabase/` — the two Supabase client factories + middleware
+   - `src/lib/supabase/` — the two Supabase client factories + session
+     refresh helper (wired up via `src/proxy.ts`)
    - `src/lib/validations/` — Zod schemas
    - `supabase/migrations/` — SQL migrations, sequentially numbered
 
@@ -60,6 +78,8 @@ house listings, and landlords post/manage them. School team project,
 - `npm run lint` — ESLint
 - `npm run format` — Prettier (auto-runs on commit via Husky)
 - `npx shadcn add <component>` — add a new shadcn/ui component
+- `npx supabase db push` — apply pending migrations to the linked project
+  (run `npx supabase link --project-ref <ref>` once first)
 
 ## When you're unsure
 
