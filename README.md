@@ -32,9 +32,9 @@ Next.js (App Router) · TypeScript · Tailwind + shadcn/ui · Supabase
 
    Paste the two values from step 2 into `.env.local`.
 
-4. **Apply the database schema.** Install the Supabase CLI
-   (https://supabase.com/docs/guides/local-development/cli/getting-started),
-   then:
+4. **Apply the database schema.** The Supabase CLI is already a project
+   dependency (not a global install — global installs aren't supported
+   anymore). Just prefix every command with `npx`:
 
    ```bash
    npx supabase login
@@ -43,6 +43,11 @@ Next.js (App Router) · TypeScript · Tailwind + shadcn/ui · Supabase
    ```
 
    This runs everything in `supabase/migrations/` against your project.
+   `link` will ask for your database password (the one you saved when
+   creating the project).
+
+   > If a fresh clone is missing the CLI for some reason:
+   > `npm install -D supabase`.
 
 5. **Run it**
 
