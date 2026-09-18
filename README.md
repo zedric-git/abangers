@@ -1,7 +1,8 @@
-# BoardingHub
+# Abangers
 
-Boarding house discovery & matching platform. Team CaNAl (Camilotes,
-Napoles, Alcover).
+Boarding house discovery & matching platform. "Abang" means rent in
+Bisaya — Abangers are the renters. Team CaNAl (Camilotes, Napoles,
+Alcover).
 
 For AI coding assistants: see [AGENTS.md](./AGENTS.md).
 
@@ -16,7 +17,7 @@ Next.js (App Router) · TypeScript · Tailwind + shadcn/ui · Supabase
 
    ```bash
    git clone <repo-url>
-   cd boardinghub
+   cd abangers
    npm install
    ```
 
