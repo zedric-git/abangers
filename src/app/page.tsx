@@ -29,7 +29,7 @@ export default function Home() {
             </svg>
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight text-zinc-950 dark:text-zinc-50">
-            BoardingHub
+            Abangers
           </h1>
           <p className="mx-auto max-w-xs text-zinc-500 dark:text-zinc-400">
             Discover the perfect boarding house or manage your rental properties

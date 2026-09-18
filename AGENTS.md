@@ -8,16 +8,17 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-# BoardingHub — project context
+# Abangers — project context
 
 Context for any AI coding assistant (Claude Code, Cursor, Copilot, etc.)
 working in this repo. Read this before making changes.
 
 ## What this project is
 
-BoardingHub — a web app where renters (students/workers) search boarding
-house listings, and landlords post/manage them. School team project,
-3-person team (Camilotes, Napoles, Alcover), MVP due Week 8.
+Abangers ("abang" = rent in Bisaya; Abangers = the renters) — a web app
+where renters (students/workers) search boarding house listings, and
+landlords post/manage them. School team project, 3-person team
+(Camilotes, Napoles, Alcover), MVP due Week 8.
 
 ## Stack
 

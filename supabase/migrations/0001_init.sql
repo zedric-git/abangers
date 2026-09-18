@@ -1,4 +1,4 @@
--- BoardingHub — initial schema (Phase 1 / MVP)
+-- Abangers — initial schema (Phase 1 / MVP)
 --
 -- HOW RLS WORKS HERE (read this before adding new tables):
 -- Supabase enables Postgres Row Level Security. Once RLS is ON for a

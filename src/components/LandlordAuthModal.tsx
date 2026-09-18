@@ -150,7 +150,7 @@ export default function LandlordAuthModal({
             <Home className="h-5 w-5" />
           </div>
           <span className="text-xl font-bold tracking-tight text-purple-950 dark:text-zinc-50">
-            BoardingHub
+            Abangers
           </span>
         </div>
 
