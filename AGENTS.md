@@ -43,8 +43,8 @@ landlords post/manage them. School team project, 3-person team
   running `next dev`/`next build`/`next typegen` at least once. Don't
   remove that step from `.github/workflows/ci.yml` or the type check
   will fail on a clean checkout even when it passes on your machine.
-- **`main` is protected.** Pushes must go through a PR with a passing
-  CI check — including from the PM's own machine. Work on a branch.
+- **Branch flow: `feature/*` → `dev` → `main`.** See "Branching strategy"
+  below for the full rules and sprint schedule.
 
 ## Non-negotiable rules
 
@@ -72,6 +72,40 @@ landlords post/manage them. School team project, 3-person team
      refresh helper (wired up via `src/proxy.ts`)
    - `src/lib/validations/` — Zod schemas
    - `supabase/migrations/` — SQL migrations, sequentially numbered
+
+## Branching strategy
+
+Three-tier flow: `feature/*` → `dev` → `main`.
+
+- **`feature/*` branches** — where actual development happens. One
+  branch per feature/task, cut from the current `dev`. Naming:
+  `feature/<short-description>` (e.g. `feature/listing-search-filters`).
+  Open a PR into `dev` when ready; needs a passing CI check to merge.
+- **`dev` branch** — the integration branch for the sprint currently in
+  progress. All `feature/*` branches merge here first. This is where we
+  test and stabilize everything the sprint is supposed to ship. Nothing
+  goes to `main` directly from a feature branch.
+- **`main` branch** — protected, always reflects the last stable,
+  exam-ready state. `dev` only merges into `main` once every feature for
+  the sprint is done and `dev` itself is stable (build/lint/tests all
+  green). Pushes must go through a PR with a passing CI check — no
+  direct pushes, even from the PM's own machine.
+
+### Sprint schedule
+
+Three sprints, timed against the exam calendar. `dev` merges to `main`
+right after each exam window closes:
+
+| Sprint   | Covers                | Ends at                   | `dev` → `main` merge |
+| -------- | --------------------- | ------------------------- | -------------------- |
+| Sprint 1 | Now → Midterms        | Midterm Exams (Oct 5–10)  | After Oct 10         |
+| Sprint 2 | Midterms → Pre-Finals | Pre-Final Exams (Nov 5–7) | After Nov 7          |
+| Sprint 3 | Pre-Finals → Finals   | Final Exams (Dec 4–11)    | After Dec 11         |
+
+If a sprint's features aren't all done and stable on `dev` by its exam
+window, that's a signal to descope for `main` rather than merge
+something half-working — cut the feature branch loose and pick it up
+next sprint instead of forcing the merge.
 
 ## Commands
 
