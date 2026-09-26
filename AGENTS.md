@@ -17,8 +17,15 @@ working in this repo. Read this before making changes.
 
 Abangers ("abang" = rent in Bisaya; Abangers = the renters) — a web app
 where renters (students/workers) search boarding house listings, and
-landlords post/manage them. School team project, 3-person team
-(Camilotes, Napoles, Alcover), MVP due Week 8.
+landlords post/manage them. School team project, 3-person team, MVP
+due Week 8:
+
+- Zedric Camilotes (`@zedric-git`) — Project Manager
+- EJ Kate Alcover (`@ejkatealcover`) — co-developer
+- Chielsea Napoles (`@chilsi-n`) — co-developer
+
+Task tracking lives on the GitHub Project board:
+https://github.com/users/zedric-git/projects/3
 
 ## Stack
 
@@ -48,11 +55,17 @@ landlords post/manage them. School team project, 3-person team
 
 ## Non-negotiable rules
 
-1. **Every new Supabase table gets Row Level Security.** No exceptions.
-   Add `ENABLE ROW LEVEL SECURITY` and explicit policies in the same
-   migration that creates the table. See `supabase/migrations/0001_init.sql`
-   for the pattern (deny by default, then allow specific operations
-   scoped to `auth.uid()`).
+1. **Every new Supabase table gets Row Level Security AND explicit
+   grants.** No exceptions. In the same migration that creates the table:
+   - `ENABLE ROW LEVEL SECURITY` plus explicit policies (deny by
+     default, then allow specific operations scoped to `auth.uid()`) —
+     see `supabase/migrations/0001_init.sql` for the pattern.
+   - `GRANT` the matching table privileges to `anon` / `authenticated`
+     — see `supabase/migrations/0002_grant_table_privileges.sql`. RLS
+     only filters rows a role can already reach; without the grant,
+     every app request fails with `permission denied for table ...`
+     (Postgres 42501) no matter how correct the policies are. Grant
+     only what the policies allow (no policy → no grant).
 2. **One Zod schema per data entity, used on both client and server.**
    Don't validate the same shape twice with different rules. Put schemas
    in `src/lib/validations/`.
@@ -72,6 +85,7 @@ landlords post/manage them. School team project, 3-person team
      refresh helper (wired up via `src/proxy.ts`)
    - `src/lib/validations/` — Zod schemas
    - `supabase/migrations/` — SQL migrations, sequentially numbered
+   - `supabase/seed.sql` — dev test accounts + sample listings
 
 ## Branching strategy
 
@@ -80,11 +94,16 @@ Three-tier flow: `feature/*` → `dev` → `main`.
 - **`feature/*` branches** — where actual development happens. One
   branch per feature/task, cut from the current `dev`. Naming:
   `feature/<short-description>` (e.g. `feature/listing-search-filters`).
+  The same flow applies to non-feature work with a different prefix:
+  `fix/<bug>`, `chore/<tooling-or-data>`, `docs/<what>`.
   Open a PR into `dev` when ready; needs a passing CI check to merge.
+  Delete the branch after it merges.
 - **`dev` branch** — the integration branch for the sprint currently in
   progress. All `feature/*` branches merge here first. This is where we
   test and stabilize everything the sprint is supposed to ship. Nothing
-  goes to `main` directly from a feature branch.
+  goes to `main` directly from a feature branch. CI runs on every PR
+  into `dev`, but `dev` isn't branch-protected yet — don't push to it
+  directly; always go through a PR.
 - **`main` branch** — protected, always reflects the last stable,
   exam-ready state. `dev` only merges into `main` once every feature for
   the sprint is done and `dev` itself is stable (build/lint/tests all
@@ -107,11 +126,72 @@ window, that's a signal to descope for `main` rather than merge
 something half-working — cut the feature branch loose and pick it up
 next sprint instead of forcing the merge.
 
+## Issues and PRs
+
+- Every task is a GitHub issue on the project board, titled with its
+  sprint ID: `[S<sprint>-<story>] ...` for user stories (e.g.
+  `[S1-02] As a registered user, I want to log in ...`) and
+  `[S<sprint>-<story>.<task>] ...` for the sub-issues under them (e.g.
+  `[S1-02.1] Build login form UI`).
+- Board statuses: `Product Backlog` / `Sprint N Backlog` (stories) →
+  `Todo` → `In Progress` → `Code Review` → `Done`.
+- **Every PR description must say `Closes #<issue>`** for each task it
+  finishes. That auto-closes the issue and moves its board card to
+  Done on merge. PRs that skip this leave the board stale (this
+  happened with the sign-up PR, #136).
+
+## Database (Supabase)
+
+- **There is one shared, hosted Supabase project** for the whole team.
+  There's no local Supabase/Docker setup — the CLI is linked straight
+  to the shared project (`npx supabase link`). Anything you do to the
+  database affects everyone immediately.
+- **Schema changes only go through new migration files** in
+  `supabase/migrations/` (next number in sequence), applied with
+  `npx supabase db push`. Never edit a migration that's already been
+  pushed — write a new one.
+- **`npx supabase db reset --linked` wipes the shared database for the
+  whole team** (all accounts and listings), then re-applies migrations
+  and runs `supabase/seed.sql`. Never run it without asking the team
+  first.
+- **`supabase/seed.sql` must stay idempotent** (safe to re-run with
+  `npm run db:seed`). Seed accounts are matched by email and seed
+  listings by fixed UUID, with `on conflict ... do update`. Follow that
+  pattern for any new seed data — no plain `INSERT`s that duplicate on
+  a second run. Seed credentials are dev-only; the shared password is in
+  the file header.
+- Supabase Auth only stores email/password. App fields (role, name)
+  live in `public.profiles`, one row per `auth.users` row, same `id`.
+
+## Current state and known gaps
+
+As of the end of Sprint 1's first stories (keep this updated as things
+land):
+
+- **Done:** sign-up (`src/app/(auth)/signup/page.tsx` + `signUpSchema`
+  in `src/lib/validations/auth.ts`), landing page with
+  `LandlordAuthModal`, `profiles`/`listings` schema + RLS + grants, seed
+  data.
+- **Still `TODO` stubs:** login page, landlord + renter dashboards,
+  add/edit listing, listings search, listing detail.
+- **Known gap (#138):** when Supabase email confirmation is on,
+  `signUp` returns no session, so the sign-up page can't insert the
+  `profiles` row (RLS needs `auth.uid()`). The user ends up with no
+  profile and their chosen role is lost. Fix belongs in the login flow
+  — see issue #138 before touching sign-up or login.
+- **Duplicated auth logic:** `src/components/LandlordAuthModal.tsx`
+  has its own sign-in (with role-based redirect) and landlord sign-up,
+  separate from the sign-up page and without the shared Zod schema.
+  When building the login page (S1-02), reuse/extract that logic rather
+  than writing a third copy, and move both onto `src/lib/validations/`.
+
 ## Commands
 
 - `npm run dev` — local dev server
 - `npm run lint` — ESLint
 - `npm run format` — Prettier (auto-runs on commit via Husky)
+- `npm run format:check` — what CI runs; CI also runs
+  `npx next typegen`, `npx tsc --noEmit`, and `npm run lint`
 - `npx shadcn add <component>` — add a new shadcn/ui component
 - `npx supabase db push` — apply pending migrations to the linked project
   (run `npx supabase link --project-ref <ref>` once first)
