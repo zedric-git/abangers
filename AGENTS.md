@@ -81,6 +81,8 @@ landlords post/manage them. School team project, 3-person team
 - `npx shadcn add <component>` — add a new shadcn/ui component
 - `npx supabase db push` — apply pending migrations to the linked project
   (run `npx supabase link --project-ref <ref>` once first)
+- `npm run db:seed` — load test accounts + sample listings from
+  `supabase/seed.sql` into the linked project (safe to re-run)
 
 ## When you're unsure
 

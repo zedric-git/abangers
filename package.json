@@ -9,7 +9,8 @@
     "lint": "eslint",
     "prepare": "husky",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:seed": "supabase db query --linked -f supabase/seed.sql"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
