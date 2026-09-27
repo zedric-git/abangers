@@ -6,6 +6,7 @@ import LandlordAuthModal from "@/components/LandlordAuthModal";
 
 export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"login" | "signup">("signup");
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center bg-zinc-50 px-4 font-sans dark:bg-black">
@@ -47,19 +48,25 @@ export default function Home() {
           </Link>
 
           <button
-            onClick={() => setIsModalOpen(true)}
+            onClick={() => {
+              setModalMode("signup");
+              setIsModalOpen(true);
+            }}
             className="flex h-12 w-full cursor-pointer items-center justify-center rounded-lg border border-zinc-200 bg-white px-6 font-medium text-zinc-900 transition-colors hover:bg-zinc-50 active:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800/80 dark:active:bg-zinc-800"
           >
             I want to post my rental property
           </button>
 
           <div className="pt-2">
-            <Link
-              href="/login"
-              className="text-sm font-semibold text-indigo-600 transition-colors hover:text-indigo-500 hover:underline dark:text-indigo-400 dark:hover:text-indigo-300"
+            <button
+              onClick={() => {
+                setModalMode("login");
+                setIsModalOpen(true);
+              }}
+              className="cursor-pointer text-sm font-semibold text-indigo-600 transition-colors hover:text-indigo-500 hover:underline dark:text-indigo-400 dark:hover:text-indigo-300"
             >
               Login
-            </Link>
+            </button>
           </div>
         </div>
       </main>
@@ -68,6 +75,7 @@ export default function Home() {
       <LandlordAuthModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        initialMode={modalMode}
       />
     </div>
   );

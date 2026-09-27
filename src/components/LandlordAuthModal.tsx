@@ -8,16 +8,18 @@ import { createClient } from "@/lib/supabase/client";
 interface LandlordAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialMode?: "login" | "signup";
 }
 
 export default function LandlordAuthModal({
   isOpen,
   onClose,
+  initialMode = "signup",
 }: LandlordAuthModalProps) {
   const router = useRouter();
   const supabase = createClient();
 
-  const [isLoginMode, setIsLoginMode] = useState(false);
+  const [isLoginMode, setIsLoginMode] = useState(initialMode === "login");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -106,7 +108,7 @@ export default function LandlordAuthModal({
           // If session is present immediately (email confirmation disabled), redirect
           const { data: sessionData } = await supabase.auth.getSession();
           if (sessionData.session) {
-            router.push("/dashboard/landlord");
+            router.push("/profile-setup");
             onClose();
           } else {
             setSuccess(
