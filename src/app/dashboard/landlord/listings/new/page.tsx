@@ -13,6 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { listingSchema, ListingInput } from "@/lib/validations/listing";
+import ImageUploader from "@/components/ImageUploader";
 import { createListingAction } from "../actions";
 
 const PROPERTY_TYPES = [
@@ -85,12 +86,16 @@ export default function NewListingPage() {
       house_rules: "",
       contact_info: "",
       availability_status: "available",
+      images: [] as string[],
+      cover_image: "",
     },
   });
 
   const selectedUtilities = useWatch({ control, name: "utilities" }) || [];
   const selectedAmenities = useWatch({ control, name: "amenities" }) || [];
   const selectedSafety = useWatch({ control, name: "safety_features" }) || [];
+  const uploadedImages = useWatch({ control, name: "images" }) || [];
+  const activeCoverImage = useWatch({ control, name: "cover_image" }) || "";
 
   const handleToggleArrayItem = (
     fieldName: "utilities" | "amenities" | "safety_features",
@@ -558,6 +563,32 @@ export default function NewListingPage() {
                   </p>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Section 5: Property Photos */}
+          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              5. Property Photos <span className="text-red-500">*</span>
+            </h2>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+              Upload property photos. At least 1 photo is required before your
+              listing can be published. You can preview, delete, or choose which
+              photo to set as the cover photo.
+            </p>
+
+            <div className="mt-6">
+              <ImageUploader
+                images={uploadedImages}
+                coverImage={activeCoverImage}
+                onImagesChange={(newImages, newCover) => {
+                  setValue("images", newImages, { shouldValidate: true });
+                  setValue("cover_image", newCover || "", {
+                    shouldValidate: true,
+                  });
+                }}
+                error={errors.images?.message || errors.cover_image?.message}
+              />
             </div>
           </div>
 
