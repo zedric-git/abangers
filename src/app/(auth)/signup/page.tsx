@@ -1,13 +1,17 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { AuthError } from "@supabase/supabase-js";
-
+import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { signUpSchema, type SignUpInput } from "@/lib/validations/auth";
+import {
+  signUpSchema,
+  type SignUpInput,
+  mapAuthError,
+} from "@/lib/validations/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,43 +29,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-/**
- * Turns raw Supabase Auth errors into copy a user can actually act on.
- * Supabase's own messages are sometimes accurate-but-terse ("User already
- * registered") or, for privacy reasons, deliberately vague (a duplicate
- * email during sign-up returns a *success* with an empty `identities`
- * array instead of an error, to avoid leaking which emails are taken —
- * that case is handled separately in onSubmit, not here).
- */
-function mapAuthError(error: AuthError): string {
-  const message = error.message.toLowerCase();
-
-  if (
-    message.includes("already registered") ||
-    message.includes("already exists")
-  ) {
-    return "An account with this email already exists. Try logging in instead.";
-  }
-  if (message.includes("password")) {
-    // Supabase's own password-strength messages are already clear
-    // (e.g. "Password should be at least 6 characters").
-    return error.message;
-  }
-  if (
-    message.includes("invalid email") ||
-    message.includes("unable to validate")
-  ) {
-    return "Enter a valid email address.";
-  }
-  if (message.includes("network") || message.includes("fetch")) {
-    return "Couldn't reach the server. Check your connection and try again.";
-  }
-
-  // Fallback: still show Supabase's message rather than swallowing it,
-  // just labeled as unexpected so it's obviously not a validation error.
-  return `Something went wrong: ${error.message}`;
-}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -145,20 +112,22 @@ export default function SignupPage() {
           We sent a confirmation link to your inbox. Once you confirm and log
           in, we&apos;ll finish setting up your profile.
         </p>
-        {/*
-         * TODO (follow-up, not in scope for S1-01): the profiles row for
-         * this user hasn't been created yet — it needs to happen on their
-         * first authenticated action after confirming, most likely inside
-         * the S1-02 login flow (check for a missing profiles row and
-         * create it there using the role chosen here). Right now that
-         * role choice isn't persisted anywhere if they close this tab.
-         */}
       </div>
     );
   }
 
   return (
     <div className="mx-auto flex min-h-[80vh] max-w-md flex-col justify-center px-4">
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => router.back()}
+        className="mb-4 -ml-2 w-fit cursor-pointer gap-1.5 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back
+      </Button>
+
       <h1 className="mb-1 text-2xl font-semibold">Create an account</h1>
       <p className="text-muted-foreground mb-6 text-sm">
         Sign up as a renter looking for a place, or a landlord listing one.
@@ -281,6 +250,16 @@ export default function SignupPage() {
           </Button>
         </form>
       </Form>
+
+      <div className="mt-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+        Already have an account?{" "}
+        <Link
+          href="/login"
+          className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+        >
+          Log in
+        </Link>
+      </div>
     </div>
   );
 }
