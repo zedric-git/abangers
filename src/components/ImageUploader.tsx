@@ -124,26 +124,21 @@ export default function ImageUploader({
             </div>
           ) : images.length > 0 ? (
             <div className="flex w-full items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400">
-                  <ImagePlus className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-                    Upload additional photos
-                  </p>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                    PNG, JPG, WEBP up to 10MB
-                  </p>
-                </div>
+              <div>
+                <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                  Click to upload additional photos
+                </p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  PNG, JPG, WEBP up to 10MB
+                </p>
               </div>
-              <span className="rounded-lg bg-purple-700 px-3 py-1.5 text-xs font-semibold text-white shadow-xs dark:bg-purple-600">
-                Add Photos
-              </span>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-700 text-white shadow-md dark:bg-purple-600">
+                <ImagePlus className="h-5 w-5" />
+              </div>
             </div>
           ) : (
             <>
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400">
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-700 text-white shadow-md dark:bg-purple-600">
                 <ImagePlus className="h-6 w-6" />
               </div>
               <div className="mt-3 space-y-1">
@@ -183,16 +178,16 @@ export default function ImageUploader({
         </p>
       )}
 
-      {/* Image Thumbnail Grid - Larger Display */}
+      {/* Image Thumbnail Grid - Taller Portrait Display */}
       {images.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
           {images.map((url, idx) => {
             const isCover = coverImage === url || (!coverImage && idx === 0);
 
             return (
               <div
                 key={`${url}-${idx}`}
-                className={`group relative aspect-16/10 overflow-hidden rounded-2xl border-2 transition-all ${
+                className={`group relative aspect-3/4 overflow-hidden rounded-2xl border-2 transition-all ${
                   isCover
                     ? "border-purple-600 ring-4 ring-purple-600/20 dark:border-purple-500"
                     : "border-zinc-200 dark:border-zinc-800"
@@ -203,23 +198,23 @@ export default function ImageUploader({
                   alt={`Listing photo ${idx + 1}`}
                   fill
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 />
 
                 {/* Cover Badge / Cover Button Overlay */}
-                <div className="absolute top-3 left-3 z-10">
+                <div className="absolute top-2.5 left-2.5 z-10">
                   {isCover ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-700 px-3 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur-xs dark:bg-purple-600">
-                      <Star className="h-3.5 w-3.5 fill-current text-yellow-300" />
+                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-700 px-2.5 py-1 text-[11px] font-bold text-white shadow-lg backdrop-blur-xs dark:bg-purple-600">
+                      <Star className="h-3 w-3 fill-current text-yellow-300" />
                       Cover Photo
                     </span>
                   ) : (
                     <button
                       type="button"
                       onClick={() => handleSetCover(url)}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-md transition-colors hover:bg-purple-700"
+                      className="inline-flex items-center gap-1 rounded-full bg-black/70 px-2.5 py-1 text-[11px] font-medium text-white shadow-lg backdrop-blur-md transition-colors hover:bg-purple-700"
                     >
-                      <Star className="h-3.5 w-3.5" />
+                      <Star className="h-3 w-3" />
                       Set as Cover
                     </button>
                   )}
@@ -229,10 +224,10 @@ export default function ImageUploader({
                 <button
                   type="button"
                   onClick={() => handleRemoveImage(idx)}
-                  className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-red-600"
+                  className="absolute top-2.5 right-2.5 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-red-600"
                   aria-label="Remove photo"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3.5 w-3.5" />
                 </button>
               </div>
             );
