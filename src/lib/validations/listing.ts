@@ -34,6 +34,10 @@ export const listingSchema = z.object({
     .string()
     .max(2000, "House rules cannot exceed 2000 characters")
     .optional(),
+  images: z
+    .array(z.string())
+    .min(1, "At least one photo is required before a listing can be published"),
+  cover_image: z.string().min(1, "A cover photo is required"),
   // Populated by a map-picker later (Phase 2). Optional for MVP.
   latitude: z.number().optional(),
   longitude: z.number().optional(),
