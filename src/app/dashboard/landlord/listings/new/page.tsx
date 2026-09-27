@@ -62,7 +62,7 @@ export default function NewListingPage() {
     getValues,
     control,
     formState: { errors },
-  } = useForm<ListingInput>({
+  } = useForm({
     resolver: zodResolver(listingSchema),
     defaultValues: {
       title: "",
