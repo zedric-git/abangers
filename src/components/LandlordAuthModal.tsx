@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Home, Loader2 } from "lucide-react";
+import { X, Home, Loader2, Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { mapAuthError } from "@/lib/validations/auth";
 
 interface LandlordAuthModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export default function LandlordAuthModal({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -50,20 +52,17 @@ export default function LandlordAuthModal({
             .from("profiles")
             .select("role")
             .eq("id", data.user.id)
-            .single();
+            .maybeSingle();
 
           if (profileError) {
-            // Profile doesn't exist yet, but they logged in
             console.error("Profile not found:", profileError);
           }
 
-          // Even if they are renter, we redirect to their dashboard, but preferably landlord
           if (profile?.role === "landlord") {
             router.push("/dashboard/landlord");
           } else if (profile?.role === "renter") {
             router.push("/dashboard/renter");
           } else {
-            // Default fallback
             router.push("/dashboard/landlord");
           }
           onClose();
@@ -88,7 +87,7 @@ export default function LandlordAuthModal({
         if (signUpError) throw signUpError;
 
         if (data.user) {
-          // Insert the profiles row manually (in case triggers aren't set up yet)
+          // Insert the profiles row manually if not already inserted
           const { error: profileError } = await supabase
             .from("profiles")
             .insert({
@@ -98,12 +97,9 @@ export default function LandlordAuthModal({
             });
 
           if (profileError) {
-            // If the profile insert failed (e.g. because email confirmation is required and they are not logged in yet)
-            // we don't throw, but we warn or handle it.
             console.error("Failed to insert profile row:", profileError);
           }
 
-          // If session is present immediately (email confirmation disabled), redirect
           const { data: sessionData } = await supabase.auth.getSession();
           if (sessionData.session) {
             router.push("/dashboard/landlord");
@@ -112,7 +108,6 @@ export default function LandlordAuthModal({
             setSuccess(
               "Registration successful! Please check your email to confirm your account.",
             );
-            // Clear fields
             setFullName("");
             setEmail("");
             setPassword("");
@@ -121,7 +116,9 @@ export default function LandlordAuthModal({
       }
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : "An unexpected error occurred";
+        err instanceof Error
+          ? mapAuthError(err)
+          : "An unexpected error occurred";
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -204,15 +201,27 @@ export default function LandlordAuthModal({
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="relative space-y-1.5">
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               required
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
+              className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pr-10 pl-4 text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword((prev) => !prev)}
+              className="absolute top-1/2 right-3 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? (
+                <EyeOff className="h-5 w-5" />
+              ) : (
+                <Eye className="h-5 w-5" />
+              )}
+            </button>
           </div>
 
           <button
