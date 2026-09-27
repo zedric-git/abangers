@@ -73,6 +73,7 @@ export default function Home() {
 
       {/* Landlord Auth Modal */}
       <LandlordAuthModal
+        key={modalMode}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         initialMode={modalMode}
