@@ -100,22 +100,45 @@ export default function ImageUploader({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Upload Dropzone / Button */}
       <div className="relative">
         <label
           htmlFor="photo-upload-input"
-          className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center transition-colors ${
+          className={`flex cursor-pointer transition-all ${
+            images.length > 0
+              ? "flex-row items-center justify-between rounded-xl border-2 border-dashed px-5 py-3 text-left"
+              : "flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center"
+          } ${
             error
               ? "border-red-300 bg-red-50/50 hover:bg-red-50 dark:border-red-900/40 dark:bg-red-950/20"
               : "border-zinc-300 bg-zinc-50/50 hover:bg-zinc-100/60 dark:border-zinc-800 dark:bg-zinc-800/40 dark:hover:bg-zinc-800/80"
           }`}
         >
           {uploading ? (
-            <div className="flex flex-col items-center py-2 text-purple-600 dark:text-purple-400">
-              <Loader2 className="h-8 w-8 animate-spin" />
-              <span className="mt-2 text-xs font-medium">
+            <div className="flex flex-row items-center gap-3 py-1 text-purple-600 dark:text-purple-400">
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
+              <span className="text-xs font-medium">
                 Uploading photo(s) to storage...
+              </span>
+            </div>
+          ) : images.length > 0 ? (
+            <div className="flex w-full items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-400">
+                  <ImagePlus className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                    Upload additional photos
+                  </p>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    PNG, JPG, WEBP up to 10MB
+                  </p>
+                </div>
+              </div>
+              <span className="rounded-lg bg-purple-700 px-3 py-1.5 text-xs font-semibold text-white shadow-xs dark:bg-purple-600">
+                Add Photos
               </span>
             </div>
           ) : (
@@ -160,18 +183,18 @@ export default function ImageUploader({
         </p>
       )}
 
-      {/* Image Thumbnail Grid */}
+      {/* Image Thumbnail Grid - Larger Display */}
       {images.length > 0 && (
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {images.map((url, idx) => {
             const isCover = coverImage === url || (!coverImage && idx === 0);
 
             return (
               <div
                 key={`${url}-${idx}`}
-                className={`group relative aspect-4/3 overflow-hidden rounded-2xl border-2 transition-all ${
+                className={`group relative aspect-16/10 overflow-hidden rounded-2xl border-2 transition-all ${
                   isCover
-                    ? "border-purple-600 ring-2 ring-purple-600/30 dark:border-purple-500"
+                    ? "border-purple-600 ring-4 ring-purple-600/20 dark:border-purple-500"
                     : "border-zinc-200 dark:border-zinc-800"
                 }`}
               >
@@ -180,23 +203,23 @@ export default function ImageUploader({
                   alt={`Listing photo ${idx + 1}`}
                   fill
                   className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  sizes="(max-width: 768px) 50vw, 25vw"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                 />
 
                 {/* Cover Badge / Cover Button Overlay */}
-                <div className="absolute top-2 left-2 z-10">
+                <div className="absolute top-3 left-3 z-10">
                   {isCover ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-purple-700 px-2.5 py-1 text-[11px] font-bold text-white shadow-md dark:bg-purple-600">
-                      <Star className="h-3 w-3 fill-current text-yellow-300" />
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-700 px-3 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur-xs dark:bg-purple-600">
+                      <Star className="h-3.5 w-3.5 fill-current text-yellow-300" />
                       Cover Photo
                     </span>
                   ) : (
                     <button
                       type="button"
                       onClick={() => handleSetCover(url)}
-                      className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2.5 py-1 text-[11px] font-medium text-white shadow-md backdrop-blur-xs transition-colors hover:bg-purple-700"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur-md transition-colors hover:bg-purple-700"
                     >
-                      <Star className="h-3 w-3" />
+                      <Star className="h-3.5 w-3.5" />
                       Set as Cover
                     </button>
                   )}
@@ -206,7 +229,7 @@ export default function ImageUploader({
                 <button
                   type="button"
                   onClick={() => handleRemoveImage(idx)}
-                  className="absolute top-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white shadow-md backdrop-blur-xs transition-colors hover:bg-red-600"
+                  className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-red-600"
                   aria-label="Remove photo"
                 >
                   <X className="h-4 w-4" />
