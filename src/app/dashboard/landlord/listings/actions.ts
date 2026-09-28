@@ -127,3 +127,57 @@ export async function updateListingAction(
     };
   }
 }
+
+/**
+ * Server action to delete an existing property listing (S1-11.2).
+ * Authenticates user and deletes the record from Supabase listings table.
+ * RLS ensures landlords can only delete their own listings.
+ */
+export async function deleteListingAction(
+  id: string,
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const supabase = await createClient();
+
+    // 1. Authenticate user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return {
+        success: false,
+        error: "Unauthorized. You must be logged in to delete a listing.",
+      };
+    }
+
+    // 2. Delete listing from Supabase scoped to authenticated landlord_id
+    const { error: deleteError } = await supabase
+      .from("listings")
+      .delete()
+      .eq("id", id)
+      .eq("landlord_id", user.id);
+
+    if (deleteError) {
+      console.error("Database delete error:", deleteError);
+      return {
+        success: false,
+        error: deleteError.message || "Failed to delete listing from database.",
+      };
+    }
+
+    return {
+      success: true,
+      data: { id },
+    };
+  } catch (err) {
+    console.error("deleteListingAction error:", err);
+    const errorMessage =
+      err instanceof Error ? err.message : "An unexpected error occurred.";
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
