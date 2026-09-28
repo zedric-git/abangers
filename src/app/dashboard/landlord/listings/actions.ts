@@ -65,3 +65,65 @@ export async function createListingAction(
     };
   }
 }
+
+/**
+ * Server action to update an existing property listing.
+ * Re-validates input server-side and updates the database record.
+ * RLS ensures landlords can only update their own listings.
+ */
+export async function updateListingAction(
+  id: string,
+  rawInput: ListingInput,
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    const supabase = await createClient();
+
+    // 1. Authenticate user
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return {
+        success: false,
+        error: "Unauthorized. You must be logged in to update a listing.",
+      };
+    }
+
+    // 2. Validate input server-side
+    const validatedData = listingSchema.parse(rawInput);
+
+    // 3. Update listing record in Supabase
+    const { data, error: updateError } = await supabase
+      .from("listings")
+      .update({
+        ...validatedData,
+      })
+      .eq("id", id)
+      .eq("landlord_id", user.id)
+      .select("id")
+      .single();
+
+    if (updateError) {
+      console.error("Database update error:", updateError);
+      return {
+        success: false,
+        error: updateError.message || "Failed to update listing in database.",
+      };
+    }
+
+    return {
+      success: true,
+      data: { id: data.id },
+    };
+  } catch (err) {
+    console.error("updateListingAction error:", err);
+    const errorMessage =
+      err instanceof Error ? err.message : "An unexpected error occurred.";
+    return {
+      success: false,
+      error: errorMessage,
+    };
+  }
+}
