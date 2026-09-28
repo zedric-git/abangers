@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Trash2, AlertTriangle, Loader2 } from "lucide-react";
 import { deleteListingAction } from "@/app/dashboard/landlord/listings/actions";
 
@@ -22,7 +23,7 @@ export default function DeleteListingModal({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof window === "undefined") return null;
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -44,8 +45,8 @@ export default function DeleteListingModal({
     }
   };
 
-  return (
-    <div className="animate-in fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs duration-200">
+  return createPortal(
+    <div className="animate-in fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm duration-200">
       <div className="w-full max-w-md overflow-hidden rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl sm:p-7 dark:border-zinc-800 dark:bg-zinc-900">
         {/* Warning Header Icon */}
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400">
@@ -105,6 +106,7 @@ export default function DeleteListingModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -12,12 +12,10 @@ import {
   Pencil,
   Trash2,
   Bed,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
 } from "lucide-react";
 import { Listing } from "@/types/listing";
 import DeleteListingModal from "@/components/DeleteListingModal";
+import ListingStatusToggle from "@/components/ListingStatusToggle";
 
 interface LandlordListingCardProps {
   listing: Listing;
@@ -30,47 +28,6 @@ export default function LandlordListingCard({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const coverPhoto = listing.cover_image || listing.images?.[0] || "";
 
-  // Map availability status to badge styling and label
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "available":
-        return {
-          label: "Available",
-          bg: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
-          icon: (
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-          ),
-        };
-      case "almost_full":
-        return {
-          label: "Almost Full",
-          bg: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800",
-          icon: (
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-          ),
-        };
-      case "fully_occupied":
-      case "unavailable":
-      case "occupied":
-        return {
-          label: "Occupied",
-          bg: "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800",
-          icon: (
-            <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
-          ),
-        };
-      default:
-        return {
-          label: status || "Available",
-          bg: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
-          icon: (
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-          ),
-        };
-    }
-  };
-
-  const statusBadge = getStatusBadge(listing.availability_status);
   const displayPrice = listing.monthly_rent ?? listing.price ?? 0;
 
   return (
@@ -91,14 +48,13 @@ export default function LandlordListingCard({
           </div>
         )}
 
-        {/* Status Badge (Top-Left) */}
+        {/* Status Toggle Badge Dropdown (Top-Left) */}
         <div className="absolute top-3 left-3 z-10">
-          <span
-            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold shadow-xs backdrop-blur-md ${statusBadge.bg}`}
-          >
-            {statusBadge.icon}
-            {statusBadge.label}
-          </span>
+          <ListingStatusToggle
+            listingId={listing.id}
+            currentStatus={listing.availability_status}
+            availableRooms={listing.available_rooms}
+          />
         </div>
 
         {/* Price Tag (Bottom-Right) */}
