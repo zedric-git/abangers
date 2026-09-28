@@ -128,7 +128,7 @@ export default function ListingStatusToggle({
               }`}
             >
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              🟢 Available
+              Available
             </button>
 
             <button
@@ -141,7 +141,7 @@ export default function ListingStatusToggle({
               }`}
             >
               <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-              🟡 Almost Full
+              Almost Full
             </button>
 
             <button
@@ -154,7 +154,7 @@ export default function ListingStatusToggle({
               }`}
             >
               <XCircle className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
-              🔴 Occupied
+              Occupied
             </button>
           </div>
         </>
