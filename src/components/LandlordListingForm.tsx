@@ -172,11 +172,11 @@ export default function LandlordListingForm({
       {/* Top Header & Back Navigation */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Link
-          href="/dashboard/landlord/listings"
+          href="/dashboard/landlord"
           className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-600 transition-colors hover:text-zinc-900 sm:text-sm dark:text-zinc-400 dark:hover:text-zinc-100"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to My Listings
+          Back to Dashboard
         </Link>
 
         {/* Step Indicator Tabs */}
