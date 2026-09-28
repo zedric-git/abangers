@@ -65,6 +65,7 @@ export default function LandlordListingCard({
   };
 
   const statusBadge = getStatusBadge(listing.availability_status);
+  const displayPrice = listing.monthly_rent ?? listing.price ?? 0;
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
@@ -97,7 +98,7 @@ export default function LandlordListingCard({
         {/* Price Tag (Bottom-Right) */}
         <div className="absolute right-3 bottom-3 z-10">
           <span className="rounded-xl bg-zinc-950/80 px-3 py-1.5 text-xs font-extrabold text-white shadow-md backdrop-blur-md dark:bg-zinc-900/90">
-            ₱{Number(listing.price).toLocaleString("en-US")} / mo
+            ₱{Number(displayPrice).toLocaleString("en-US")} / mo
           </span>
         </div>
       </div>
@@ -152,7 +153,7 @@ export default function LandlordListingCard({
         {/* Card Actions Footer */}
         <div className="mt-5 flex items-center gap-2 pt-2">
           <Link
-            href={`/listings/${listing.id}`}
+            href={`/dashboard/landlord/listings/${listing.id}`}
             className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white py-2 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
           >
             <Eye className="h-3.5 w-3.5" />
