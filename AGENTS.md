@@ -35,6 +35,7 @@ https://github.com/users/zedric-git/projects/3
 - Supabase: Postgres + Auth + Storage (see `src/lib/supabase/`). CLI is a
   local devDependency, not global — always run it as `npx supabase <cmd>`.
 - React Hook Form + Zod for forms (`src/lib/validations/`)
+- Maps/location: OpenStreetMap (see "Maps and location" below)
 - npm (not yarn/pnpm — keep `package-lock.json` as the lockfile)
 
 ## Known gotchas (things that look like bugs but aren't)
@@ -163,6 +164,35 @@ next sprint instead of forcing the merge.
 - Supabase Auth only stores email/password. App fields (role, name)
   live in `public.profiles`, one row per `auth.users` row, same `id`.
 
+## Maps and location (OpenStreetMap)
+
+**Decision:** OpenStreetMap (OSM) is the map and location provider for
+this project. Don't introduce Google Maps, Mapbox, or any other
+map/geocoding provider without asking the team.
+
+**Not decided yet:** exactly how the map is used (listing pins,
+navigation/directions, search by area or distance, location picker in
+the add-listing form). Don't assume a scope — check the relevant
+issue/backlog item or ask before building map features. The product
+backlog currently plans Leaflet + OSM tiles (S2-10); treat that as the
+default library choice unless the team changes it.
+
+Constraints that come with OSM (keep these in mind when building):
+
+- **Attribution is required.** Any OSM-based map must show
+  "© OpenStreetMap contributors".
+- **Public OSM services have usage policies.** The free tile server
+  and Nominatim (geocoding) are for light use: no bulk requests, no
+  search-as-you-type against Nominatim, max ~1 request/second. If a
+  feature needs more, ask before adding a paid/hosted provider.
+- **Store coordinates, not just addresses.** If listings need
+  location, use `latitude` / `longitude` columns (added via a new
+  migration, with RLS + grants like any other change).
+- **Client-only rendering.** Leaflet touches `window`, so map
+  components must be Client Components and loaded without SSR
+  (`"use client"` + `next/dynamic` with `ssr: false`). Keep them in a
+  dedicated `src/components/map/` folder.
+
 ## Current state and known gaps
 
 As of the end of Sprint 1's first stories (keep this updated as things
@@ -184,40 +214,6 @@ land):
   separate from the sign-up page and without the shared Zod schema.
   When building the login page (S1-02), reuse/extract that logic rather
   than writing a third copy, and move both onto `src/lib/validations/`.
-
-## Branching strategy
-
-Three-tier flow: `feature/*` → `dev` → `main`.
-
-- **`feature/*` branches** — where actual development happens. One
-  branch per feature/task, cut from the current `dev`. Naming:
-  `feature/<short-description>` (e.g. `feature/listing-search-filters`).
-  Open a PR into `dev` when ready; needs a passing CI check to merge.
-- **`dev` branch** — the integration branch for the sprint currently in
-  progress. All `feature/*` branches merge here first. This is where we
-  test and stabilize everything the sprint is supposed to ship. Nothing
-  goes to `main` directly from a feature branch.
-- **`main` branch** — protected, always reflects the last stable,
-  exam-ready state. `dev` only merges into `main` once every feature for
-  the sprint is done and `dev` itself is stable (build/lint/tests all
-  green). Pushes must go through a PR with a passing CI check — no
-  direct pushes, even from the PM's own machine.
-
-### Sprint schedule
-
-Three sprints, timed against the exam calendar. `dev` merges to `main`
-right after each exam window closes:
-
-| Sprint   | Covers                | Ends at                   | `dev` → `main` merge |
-| -------- | --------------------- | ------------------------- | -------------------- |
-| Sprint 1 | Now → Midterms        | Midterm Exams (Oct 5–10)  | After Oct 10         |
-| Sprint 2 | Midterms → Pre-Finals | Pre-Final Exams (Nov 5–7) | After Nov 7          |
-| Sprint 3 | Pre-Finals → Finals   | Final Exams (Dec 4–11)    | After Dec 11         |
-
-If a sprint's features aren't all done and stable on `dev` by its exam
-window, that's a signal to descope for `main` rather than merge
-something half-working — cut the feature branch loose and pick it up
-next sprint instead of forcing the merge.
 
 ## Commands
 
