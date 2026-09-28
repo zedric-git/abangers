@@ -53,6 +53,7 @@ export default function LandlordListingCard({
           <ListingStatusToggle
             listingId={listing.id}
             currentStatus={listing.availability_status}
+            availableRooms={listing.available_rooms}
           />
         </div>
 

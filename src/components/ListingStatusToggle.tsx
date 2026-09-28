@@ -14,18 +14,32 @@ import { updateListingStatusAction } from "@/app/dashboard/landlord/listings/act
 interface ListingStatusToggleProps {
   listingId: string;
   currentStatus: string;
+  availableRooms?: number;
   onStatusChange?: (newStatus: string) => void;
 }
 
 export default function ListingStatusToggle({
   listingId,
   currentStatus,
+  availableRooms,
   onStatusChange,
 }: ListingStatusToggleProps) {
   const router = useRouter();
-  const [status, setStatus] = useState<string>(currentStatus || "available");
+
+  // If availableRooms is 0 or less, auto-default initial display status to fully_occupied
+  const effectiveInitialStatus =
+    availableRooms !== undefined && availableRooms <= 0
+      ? "fully_occupied"
+      : currentStatus || "available";
+
+  const [status, setStatus] = useState<string>(effectiveInitialStatus);
   const [isOpen, setIsOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
+
+  // Warning Modal State when switching from Occupied to Available/Almost Full while rooms == 0
+  const [pendingTargetStatus, setPendingTargetStatus] = useState<string | null>(
+    null,
+  );
 
   const getStatusConfig = (st: string) => {
     switch (st) {
@@ -60,21 +74,17 @@ export default function ListingStatusToggle({
 
   const activeConfig = getStatusConfig(status);
 
-  const handleSelectStatus = async (newStatus: string) => {
-    if (newStatus === status || updating) {
-      setIsOpen(false);
-      return;
-    }
-
+  const executeStatusChange = async (targetStatus: string) => {
     setUpdating(true);
     setIsOpen(false);
+    setPendingTargetStatus(null);
 
     try {
-      const res = await updateListingStatusAction(listingId, newStatus);
+      const res = await updateListingStatusAction(listingId, targetStatus);
       if (res.success) {
-        setStatus(newStatus);
+        setStatus(targetStatus);
         if (onStatusChange) {
-          onStatusChange(newStatus);
+          onStatusChange(targetStatus);
         }
         router.refresh();
       }
@@ -84,6 +94,33 @@ export default function ListingStatusToggle({
       setUpdating(false);
     }
   };
+
+  const handleSelectStatus = (newStatus: string) => {
+    if (newStatus === status || updating) {
+      setIsOpen(false);
+      return;
+    }
+
+    // Intercept if availableRooms is 0 or less AND user selects Available or Almost Full
+    if (
+      availableRooms !== undefined &&
+      availableRooms <= 0 &&
+      (newStatus === "available" || newStatus === "almost_full")
+    ) {
+      setIsOpen(false);
+      setPendingTargetStatus(newStatus);
+      return;
+    }
+
+    executeStatusChange(newStatus);
+  };
+
+  const pendingLabel =
+    pendingTargetStatus === "available"
+      ? "Available"
+      : pendingTargetStatus === "almost_full"
+        ? "Almost Full"
+        : "Available";
 
   return (
     <div className="relative inline-block text-left">
@@ -158,6 +195,56 @@ export default function ListingStatusToggle({
             </button>
           </div>
         </>
+      )}
+
+      {/* Warning Confirmation Modal when changing status while Available Rooms is 0 */}
+      {pendingTargetStatus && (
+        <div className="animate-in fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs duration-200">
+          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl sm:p-7 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
+              <AlertTriangle className="h-7 w-7" />
+            </div>
+
+            <div className="mt-5 text-center">
+              <h3 className="text-lg font-extrabold text-zinc-900 sm:text-xl dark:text-zinc-50">
+                Change Status to {pendingLabel}?
+              </h3>
+              <p className="mt-2 text-xs text-zinc-500 sm:text-sm dark:text-zinc-400">
+                Currently, Available Rooms is set to 0. Are you sure you want to
+                mark this listing as{" "}
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  {pendingLabel}
+                </span>
+                ?
+              </p>
+            </div>
+
+            <div className="mt-7 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingTargetStatus(null)}
+                className="inline-flex flex-1 items-center justify-center rounded-xl border border-zinc-300 bg-white py-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => executeStatusChange(pendingTargetStatus)}
+                disabled={updating}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-purple-700 py-3 text-xs font-bold text-white shadow-md transition-colors hover:bg-purple-800 active:bg-purple-900 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-700"
+              >
+                {updating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>Yes, Mark as {pendingLabel}</>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
