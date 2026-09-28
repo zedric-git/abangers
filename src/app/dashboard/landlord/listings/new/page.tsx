@@ -198,53 +198,18 @@ export default function NewListingPage() {
           <div className="space-y-6">
             {/* Sticky Preview Header Banner */}
             <div className="sticky top-4 z-40 rounded-2xl border border-purple-200 bg-purple-50/95 p-4 shadow-lg backdrop-blur-md sm:p-5 dark:border-purple-900/50 dark:bg-purple-950/90">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-700 text-white dark:bg-purple-600">
-                    <Eye className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-purple-950 dark:text-purple-100">
-                      Listing Preview Mode
-                    </h2>
-                    <p className="text-xs text-purple-700 dark:text-purple-300">
-                      Review your property details exactly as renters will see
-                      them before publishing.
-                    </p>
-                  </div>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-700 text-white dark:bg-purple-600">
+                  <Eye className="h-5 w-5" />
                 </div>
-
-                {/* Actions Header Buttons */}
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStep("form");
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs font-semibold text-zinc-800 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                    Edit Listing
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handlePublish(getValues() as ListingInput)}
-                    disabled={submitting}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-purple-700 px-5 py-2.5 text-xs font-bold text-white shadow-md transition-colors hover:bg-purple-800 active:bg-purple-900 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-700"
-                  >
-                    {submitting ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Publishing...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-3.5 w-3.5" />
-                        Publish Listing
-                      </>
-                    )}
-                  </button>
+                <div>
+                  <h2 className="text-sm font-bold text-purple-950 dark:text-purple-100">
+                    Listing Preview Mode
+                  </h2>
+                  <p className="text-xs text-purple-700 dark:text-purple-300">
+                    Review your property details exactly as renters will see
+                    them before publishing.
+                  </p>
                 </div>
               </div>
             </div>
