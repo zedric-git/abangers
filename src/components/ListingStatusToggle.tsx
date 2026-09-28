@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2,
@@ -198,54 +199,57 @@ export default function ListingStatusToggle({
       )}
 
       {/* Warning Confirmation Modal when changing status while Available Rooms is 0 */}
-      {pendingTargetStatus && (
-        <div className="animate-in fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs duration-200">
-          <div className="w-full max-w-md overflow-hidden rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl sm:p-7 dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
-              <AlertTriangle className="h-7 w-7" />
-            </div>
+      {pendingTargetStatus &&
+        typeof window !== "undefined" &&
+        createPortal(
+          <div className="animate-in fade-in fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm duration-200">
+            <div className="w-full max-w-md overflow-hidden rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl sm:p-7 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
+                <AlertTriangle className="h-7 w-7" />
+              </div>
 
-            <div className="mt-5 text-center">
-              <h3 className="text-lg font-extrabold text-zinc-900 sm:text-xl dark:text-zinc-50">
-                Change Status to {pendingLabel}?
-              </h3>
-              <p className="mt-2 text-xs text-zinc-500 sm:text-sm dark:text-zinc-400">
-                Currently, Available Rooms is set to 0. Are you sure you want to
-                mark this listing as{" "}
-                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
-                  {pendingLabel}
-                </span>
-                ?
-              </p>
-            </div>
+              <div className="mt-5 text-center">
+                <h3 className="text-lg font-extrabold text-zinc-900 sm:text-xl dark:text-zinc-50">
+                  Change Status to {pendingLabel}?
+                </h3>
+                <p className="mt-2 text-xs text-zinc-500 sm:text-sm dark:text-zinc-400">
+                  Currently, Available Rooms is set to 0. Are you sure you want
+                  to mark this listing as{" "}
+                  <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                    {pendingLabel}
+                  </span>
+                  ?
+                </p>
+              </div>
 
-            <div className="mt-7 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setPendingTargetStatus(null)}
-                className="inline-flex flex-1 items-center justify-center rounded-xl border border-zinc-300 bg-white py-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => executeStatusChange(pendingTargetStatus)}
-                disabled={updating}
-                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-purple-700 py-3 text-xs font-bold text-white shadow-md transition-colors hover:bg-purple-800 active:bg-purple-900 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-700"
-              >
-                {updating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Updating...
-                  </>
-                ) : (
-                  <>Yes, Mark as {pendingLabel}</>
-                )}
-              </button>
+              <div className="mt-7 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPendingTargetStatus(null)}
+                  className="inline-flex flex-1 items-center justify-center rounded-xl border border-zinc-300 bg-white py-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => executeStatusChange(pendingTargetStatus)}
+                  disabled={updating}
+                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-purple-700 py-3 text-xs font-bold text-white shadow-md transition-colors hover:bg-purple-800 active:bg-purple-900 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-700"
+                >
+                  {updating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>Yes, Mark as {pendingLabel}</>
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
