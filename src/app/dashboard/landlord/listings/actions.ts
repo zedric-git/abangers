@@ -32,6 +32,9 @@ export async function createListingAction(
 
     // 2. Validate input server-side with shared Zod schema
     const validatedData = listingSchema.parse(rawInput);
+    if (validatedData.available_rooms <= 0) {
+      validatedData.availability_status = "fully_occupied";
+    }
 
     // 3. Insert into Supabase listings table with landlord_id set to authenticated user ID
     const { data, error: insertError } = await supabase
@@ -93,6 +96,9 @@ export async function updateListingAction(
 
     // 2. Validate input server-side
     const validatedData = listingSchema.parse(rawInput);
+    if (validatedData.available_rooms <= 0) {
+      validatedData.availability_status = "fully_occupied";
+    }
 
     // 3. Update listing record in Supabase
     const { data, error: updateError } = await supabase

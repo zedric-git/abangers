@@ -141,6 +141,10 @@ export default function LandlordListingForm({
     setSubmitting(true);
     setServerError(null);
 
+    if (data.available_rooms <= 0) {
+      data.availability_status = "fully_occupied";
+    }
+
     try {
       let res;
       if (isEditing && listingId) {
@@ -463,7 +467,16 @@ export default function LandlordListingForm({
                   </label>
                   <input
                     type="number"
-                    {...register("available_rooms")}
+                    {...register("available_rooms", {
+                      onChange: (e) => {
+                        const val = Number(e.target.value);
+                        if (val <= 0) {
+                          setValue("availability_status", "fully_occupied", {
+                            shouldValidate: true,
+                          });
+                        }
+                      },
+                    })}
                     placeholder="1"
                     className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
                   />
