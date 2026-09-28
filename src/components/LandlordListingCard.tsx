@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -8,12 +10,14 @@ import {
   Users,
   Eye,
   Pencil,
+  Trash2,
   Bed,
   CheckCircle2,
   AlertTriangle,
   XCircle,
 } from "lucide-react";
 import { Listing } from "@/types/listing";
+import DeleteListingModal from "@/components/DeleteListingModal";
 
 interface LandlordListingCardProps {
   listing: Listing;
@@ -22,6 +26,8 @@ interface LandlordListingCardProps {
 export default function LandlordListingCard({
   listing,
 }: LandlordListingCardProps) {
+  const router = useRouter();
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const coverPhoto = listing.cover_image || listing.images?.[0] || "";
 
   // Map availability status to badge styling and label
@@ -166,8 +172,27 @@ export default function LandlordListingCard({
           >
             <Pencil className="h-3.5 w-3.5" />
           </Link>
+          <button
+            type="button"
+            onClick={() => setIsDeleteOpen(true)}
+            className="inline-flex items-center justify-center rounded-xl border border-rose-200 bg-rose-50 p-2 text-rose-600 transition-colors hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/50 dark:text-rose-400 dark:hover:bg-rose-900/50"
+            title="Delete Listing"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteListingModal
+        isOpen={isDeleteOpen}
+        listingId={listing.id}
+        listingTitle={listing.title}
+        onClose={() => setIsDeleteOpen(false)}
+        onSuccess={() => {
+          router.refresh();
+        }}
+      />
     </div>
   );
 }
