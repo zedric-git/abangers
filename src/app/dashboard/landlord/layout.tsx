@@ -33,17 +33,19 @@ export default function LandlordLayout({
       label: "Profile",
       href: "/dashboard/landlord/profile",
       icon: User,
+      position: "bottom",
     },
     {
       label: "Log Out",
       icon: LogOut,
       onClick: handleLogout,
       isDanger: true,
+      position: "bottom",
     },
   ];
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 font-sans dark:bg-black">
+    <div className="flex h-screen overflow-hidden bg-zinc-50 font-sans dark:bg-black">
       {/* Sidebar */}
       <DashboardSidebar
         items={landlordNavItems}
