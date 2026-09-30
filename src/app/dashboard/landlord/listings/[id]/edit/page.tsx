@@ -54,6 +54,8 @@ export default async function EditListingPage({
     availability_status: listing.availability_status || "available",
     images: listing.images || [],
     cover_image: listing.cover_image || "",
+    latitude: listing.latitude != null ? listing.latitude : undefined,
+    longitude: listing.longitude != null ? listing.longitude : undefined,
   };
 
   return (

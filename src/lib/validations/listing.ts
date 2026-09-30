@@ -38,9 +38,18 @@ export const listingSchema = z.object({
     .array(z.string())
     .min(1, "At least one photo is required before a listing can be published"),
   cover_image: z.string().min(1, "A cover photo is required"),
-  // Populated by a map-picker later (Phase 2). Optional for MVP.
-  latitude: z.number().optional(),
-  longitude: z.number().optional(),
+  latitude: z
+    .number({
+      message: "Pinning your property location on the map is required",
+    })
+    .min(-90, "Invalid latitude")
+    .max(90, "Invalid latitude"),
+  longitude: z
+    .number({
+      message: "Pinning your property location on the map is required",
+    })
+    .min(-180, "Invalid longitude")
+    .max(180, "Invalid longitude"),
   contact_info: z.string().min(3, "How should renters reach you?"),
   availability_status: z
     .enum(["available", "almost_full", "fully_occupied"])
