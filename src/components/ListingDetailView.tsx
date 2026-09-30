@@ -16,6 +16,7 @@ import {
   Star,
 } from "lucide-react";
 import { ListingInput } from "@/lib/validations/listing";
+import { ReadOnlyMap } from "@/components/map";
 
 interface ListingDetailViewProps {
   listing: ListingInput;
@@ -157,6 +158,34 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
           </p>
         </div>
       </div>
+
+      {/* Property Location Map Section */}
+      {listing.latitude != null && listing.longitude != null && (
+        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="flex items-center gap-2 text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                <MapPin className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                Property Location
+              </h2>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Exact location pinned on map: {listing.address}
+                {listing.city ? `, ${listing.city}` : ""}
+              </p>
+            </div>
+            <span className="shrink-0 rounded-xl bg-purple-50 px-3 py-1.5 text-xs font-semibold text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+              📍 {listing.latitude.toFixed(4)}, {listing.longitude.toFixed(4)}
+            </span>
+          </div>
+
+          <ReadOnlyMap
+            latitude={listing.latitude}
+            longitude={listing.longitude}
+            title={listing.title}
+            address={listing.address}
+          />
+        </div>
+      )}
 
       {/* Features, Utilities & Amenities */}
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">

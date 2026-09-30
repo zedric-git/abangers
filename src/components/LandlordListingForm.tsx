@@ -18,6 +18,7 @@ import {
 import { listingSchema, ListingInput } from "@/lib/validations/listing";
 import ImageUploader from "@/components/ImageUploader";
 import ListingDetailView from "@/components/ListingDetailView";
+import { LocationPicker } from "@/components/map";
 import {
   createListingAction,
   updateListingAction,
@@ -106,6 +107,10 @@ export default function LandlordListingForm({
       availability_status: initialValues?.availability_status || "available",
       images: initialValues?.images || [],
       cover_image: initialValues?.cover_image || "",
+      latitude:
+        initialValues?.latitude != null ? initialValues.latitude : undefined,
+      longitude:
+        initialValues?.longitude != null ? initialValues.longitude : undefined,
     },
   });
 
@@ -114,6 +119,8 @@ export default function LandlordListingForm({
   const selectedSafety = useWatch({ control, name: "safety_features" }) || [];
   const uploadedImages = useWatch({ control, name: "images" }) || [];
   const activeCoverImage = useWatch({ control, name: "cover_image" }) || "";
+  const latitude = useWatch({ control, name: "latitude" });
+  const longitude = useWatch({ control, name: "longitude" });
 
   const handleToggleArrayItem = (
     fieldName: "utilities" | "amenities" | "safety_features",
@@ -366,6 +373,42 @@ export default function LandlordListingForm({
                       </p>
                     )}
                   </div>
+                </div>
+
+                <div className="pt-2">
+                  <label className="mb-1.5 block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Pin Property Location on Map *
+                  </label>
+                  <p className="mb-3 text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Search your property address or click/drag the pin on the
+                    map to set its exact location.
+                  </p>
+                  <LocationPicker
+                    latitude={latitude}
+                    longitude={longitude}
+                    onChange={(lat, lng, addressDetails) => {
+                      setValue("latitude", lat, { shouldValidate: true });
+                      setValue("longitude", lng, { shouldValidate: true });
+                      if (addressDetails) {
+                        if (addressDetails.address) {
+                          setValue("address", addressDetails.address, {
+                            shouldValidate: true,
+                          });
+                        }
+                        if (addressDetails.city) {
+                          setValue("city", addressDetails.city, {
+                            shouldValidate: true,
+                          });
+                        }
+                      }
+                    }}
+                  />
+                  {(errors.latitude || errors.longitude) && (
+                    <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                      <AlertCircle className="h-4 w-4 shrink-0" />
+                      {errors.latitude?.message || errors.longitude?.message}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
