@@ -23,6 +23,8 @@ export interface Listing {
   safety_features?: string[];
   description?: string;
   house_rules?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   created_at: string;
   updated_at: string;
 }
