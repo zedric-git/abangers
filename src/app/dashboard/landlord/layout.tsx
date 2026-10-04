@@ -33,25 +33,32 @@ export default function LandlordLayout({
       label: "Profile",
       href: "/dashboard/landlord/profile",
       icon: User,
+      position: "bottom",
     },
     {
       label: "Log Out",
       icon: LogOut,
       onClick: handleLogout,
       isDanger: true,
+      position: "bottom",
     },
   ];
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 font-sans dark:bg-black">
-      {/* Sidebar */}
+    // bg-background (not bg-white/dark:bg-black + transition-colors): it
+    // fades via the single shared --background transition in globals.css,
+    // so it always matches the sidebar's active tab exactly.
+    <div className="bg-background flex h-dvh h-screen flex-col overflow-hidden font-sans md:flex-row">
+      {/* Sidebar (Desktop docked + Mobile drawer & trigger) */}
       <DashboardSidebar
         items={landlordNavItems}
         userRoleLabel="Landlord Dashboard"
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto p-6 md:p-10">{children}</main>
+      <main className="custom-scrollbar bg-background flex-1 overflow-y-auto p-6 md:p-10">
+        {children}
+      </main>
     </div>
   );
 }
