@@ -515,20 +515,9 @@ export default function DashboardSidebar({
           isCollapsed ? "w-20" : "w-60"
         }`}
       >
-        {/*
-          Header / Brand. Collapsed, the sidebar is only 80px wide, so the
-          logo (36px) and a smaller chevron (24px) sit centered with a 4px
-          gap (64px total) instead of the expanded layout's px-4 spacing.
-        */}
-        <div
-          className={`flex h-20 shrink-0 items-center pt-2 ${
-            isCollapsed ? "justify-center gap-1 px-2" : "justify-between px-4"
-          }`}
-        >
-          <Link
-            href="/"
-            className="flex min-w-0 items-center gap-3 overflow-hidden"
-          >
+        {/* Header / Brand */}
+        <div className="flex h-20 shrink-0 items-center justify-between px-4 pt-2">
+          <Link href="/" className="flex items-center gap-3 overflow-hidden">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#6C5CE7] shadow-sm">
               <Home className="h-5 w-5" />
             </div>
@@ -549,9 +538,7 @@ export default function DashboardSidebar({
           <button
             type="button"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className={`flex shrink-0 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/15 hover:text-white ${
-              isCollapsed ? "h-6 w-6" : "h-8 w-8"
-            }`}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/15 hover:text-white"
             title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
