@@ -77,13 +77,13 @@ export default function DashboardSidebar({
           ? item.href === activeHref
           : false;
 
-    const baseClasses = `flex items-center gap-3 py-3 text-sm font-medium transition-colors duration-150 ${
+    const baseClasses = `flex items-center gap-3 py-3 text-sm font-medium transition-colors ${
       isCollapsed ? "justify-center px-0" : "px-4"
     }`;
 
     const activeClasses = isActive
-      ? "relative z-20 w-[calc(100%+0.875rem+1px)] -mr-[calc(0.875rem+1px)] rounded-l-2xl bg-white text-[#6C5CE7] font-bold shadow-xs dark:bg-black dark:text-[#A78BFA]"
-      : `w-full rounded-xl ${
+      ? "relative z-20 w-[calc(100%+0.875rem+1px)] -mr-[calc(0.875rem+1px)] rounded-l-2xl bg-white text-[#6C5CE7] font-bold duration-300 dark:bg-black dark:text-[#A78BFA]"
+      : `w-full rounded-xl duration-150 ${
           item.isDanger
             ? "text-rose-200 hover:bg-rose-500/20 hover:text-rose-100"
             : "text-white/80 hover:bg-white/10 hover:text-white"
@@ -95,7 +95,7 @@ export default function DashboardSidebar({
           <>
             {/* Top concave transition curve */}
             <svg
-              className="pointer-events-none absolute -top-5 -right-px h-5 w-5 fill-white dark:fill-black"
+              className="pointer-events-none absolute -top-[19px] right-0 h-5 w-5 fill-white transition-colors duration-300 dark:fill-black"
               viewBox="0 0 20 20"
               aria-hidden="true"
             >
@@ -104,7 +104,7 @@ export default function DashboardSidebar({
 
             {/* Bottom concave transition curve */}
             <svg
-              className="pointer-events-none absolute -right-px -bottom-5 h-5 w-5 fill-white dark:fill-black"
+              className="pointer-events-none absolute right-0 -bottom-[19px] h-5 w-5 fill-white transition-colors duration-300 dark:fill-black"
               viewBox="0 0 20 20"
               aria-hidden="true"
             >
@@ -169,18 +169,12 @@ export default function DashboardSidebar({
 
   return (
     <aside
-      className={`relative flex h-full shrink-0 flex-col bg-[#6C5CE7] text-white shadow-lg transition-all duration-300 dark:bg-[#1E1736] ${
+      className={`relative flex h-full shrink-0 flex-col bg-[#6C5CE7] text-white transition-all duration-300 dark:bg-[#1E1736] ${
         isCollapsed ? "w-20" : "w-60"
       }`}
     >
       {/* Header / Brand */}
-      <div
-        className={`flex shrink-0 items-center pt-2 ${
-          isCollapsed
-            ? "h-24 flex-col justify-center gap-2 px-2"
-            : "h-20 justify-between px-4"
-        }`}
-      >
+      <div className="flex h-20 shrink-0 items-center justify-between px-4 pt-2">
         <Link href="/" className="flex items-center gap-3 overflow-hidden">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#6C5CE7] shadow-sm">
             <Home className="h-5 w-5" />
