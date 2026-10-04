@@ -225,32 +225,32 @@ export default function DashboardSidebar({
 
     // Seamless active tab merging cleanly into the main content
     if (isActive) {
+      const w = collapsed ? 68 : 228;
+      const pathD = `M ${w} 0 H ${w - 2} A 20 20 0 0 1 ${w - 22} 20 H 16 A 16 16 0 0 0 0 36 V 48 A 16 16 0 0 0 16 64 H ${w - 22} A 20 20 0 0 1 ${w - 2} 84 H ${w} V 0 Z`;
+
       const activeClasses = collapsed
-        ? "relative z-20 flex h-11 w-[calc(100%+2px)] -mr-[2px] items-center rounded-l-2xl bg-white pl-4 text-[#6C5CE7] font-bold duration-300 dark:bg-black dark:text-[#A78BFA] transition-colors"
-        : "relative z-20 flex w-[calc(100%+2px)] -mr-[2px] items-center gap-3 rounded-l-2xl bg-white pl-4 pr-3 py-3 text-sm font-bold text-[#6C5CE7] duration-300 dark:bg-black dark:text-[#A78BFA] transition-colors";
+        ? "relative z-20 flex h-11 w-[calc(100%+2px)] -mr-[2px] items-center pl-4 text-[#6C5CE7] font-bold dark:text-[#A78BFA]"
+        : "relative z-20 flex h-11 w-[calc(100%+2px)] -mr-[2px] items-center gap-3 pl-4 pr-3 text-sm font-bold text-[#6C5CE7] dark:text-[#A78BFA]";
 
       const content = (
         <>
-          {/* Top concave transition curve */}
+          {/* Unified active tab background: top concave curve, tab body, and bottom concave curve in one continuous SVG entity */}
           <svg
-            className="pointer-events-none absolute -top-[19px] right-0 h-5 w-[22px] fill-white transition-colors duration-300 dark:fill-black"
-            viewBox="0 0 22 20"
+            className="pointer-events-none absolute -top-5 right-0 -bottom-5 h-[84px] fill-white transition-colors duration-300 dark:fill-black"
+            style={{ width: `${w}px` }}
+            viewBox={`0 0 ${w} 84`}
             aria-hidden="true"
           >
-            <path d="M 20 0 A 20 20 0 0 1 0 20 H 22 V 0 Z" />
+            <path
+              d={pathD}
+              style={{ transition: "d 300ms cubic-bezier(0.4, 0, 0.2, 1)" }}
+            />
           </svg>
 
-          {/* Bottom concave transition curve */}
-          <svg
-            className="pointer-events-none absolute right-0 -bottom-[19px] h-5 w-[22px] fill-white transition-colors duration-300 dark:fill-black"
-            viewBox="0 0 22 20"
-            aria-hidden="true"
-          >
-            <path d="M 0 0 A 20 20 0 0 1 20 20 H 22 V 0 Z" />
-          </svg>
-
-          <Icon className="h-5 w-5 shrink-0" />
-          {!collapsed && <span className="truncate">{item.label}</span>}
+          <Icon className="relative z-10 h-5 w-5 shrink-0" />
+          {!collapsed && (
+            <span className="relative z-10 truncate">{item.label}</span>
+          )}
         </>
       );
 
