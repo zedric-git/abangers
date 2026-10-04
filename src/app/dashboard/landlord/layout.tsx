@@ -45,7 +45,10 @@ export default function LandlordLayout({
   ];
 
   return (
-    <div className="flex h-dvh h-screen flex-col overflow-hidden bg-white font-sans transition-colors duration-300 md:flex-row dark:bg-black">
+    // bg-background (not bg-white/dark:bg-black + transition-colors): it
+    // fades via the single shared --background transition in globals.css,
+    // so it always matches the sidebar's active tab exactly.
+    <div className="bg-background flex h-dvh h-screen flex-col overflow-hidden font-sans md:flex-row">
       {/* Sidebar (Desktop docked + Mobile drawer & trigger) */}
       <DashboardSidebar
         items={landlordNavItems}
@@ -53,7 +56,7 @@ export default function LandlordLayout({
       />
 
       {/* Main Content Area */}
-      <main className="custom-scrollbar flex-1 overflow-y-auto bg-white p-6 transition-colors duration-300 md:p-10 dark:bg-black">
+      <main className="custom-scrollbar bg-background flex-1 overflow-y-auto p-6 md:p-10">
         {children}
       </main>
     </div>

@@ -2,9 +2,25 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+  Registering --background as a real <color> makes it animatable. On theme
+  change it is transitioned ONCE, on <html>, and every element that uses it
+  (bg-background / fill-background, e.g. the dashboard <main> and the
+  sidebar's active tab) reads the same in-between value on every frame.
+  Giving those elements their own separate transitions instead let them
+  drift apart when the theme was toggled rapidly, exposing the tab as a
+  different shape from the content it should merge into.
+*/
+@property --background {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  transition: --background 300ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .dark {
@@ -61,16 +77,12 @@ input:-webkit-autofill:active {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
   /*
-    This rule is unlayered, so it overrides Tailwind's `transition-colors`
-    on any element using this class (e.g. the dashboard <main>). Keep the
-    background/text color transitions here, matching Tailwind's 300ms
-    timing, so <main> fades in sync with the sidebar's active tab when the
-    theme changes instead of snapping instantly.
+    Only the scrollbar transitions here. Theme background fades come from
+    the shared --background transition on <html> (see top of file), so
+    don't add background-color here; a second, separate transition is what
+    let <main> and the sidebar's active tab drift out of sync.
   */
-  transition:
-    scrollbar-color 0.2s ease,
-    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-    color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: scrollbar-color 0.2s ease;
 }
 
 .custom-scrollbar:hover {

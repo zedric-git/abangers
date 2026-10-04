@@ -4,15 +4,7 @@ import { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import {
-  Home,
-  ChevronLeft,
-  ChevronRight,
-  Sun,
-  Moon,
-  Menu,
-  X,
-} from "lucide-react";
+import { Home, ChevronLeft, Sun, Moon, Menu, X } from "lucide-react";
 
 export interface NavItem {
   label: string;
@@ -251,7 +243,10 @@ export default function DashboardSidebar({
         <>
           {/*
             Active tab background, drawn as one SVG so every piece shares a
-            single fill color (and a single theme transition).
+            single fill color. `fill-background` reads the same animated
+            --background variable as <main> (see globals.css), so the tab
+            and the content can't drift apart during theme changes. Don't
+            give this SVG its own color transition.
 
             The SVG is `w-full`, so it follows the link's width while the
             sidebar animates between collapsed and expanded. There is no
@@ -264,7 +259,7 @@ export default function DashboardSidebar({
               y 64–84  bottom concave curve
           */}
           <svg
-            className="pointer-events-none absolute -top-5 right-0 h-[84px] w-full fill-white transition-colors duration-300 dark:fill-black"
+            className="fill-background pointer-events-none absolute -top-5 right-0 h-[84px] w-full"
             aria-hidden="true"
           >
             {/* Tab body, rounded on the left */}
@@ -372,7 +367,12 @@ export default function DashboardSidebar({
     >
       <ThemeIcon className="h-5 w-5 shrink-0 text-amber-300 transition-transform duration-300" />
       {!collapsed && (
-        <div className="flex flex-1 items-center justify-between">
+        // flex-1 + justify-between pushes the badge to the right, where the
+        // row's px-4 keeps it 16px from the hover shade's edge, mirroring the
+        // icon's 16px inset on the left. gap-2 keeps it off the label.
+        // min-w-0 + overflow-hidden: clip (like the other rows' `truncate`
+        // labels) instead of spilling past the sidebar while it animates open.
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-2 overflow-hidden whitespace-nowrap">
           <span>Theme</span>
           <span className="rounded-md border border-white/20 bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-white uppercase">
             {isDark ? "Dark" : "Light"}
@@ -517,8 +517,12 @@ export default function DashboardSidebar({
           isCollapsed ? "w-20" : "w-60"
         }`}
       >
-        {/* Header / Brand */}
-        <div className="flex h-20 shrink-0 items-center justify-between px-4 pt-2">
+        {/*
+          Header / Brand. pl-3.5 / pr-5 match the nav rows' insets (nav
+          pl-3.5, rows mr-5), so the logo's left edge and the chevron's
+          right edge line up with the rows below, in both states.
+        */}
+        <div className="flex h-20 shrink-0 items-center justify-between pt-2 pr-5 pl-3.5">
           <Link href="/" className="flex items-center gap-3 overflow-hidden">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#6C5CE7] shadow-sm">
               <Home className="h-5 w-5" />
@@ -544,23 +548,32 @@ export default function DashboardSidebar({
             title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
-            {isCollapsed ? (
-              <ChevronRight className="h-5 w-5" />
-            ) : (
-              <ChevronLeft className="h-5 w-5" />
-            )}
+            {/* One icon, rotated (not swapped) so it visibly turns to face
+                the direction the sidebar will move, in step with the
+                sidebar's 300ms width animation */}
+            <ChevronLeft
+              className={`h-5 w-5 transition-transform duration-300 ${
+                isCollapsed ? "rotate-180" : ""
+              }`}
+            />
           </button>
         </div>
 
         {/* Navigation Items: right boundary flush to edge so active tab seamlessly merges into main */}
+        {/*
+          Item groups are flex columns (not space-y blocks) so <button> rows
+          (Theme, Log Out) stretch to full width like <Link> rows do. In
+          normal block flow a button only grows to fit its content, which
+          made their hover shades shorter than Profile's / My Listings'.
+        */}
         <nav className="flex flex-1 flex-col justify-between pt-5 pr-0 pb-5 pl-3.5">
-          <div className="space-y-1.5">
+          <div className="flex flex-col gap-1.5">
             {topItems.map((item, index) =>
               renderDesktopItem(item, index, isCollapsed),
             )}
           </div>
 
-          <div className="mt-auto shrink-0 space-y-1.5 pt-3">
+          <div className="mt-auto flex shrink-0 flex-col gap-1.5 pt-3">
             {/* Left-anchored like the rows below, so it doesn't jump on toggle */}
             <div
               className={`mr-5 border-t border-white/15 pb-1.5 ${
