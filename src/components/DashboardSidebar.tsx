@@ -496,34 +496,12 @@ export default function DashboardSidebar({
         }`}
       >
         {/* Header / Brand */}
-        {isCollapsed ? (
-          <div className="flex shrink-0 flex-col items-center gap-2.5 px-2 pt-4 pb-2">
-            <Link
-              href="/"
-              className="flex items-center justify-center transition-opacity hover:opacity-90"
-              title="Abangers"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#6C5CE7] shadow-sm">
-                <Home className="h-5 w-5" />
-              </div>
-            </Link>
-
-            <button
-              type="button"
-              onClick={() => setIsCollapsed(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/15 hover:text-white"
-              title="Expand Sidebar"
-              aria-label="Expand Sidebar"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          <div className="flex h-20 shrink-0 items-center justify-between px-4 pt-2">
-            <Link href="/" className="flex items-center gap-3 overflow-hidden">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#6C5CE7] shadow-sm">
-                <Home className="h-5 w-5" />
-              </div>
+        <div className="flex h-20 shrink-0 items-center justify-between px-4 pt-2">
+          <Link href="/" className="flex items-center gap-3 overflow-hidden">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#6C5CE7] shadow-sm">
+              <Home className="h-5 w-5" />
+            </div>
+            {!isCollapsed && (
               <div className="flex flex-col leading-tight">
                 <span className="text-base font-extrabold tracking-tight text-white">
                   Abangers
@@ -532,19 +510,24 @@ export default function DashboardSidebar({
                   {userRoleLabel}
                 </span>
               </div>
-            </Link>
+            )}
+          </Link>
 
-            <button
-              type="button"
-              onClick={() => setIsCollapsed(true)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/15 hover:text-white"
-              title="Collapse Sidebar"
-              aria-label="Collapse Sidebar"
-            >
+          {/* Toggle Collapse Button */}
+          <button
+            type="button"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="h-5 w-5" />
+            ) : (
               <ChevronLeft className="h-5 w-5" />
-            </button>
-          </div>
-        )}
+            )}
+          </button>
+        </div>
 
         {/* Navigation Items: right boundary flush to edge so active tab seamlessly merges into main */}
         <nav className="flex flex-1 flex-col justify-between pt-5 pr-0 pb-5 pl-3.5">
