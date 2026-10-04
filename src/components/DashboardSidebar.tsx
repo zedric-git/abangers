@@ -209,6 +209,24 @@ export default function DashboardSidebar({
     </button>
   );
 
+  /*
+    Left inset for inactive desktop rows (nav items, theme toggle, divider).
+
+    Rows are anchored on the LEFT in both states, so their icon stays at
+    x = 30px from the sidebar's edge the whole time, the same spot as the
+    active tab's icon (nav pl-3.5 + tab pl-4 = 14 + 16):
+      expanded:  14 + px-4 (16)                 = 30
+      collapsed: 14 + ml-1.5 (6) + px-2.5 (10)  = 30
+
+    Only the row's right edge (fixed mr-5 from the sidebar's edge) follows
+    the sidebar while it animates, so icons don't jump when toggling. Fully
+    collapsed (80px), the row spans x 20 to 60: a 40px hover box centered on
+    the icon. Rows use py-3 in both states (44px tall, like the active tab)
+    so the stack doesn't shift vertically either.
+  */
+  const desktopRowInset = (collapsed: boolean) =>
+    collapsed ? "ml-1.5 px-2.5" : "px-4";
+
   // Render items on desktop sidebar (seamless active tab merging into main content)
   const renderDesktopItem = (
     item: NavItem,
@@ -301,17 +319,13 @@ export default function DashboardSidebar({
     }
 
     // Inactive desktop items: inset with mr-5 so hover rectangles do not collide with curves
-    const inactiveClasses = collapsed
-      ? `flex h-10 w-10 mr-5 ml-auto items-center justify-center rounded-xl transition-colors duration-150 ${
-          item.isDanger
-            ? "text-rose-200 hover:bg-rose-500/20 hover:text-rose-100"
-            : "text-white/80 hover:bg-white/10 hover:text-white"
-        }`
-      : `flex items-center gap-3 mr-5 px-4 py-3 text-sm font-medium rounded-xl transition-colors duration-150 ${
-          item.isDanger
-            ? "text-rose-200 hover:bg-rose-500/20 hover:text-rose-100"
-            : "text-white/80 hover:bg-white/10 hover:text-white"
-        }`;
+    const inactiveClasses = `flex items-center gap-3 mr-5 py-3 text-sm font-medium rounded-xl transition-colors duration-150 ${desktopRowInset(
+      collapsed,
+    )} ${
+      item.isDanger
+        ? "text-rose-200 hover:bg-rose-500/20 hover:text-rose-100"
+        : "text-white/80 hover:bg-white/10 hover:text-white"
+    }`;
 
     const content = (
       <>
@@ -346,39 +360,27 @@ export default function DashboardSidebar({
     );
   };
 
-  const renderDesktopThemeToggle = (collapsed: boolean) => {
-    if (collapsed) {
-      return (
-        <button
-          type="button"
-          onClick={() => setTheme(isDark ? "light" : "dark")}
-          className="mr-5 ml-auto flex h-10 w-10 items-center justify-center rounded-xl text-white/80 transition-colors duration-150 hover:bg-white/10 hover:text-white"
-          title={themeTooltip}
-          aria-label={themeTooltip}
-        >
-          <ThemeIcon className="h-5 w-5 shrink-0 text-amber-300 transition-transform duration-300" />
-        </button>
-      );
-    }
-
-    return (
-      <button
-        type="button"
-        onClick={() => setTheme(isDark ? "light" : "dark")}
-        className="mr-5 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white/80 transition-colors duration-150 hover:bg-white/10 hover:text-white"
-        title={themeTooltip}
-        aria-label={themeTooltip}
-      >
-        <ThemeIcon className="h-5 w-5 shrink-0 text-amber-300 transition-transform duration-300" />
+  const renderDesktopThemeToggle = (collapsed: boolean) => (
+    <button
+      type="button"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      className={`mr-5 flex items-center gap-3 rounded-xl py-3 text-sm font-medium text-white/80 transition-colors duration-150 hover:bg-white/10 hover:text-white ${desktopRowInset(
+        collapsed,
+      )}`}
+      title={themeTooltip}
+      aria-label={themeTooltip}
+    >
+      <ThemeIcon className="h-5 w-5 shrink-0 text-amber-300 transition-transform duration-300" />
+      {!collapsed && (
         <div className="flex flex-1 items-center justify-between">
           <span>Theme</span>
           <span className="rounded-md border border-white/20 bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-white uppercase">
             {isDark ? "Dark" : "Light"}
           </span>
         </div>
-      </button>
-    );
-  };
+      )}
+    </button>
+  );
 
   return (
     <>
@@ -559,9 +561,10 @@ export default function DashboardSidebar({
           </div>
 
           <div className="mt-auto shrink-0 space-y-1.5 pt-3">
+            {/* Left-anchored like the rows below, so it doesn't jump on toggle */}
             <div
-              className={`border-t border-white/15 pb-1.5 ${
-                isCollapsed ? "mr-5 ml-auto w-10" : "mr-5"
+              className={`mr-5 border-t border-white/15 pb-1.5 ${
+                isCollapsed ? "ml-1.5" : ""
               }`}
             />
 
