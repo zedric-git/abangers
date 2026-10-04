@@ -45,7 +45,7 @@ export default function LandlordLayout({
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-zinc-50 font-sans dark:bg-black">
+    <div className="flex h-screen overflow-hidden bg-white font-sans transition-colors duration-300 dark:bg-black">
       {/* Sidebar */}
       <DashboardSidebar
         items={landlordNavItems}
@@ -53,7 +53,9 @@ export default function LandlordLayout({
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-y-auto p-6 md:p-10">{children}</main>
+      <main className="custom-scrollbar flex-1 overflow-y-auto bg-white p-6 transition-colors duration-300 md:p-10 dark:bg-black">
+        {children}
+      </main>
     </div>
   );
 }
