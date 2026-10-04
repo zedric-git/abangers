@@ -60,7 +60,17 @@ input:-webkit-autofill:active {
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
-  transition: scrollbar-color 0.2s ease;
+  /*
+    This rule is unlayered, so it overrides Tailwind's `transition-colors`
+    on any element using this class (e.g. the dashboard <main>). Keep the
+    background/text color transitions here, matching Tailwind's 300ms
+    timing, so <main> fades in sync with the sidebar's active tab when the
+    theme changes instead of snapping instantly.
+  */
+  transition:
+    scrollbar-color 0.2s ease,
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .custom-scrollbar:hover {

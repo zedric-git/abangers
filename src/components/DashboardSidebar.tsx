@@ -225,26 +225,46 @@ export default function DashboardSidebar({
 
     // Seamless active tab merging cleanly into the main content
     if (isActive) {
-      const w = collapsed ? 68 : 228;
-      const pathD = `M ${w} 0 H ${w - 2} A 20 20 0 0 1 ${w - 22} 20 H 16 A 16 16 0 0 0 0 36 V 48 A 16 16 0 0 0 16 64 H ${w - 22} A 20 20 0 0 1 ${w - 2} 84 H ${w} V 0 Z`;
-
       const activeClasses = collapsed
         ? "relative z-20 flex h-11 w-[calc(100%+2px)] -mr-[2px] items-center pl-4 text-[#6C5CE7] font-bold dark:text-[#A78BFA]"
         : "relative z-20 flex h-11 w-[calc(100%+2px)] -mr-[2px] items-center gap-3 pl-4 pr-3 text-sm font-bold text-[#6C5CE7] dark:text-[#A78BFA]";
 
       const content = (
         <>
-          {/* Unified active tab background: top concave curve, tab body, and bottom concave curve in one continuous SVG entity */}
+          {/*
+            Active tab background, drawn as one SVG so every piece shares a
+            single fill color (and a single theme transition).
+
+            The SVG is `w-full`, so it follows the link's width while the
+            sidebar animates between collapsed and expanded. There is no
+            viewBox: 1 SVG unit = 1 CSS pixel, and shapes are positioned with
+            percentages instead of a hard-coded width.
+
+            Vertical layout (84px tall, link sits in the middle 44px):
+              y 0–20   top concave curve
+              y 20–64  tab body (same height as the h-11 link)
+              y 64–84  bottom concave curve
+          */}
           <svg
-            className="pointer-events-none absolute -top-5 right-0 -bottom-5 h-[84px] fill-white transition-colors duration-300 dark:fill-black"
-            style={{ width: `${w}px` }}
-            viewBox={`0 0 ${w} 84`}
+            className="pointer-events-none absolute -top-5 right-0 h-[84px] w-full fill-white transition-colors duration-300 dark:fill-black"
             aria-hidden="true"
           >
-            <path
-              d={pathD}
-              style={{ transition: "d 300ms cubic-bezier(0.4, 0, 0.2, 1)" }}
-            />
+            {/* Tab body, rounded on the left */}
+            <rect y="20" width="100%" height="44" rx="16" />
+            {/* Squares off the right-hand corners so the body meets main flush */}
+            <rect x="50%" y="20" width="50%" height="44" />
+            {/*
+              Concave curves, anchored to the right edge: this nested SVG's
+              origin sits at x = 100%, so the paths draw leftwards using
+              negative x. To hide subpixel seams, each curve reaches 2px into
+              the tab body (V 22 / V 62) instead of stopping exactly at its
+              edge, and includes a 2px strip at the right edge that overlaps
+              main (the link is 2px wider than the nav, see -mr-[2px]).
+            */}
+            <svg x="100%" overflow="visible">
+              <path d="M 0 0 H -2 A 20 20 0 0 1 -22 20 V 22 H 0 Z" />
+              <path d="M 0 84 H -2 A 20 20 0 0 0 -22 64 V 62 H 0 Z" />
+            </svg>
           </svg>
 
           <Icon className="relative z-10 h-5 w-5 shrink-0" />
@@ -495,14 +515,26 @@ export default function DashboardSidebar({
           isCollapsed ? "w-20" : "w-60"
         }`}
       >
-        {/* Header / Brand */}
-        <div className="flex h-20 shrink-0 items-center justify-between px-4 pt-2">
-          <Link href="/" className="flex items-center gap-3 overflow-hidden">
+        {/*
+          Header / Brand. Collapsed, the sidebar is only 80px wide, so the
+          logo (36px) and a smaller chevron (24px) sit centered with a 4px
+          gap (64px total) instead of the expanded layout's px-4 spacing.
+        */}
+        <div
+          className={`flex h-20 shrink-0 items-center pt-2 ${
+            isCollapsed ? "justify-center gap-1 px-2" : "justify-between px-4"
+          }`}
+        >
+          <Link
+            href="/"
+            className="flex min-w-0 items-center gap-3 overflow-hidden"
+          >
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#6C5CE7] shadow-sm">
               <Home className="h-5 w-5" />
             </div>
             {!isCollapsed && (
-              <div className="flex flex-col leading-tight">
+              // nowrap: while the sidebar is still widening, clip the text instead of wrapping it
+              <div className="flex flex-col leading-tight whitespace-nowrap">
                 <span className="text-base font-extrabold tracking-tight text-white">
                   Abangers
                 </span>
@@ -517,7 +549,9 @@ export default function DashboardSidebar({
           <button
             type="button"
             onClick={() => setIsCollapsed(!isCollapsed)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+            className={`flex shrink-0 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/15 hover:text-white ${
+              isCollapsed ? "h-6 w-6" : "h-8 w-8"
+            }`}
             title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
