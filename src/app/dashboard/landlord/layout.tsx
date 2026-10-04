@@ -45,8 +45,8 @@ export default function LandlordLayout({
   ];
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white font-sans transition-colors duration-300 dark:bg-black">
-      {/* Sidebar */}
+    <div className="flex h-dvh h-screen flex-col overflow-hidden bg-white font-sans transition-colors duration-300 md:flex-row dark:bg-black">
+      {/* Sidebar (Desktop docked + Mobile drawer & trigger) */}
       <DashboardSidebar
         items={landlordNavItems}
         userRoleLabel="Landlord Dashboard"
