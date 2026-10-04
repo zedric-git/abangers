@@ -50,7 +50,7 @@ export default function DashboardSidebar({
   const ThemeIcon = isDark ? Sun : Moon;
   const themeTooltip = isDark ? "Switch to Light Mode" : "Switch to Dark Mode";
 
-  // Auto-close mobile drawer on route changes (React recommended pattern for state adjustment based on prop/pathname)
+  // Auto-close mobile drawer on route changes
   const [prevPathname, setPrevPathname] = useState(pathname);
   if (prevPathname !== pathname) {
     setPrevPathname(pathname);
@@ -130,10 +130,10 @@ export default function DashboardSidebar({
     return null;
   })();
 
-  const renderItem = (
+  // Render items inside the mobile slide-over drawer (clean inset capsule style)
+  const renderMobileItem = (
     item: NavItem,
     index: number,
-    collapsed: boolean,
     onSelect?: () => void,
   ) => {
     const Icon = item.icon;
@@ -144,9 +144,8 @@ export default function DashboardSidebar({
           ? item.href === activeHref
           : false;
 
-    const baseClasses = `flex items-center gap-3 text-sm font-medium transition-all duration-150 rounded-xl ${
-      collapsed ? "justify-center p-0 w-11 h-11 mx-auto" : "px-3.5 py-3 w-full"
-    }`;
+    const baseClasses =
+      "flex items-center gap-3 w-full px-3.5 py-3 text-sm font-medium transition-colors duration-150 rounded-xl";
 
     const activeClasses = isActive
       ? "bg-white text-[#6C5CE7] font-bold shadow-xs dark:bg-purple-600 dark:text-white dark:shadow-sm"
@@ -157,7 +156,7 @@ export default function DashboardSidebar({
     const content = (
       <>
         <Icon className="h-5 w-5 shrink-0" />
-        {!collapsed && <span className="truncate">{item.label}</span>}
+        <span className="truncate">{item.label}</span>
       </>
     );
 
@@ -175,7 +174,6 @@ export default function DashboardSidebar({
             if (onSelect) onSelect();
           }}
           className={`${baseClasses} ${activeClasses}`}
-          title={collapsed ? item.label : undefined}
         >
           {content}
         </Link>
@@ -188,6 +186,139 @@ export default function DashboardSidebar({
         type="button"
         onClick={handleClick}
         className={`${baseClasses} ${activeClasses}`}
+      >
+        {content}
+      </button>
+    );
+  };
+
+  const renderMobileThemeToggle = () => (
+    <button
+      type="button"
+      onClick={() => setTheme(isDark ? "light" : "dark")}
+      className="flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium text-white/80 transition-colors duration-150 hover:bg-white/10 hover:text-white"
+      aria-label={themeTooltip}
+    >
+      <ThemeIcon className="h-5 w-5 shrink-0 text-amber-300 transition-transform duration-300" />
+      <div className="flex flex-1 items-center justify-between">
+        <span>Theme</span>
+        <span className="rounded-md border border-white/20 bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-white uppercase">
+          {isDark ? "Dark" : "Light"}
+        </span>
+      </div>
+    </button>
+  );
+
+  // Render items on desktop sidebar (seamless active tab merging into main content)
+  const renderDesktopItem = (
+    item: NavItem,
+    index: number,
+    collapsed: boolean,
+  ) => {
+    const Icon = item.icon;
+    const isActive =
+      typeof item.isActive === "boolean"
+        ? item.isActive
+        : item.href
+          ? item.href === activeHref
+          : false;
+
+    // Seamless active tab merging cleanly into the main content
+    if (isActive) {
+      const activeClasses = collapsed
+        ? "relative z-20 flex h-11 w-[calc(100%+2px)] -mr-[2px] items-center rounded-l-2xl bg-white pl-4 text-[#6C5CE7] font-bold duration-300 dark:bg-black dark:text-[#A78BFA] transition-colors"
+        : "relative z-20 flex w-[calc(100%+2px)] -mr-[2px] items-center gap-3 rounded-l-2xl bg-white pl-4 pr-3 py-3 text-sm font-bold text-[#6C5CE7] duration-300 dark:bg-black dark:text-[#A78BFA] transition-colors";
+
+      const content = (
+        <>
+          {/* Top concave transition curve */}
+          <svg
+            className="pointer-events-none absolute -top-[19px] right-0 h-5 w-[22px] fill-white transition-colors duration-300 dark:fill-black"
+            viewBox="0 0 22 20"
+            aria-hidden="true"
+          >
+            <path d="M 20 0 A 20 20 0 0 1 0 20 H 22 V 0 Z" />
+          </svg>
+
+          {/* Bottom concave transition curve */}
+          <svg
+            className="pointer-events-none absolute right-0 -bottom-[19px] h-5 w-[22px] fill-white transition-colors duration-300 dark:fill-black"
+            viewBox="0 0 22 20"
+            aria-hidden="true"
+          >
+            <path d="M 0 0 A 20 20 0 0 1 20 20 H 22 V 0 Z" />
+          </svg>
+
+          <Icon className="h-5 w-5 shrink-0" />
+          {!collapsed && <span className="truncate">{item.label}</span>}
+        </>
+      );
+
+      if (item.href) {
+        return (
+          <Link
+            key={item.href || index}
+            href={item.href}
+            className={activeClasses}
+            title={collapsed ? item.label : undefined}
+          >
+            {content}
+          </Link>
+        );
+      }
+
+      return (
+        <button
+          key={item.label || index}
+          type="button"
+          onClick={item.onClick}
+          className={activeClasses}
+          title={collapsed ? item.label : undefined}
+        >
+          {content}
+        </button>
+      );
+    }
+
+    // Inactive desktop items: inset with mr-5 so hover rectangles do not collide with curves
+    const inactiveClasses = collapsed
+      ? `flex h-10 w-10 mr-5 ml-auto items-center justify-center rounded-xl transition-colors duration-150 ${
+          item.isDanger
+            ? "text-rose-200 hover:bg-rose-500/20 hover:text-rose-100"
+            : "text-white/80 hover:bg-white/10 hover:text-white"
+        }`
+      : `flex items-center gap-3 mr-5 px-4 py-3 text-sm font-medium rounded-xl transition-colors duration-150 ${
+          item.isDanger
+            ? "text-rose-200 hover:bg-rose-500/20 hover:text-rose-100"
+            : "text-white/80 hover:bg-white/10 hover:text-white"
+        }`;
+
+    const content = (
+      <>
+        <Icon className="h-5 w-5 shrink-0" />
+        {!collapsed && <span className="truncate">{item.label}</span>}
+      </>
+    );
+
+    if (item.href) {
+      return (
+        <Link
+          key={item.href || index}
+          href={item.href}
+          className={inactiveClasses}
+          title={collapsed ? item.label : undefined}
+        >
+          {content}
+        </Link>
+      );
+    }
+
+    return (
+      <button
+        key={item.label || index}
+        type="button"
+        onClick={item.onClick}
+        className={inactiveClasses}
         title={collapsed ? item.label : undefined}
       >
         {content}
@@ -195,28 +326,36 @@ export default function DashboardSidebar({
     );
   };
 
-  const renderThemeToggle = (collapsed: boolean) => {
-    const baseClasses = `flex items-center gap-3 text-sm font-medium transition-all duration-150 rounded-xl ${
-      collapsed ? "justify-center p-0 w-11 h-11 mx-auto" : "px-3.5 py-3 w-full"
-    }`;
+  const renderDesktopThemeToggle = (collapsed: boolean) => {
+    if (collapsed) {
+      return (
+        <button
+          type="button"
+          onClick={() => setTheme(isDark ? "light" : "dark")}
+          className="mr-5 ml-auto flex h-10 w-10 items-center justify-center rounded-xl text-white/80 transition-colors duration-150 hover:bg-white/10 hover:text-white"
+          title={themeTooltip}
+          aria-label={themeTooltip}
+        >
+          <ThemeIcon className="h-5 w-5 shrink-0 text-amber-300 transition-transform duration-300" />
+        </button>
+      );
+    }
 
     return (
       <button
         type="button"
         onClick={() => setTheme(isDark ? "light" : "dark")}
-        className={`${baseClasses} text-white/80 hover:bg-white/10 hover:text-white`}
-        title={collapsed ? themeTooltip : undefined}
+        className="mr-5 flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-white/80 transition-colors duration-150 hover:bg-white/10 hover:text-white"
+        title={themeTooltip}
         aria-label={themeTooltip}
       >
         <ThemeIcon className="h-5 w-5 shrink-0 text-amber-300 transition-transform duration-300" />
-        {!collapsed && (
-          <div className="flex flex-1 items-center justify-between">
-            <span>Theme</span>
-            <span className="rounded-md border border-white/20 bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-white uppercase">
-              {isDark ? "Dark" : "Light"}
-            </span>
-          </div>
-        )}
+        <div className="flex flex-1 items-center justify-between">
+          <span>Theme</span>
+          <span className="rounded-md border border-white/20 bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold tracking-wider text-white uppercase">
+            {isDark ? "Dark" : "Light"}
+          </span>
+        </div>
       </button>
     );
   };
@@ -325,24 +464,23 @@ export default function DashboardSidebar({
           <nav className="custom-scrollbar flex flex-1 flex-col overflow-y-auto px-3.5 py-4">
             <div className="space-y-1.5">
               {topItems.map((item, index) =>
-                renderItem(item, index, false, () => setIsMobileOpen(false)),
+                renderMobileItem(item, index, () => setIsMobileOpen(false)),
               )}
             </div>
 
             <div className="mt-auto shrink-0 space-y-1.5 border-t border-white/15 pt-3">
               {bottomNavItems.map((item, index) =>
-                renderItem(item, index + topItems.length, false, () =>
+                renderMobileItem(item, index + topItems.length, () =>
                   setIsMobileOpen(false),
                 ),
               )}
 
-              {renderThemeToggle(false)}
+              {renderMobileThemeToggle()}
 
               {dangerBottomItems.map((item, index) =>
-                renderItem(
+                renderMobileItem(
                   item,
                   index + topItems.length + bottomNavItems.length + 1,
-                  false,
                   () => setIsMobileOpen(false),
                 ),
               )}
@@ -351,9 +489,9 @@ export default function DashboardSidebar({
         </aside>
       </div>
 
-      {/* Desktop Persistent Sidebar */}
+      {/* Desktop Persistent Sidebar with Seamless Active Tab */}
       <aside
-        className={`relative hidden h-full shrink-0 flex-col border-r border-purple-800/30 bg-[#6C5CE7] text-white transition-all duration-300 md:flex dark:border-white/10 dark:bg-[#1E1736] ${
+        className={`relative hidden h-full shrink-0 flex-col bg-[#6C5CE7] text-white transition-all duration-300 md:flex dark:bg-[#1E1736] ${
           isCollapsed ? "w-20" : "w-60"
         }`}
       >
@@ -408,23 +546,29 @@ export default function DashboardSidebar({
           </div>
         )}
 
-        {/* Navigation Items with auto-scroll */}
-        <nav className="custom-scrollbar flex flex-1 flex-col overflow-y-auto px-3.5 py-3.5">
+        {/* Navigation Items: right boundary flush to edge so active tab seamlessly merges into main */}
+        <nav className="flex flex-1 flex-col justify-between pt-5 pr-0 pb-5 pl-3.5">
           <div className="space-y-1.5">
             {topItems.map((item, index) =>
-              renderItem(item, index, isCollapsed),
+              renderDesktopItem(item, index, isCollapsed),
             )}
           </div>
 
-          <div className="mt-auto shrink-0 space-y-1.5 border-t border-white/15 pt-3">
+          <div className="mt-auto shrink-0 space-y-1.5 pt-3">
+            <div
+              className={`border-t border-white/15 pb-1.5 ${
+                isCollapsed ? "mr-5 ml-auto w-10" : "mr-5"
+              }`}
+            />
+
             {bottomNavItems.map((item, index) =>
-              renderItem(item, index + topItems.length, isCollapsed),
+              renderDesktopItem(item, index + topItems.length, isCollapsed),
             )}
 
-            {renderThemeToggle(isCollapsed)}
+            {renderDesktopThemeToggle(isCollapsed)}
 
             {dangerBottomItems.map((item, index) =>
-              renderItem(
+              renderDesktopItem(
                 item,
                 index + topItems.length + bottomNavItems.length + 1,
                 isCollapsed,
