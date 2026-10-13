@@ -1,6 +1,6 @@
 ---
 name: start-task
-description: Start work on a GitHub issue from the Abangers project board — reads the issue, cuts a correctly named branch from the latest dev, and summarizes what to build. Use when the user says "start #123", "pick up issue 123", or "work on S1-05.2".
+description: 'Start work on a GitHub issue from the Abangers project board — reads the issue, cuts a correctly named branch from the latest dev, and summarizes what to build. Use when the user says "start #123", "pick up issue 123", or "work on S1-05.2".'
 argument-hint: <issue number>
 ---
 
