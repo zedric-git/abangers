@@ -72,12 +72,9 @@ Title style matches the repo history: `feat(...)`, `fix(...)`,
 
 ## 5. Tell the user what happens after merge
 
-`Closes #` does **not** auto-close issues for PRs into `dev`. After the
-PR merges, the issues must be closed by hand so the board moves to Done:
-
-```bash
-gh issue close <n> --repo zedric-git/abangers --comment "Fixed by #<pr>"
-```
+`dev` is the default branch, so the `Closes #` lines close the issues
+and move their board cards to Done when the PR merges. `dev` is also
+protected: the PR can only merge once the `checks` CI run passes.
 
 Give the user the PR link and note any migration that still needs
 applying.
