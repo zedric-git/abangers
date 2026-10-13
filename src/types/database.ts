@@ -117,22 +117,40 @@ export type Database = {
       };
       profiles: {
         Row: {
+          contact_number: string | null;
           created_at: string;
+          email: string | null;
+          facebook_url: string | null;
           full_name: string | null;
           id: string;
+          instagram_url: string | null;
+          profile_completed: boolean;
           role: string;
+          x_url: string | null;
         };
         Insert: {
+          contact_number?: string | null;
           created_at?: string;
+          email?: string | null;
+          facebook_url?: string | null;
           full_name?: string | null;
           id: string;
+          instagram_url?: string | null;
+          profile_completed?: boolean;
           role: string;
+          x_url?: string | null;
         };
         Update: {
+          contact_number?: string | null;
           created_at?: string;
+          email?: string | null;
+          facebook_url?: string | null;
           full_name?: string | null;
           id?: string;
+          instagram_url?: string | null;
+          profile_completed?: boolean;
           role?: string;
+          x_url?: string | null;
         };
         Relationships: [];
       };

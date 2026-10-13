@@ -59,14 +59,14 @@ https://github.com/users/zedric-git/projects/3
   will fail on a clean checkout even when it passes on your machine.
 - **Migration numbers must be unique — Supabase tracks migrations by the
   number prefix, not the full filename.** Two files with the same number
-  means the second is silently treated as already applied. This has
-  already happened: there are two `0002_*` files and only
-  `0002_grant_table_privileges.sql` was applied, so the columns in
-  `0002_add_landlord_profile_fields.sql` don't exist in the shared
-  database. `0003` and `0004` were also run by hand, so the shared
-  project's migration history doesn't match this folder yet. Until
-  that's repaired, check `npx supabase migration list --linked` before
-  any `db push`, and number new migrations from the highest number + 1.
+  means the second is silently treated as already applied (this
+  happened once — see #172, fixed by `0005`). Number new migrations
+  from the highest number + 1, and never run migration SQL by hand in
+  the Supabase dashboard: that's how `0003`/`0004` drifted from what's
+  recorded. Before any `db push`, run
+  `npx supabase migration list --linked` and
+  `npx supabase db push --dry-run` and check only your new file is
+  pending.
 - **The database schema is the source of truth for types.**
   `src/types/database.ts` is generated from the shared project with
   `npm run db:types` — never edit it by hand; re-run the script after
@@ -240,6 +240,11 @@ entry in the PR that closes it.
   sign-up pages and not using `loginSchema` / `signUpSchema` from
   `src/lib/validations/auth.ts`. Don't add a third copy; when touching
   auth, move the modal onto the shared schemas.
+- **RLS doesn't check roles (#173, #174).** The `listings` insert
+  policy only checks `auth.uid() = landlord_id`, so a renter can create
+  listings through the API. The `profiles` update policy lets users
+  change their own `role`. Don't rely on RLS to enforce "landlords
+  only" until these are fixed, and don't build features that assume it.
 
 ## Commands
 
