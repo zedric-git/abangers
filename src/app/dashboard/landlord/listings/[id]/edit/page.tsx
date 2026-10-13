@@ -1,7 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import LandlordListingForm from "@/components/LandlordListingForm";
-import { ListingInput } from "@/lib/validations/listing";
+import {
+  ListingInput,
+  parseAvailabilityStatus,
+} from "@/lib/validations/listing";
 
 export default async function EditListingPage({
   params,
@@ -35,7 +38,7 @@ export default async function EditListingPage({
     title: listing.title || "",
     address: listing.address || "",
     city: listing.city || "",
-    monthly_rent: listing.price || listing.monthly_rent || 3000,
+    monthly_rent: listing.monthly_rent,
     total_rooms: listing.total_rooms || 1,
     available_rooms: listing.available_rooms || 1,
     property_type: listing.property_type || "Boarding House",
@@ -51,7 +54,7 @@ export default async function EditListingPage({
     description: listing.description || "",
     house_rules: listing.house_rules || "",
     contact_info: listing.contact_info || "",
-    availability_status: listing.availability_status || "available",
+    availability_status: parseAvailabilityStatus(listing.availability_status),
     images: listing.images || [],
     cover_image: listing.cover_image || "",
     latitude: listing.latitude != null ? listing.latitude : undefined,

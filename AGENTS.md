@@ -70,9 +70,13 @@ https://github.com/users/zedric-git/projects/3
 - **The database schema is the source of truth for types.**
   `src/types/database.ts` is generated from the shared project with
   `npm run db:types` — never edit it by hand; re-run the script after
-  any migration is pushed. Prefer it over hand-written types like
-  `src/types/listing.ts`, which has drifted (e.g. it has a `price`
-  field the table doesn't have).
+  any migration is pushed. All three Supabase clients in
+  `src/lib/supabase/` are typed with it, so a query on a column that
+  doesn't exist is a type error. Don't write table types by hand —
+  derive them (e.g. `Listing` in `src/types/listing.ts` is the
+  generated `listings` row). Rows use `null` for empty columns; convert
+  with `listingRowToFormValues` before passing to the listing form or
+  `ListingDetailView`.
 - **Branch flow: `feature/*` → `dev` → `main`.** See "Branching strategy"
   below for the full rules and sprint schedule.
 

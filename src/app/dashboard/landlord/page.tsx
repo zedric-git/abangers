@@ -20,7 +20,7 @@ export default async function LandlordDashboardPage() {
       .eq("landlord_id", user.id)
       .order("created_at", { ascending: false });
 
-    listings = (rawListings || []) as Listing[];
+    listings = rawListings ?? [];
   }
 
   const activeCount = listings.length;

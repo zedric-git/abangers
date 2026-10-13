@@ -28,7 +28,7 @@ export default async function LandlordListingsPage() {
     console.error("Error fetching landlord listings:", error);
   }
 
-  const listings = (rawListings || []) as Listing[];
+  const listings: Listing[] = rawListings ?? [];
 
   // Compute status summary counts
   const totalListings = listings.length;

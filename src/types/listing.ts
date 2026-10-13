@@ -1,30 +1,15 @@
-export interface Listing {
-  id: string;
-  landlord_id: string;
-  title: string;
-  address: string;
-  city?: string;
-  price: number;
-  monthly_rent?: number;
-  total_rooms?: number;
-  available_rooms: number;
-  contact_info: string;
-  availability_status: "available" | "almost_full" | "fully_occupied" | string;
-  images?: string[];
-  cover_image?: string;
-  property_type?: string;
-  occupancy_type?: string;
-  allowed_gender?: string;
-  utilities?: string[];
-  room_features?: string[];
-  bathroom_features?: string[];
-  kitchen_features?: string[];
-  laundry_features?: string[];
-  safety_features?: string[];
-  description?: string;
-  house_rules?: string;
-  latitude?: number | null;
-  longitude?: number | null;
-  created_at: string;
-  updated_at: string;
-}
+import type { Database } from "@/types/database";
+
+/**
+ * A row from public.listings, exactly as the database returns it.
+ *
+ * Derived from the generated `src/types/database.ts` (run
+ * `npm run db:types` after any migration), so it can't drift from the
+ * real table. This used to be a hand-written interface, which ended up
+ * with a `price` field the table never had.
+ *
+ * Optional columns come back as `null`, not `undefined`. To feed a row
+ * into the listing form or ListingDetailView, convert it with
+ * `listingRowToFormValues` (src/lib/validations/listing.ts).
+ */
+export type Listing = Database["public"]["Tables"]["listings"]["Row"];
