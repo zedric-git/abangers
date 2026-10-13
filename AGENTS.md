@@ -273,6 +273,24 @@ entry in the PR that closes it.
 - `npm run db:seed` — load test accounts + sample listings from
   `supabase/seed.sql` into the linked project (safe to re-run)
 
+## Agent guardrails (Claude Code)
+
+`.claude/settings.json` is shared team config for Claude Code (personal
+overrides go in the gitignored `.claude/settings.local.json`):
+
+- **Auto-approved:** read-only and routine commands (`npm run check`,
+  `npm test`, `git status/diff/log`, `gh issue/pr view`,
+  `npx supabase migration list`, `db push --dry-run`, ...).
+- **Always blocked:** `supabase db reset`, force-pushes, pushing
+  straight to `main`/`dev`, and `git commit --no-verify`.
+- **Hook:** `.claude/hooks/protect-applied-migrations.mjs` blocks edits
+  to any migration that's already on `origin/dev` (run `git fetch` to
+  keep that current). New migration files are unaffected.
+
+These only apply inside Claude Code (its `Bash` tool — not other shells
+or other AI tools). If you use Cursor/Copilot, the same rules still
+apply; you just don't get the automatic block.
+
 ## When you're unsure
 
 This is a learning project for the team, not just a shipping deadline.
