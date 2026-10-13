@@ -217,14 +217,20 @@ progress list — for what's done or still a stub, check the project
 board and the code. Each entry should link a tracking issue; delete the
 entry in the PR that closes it.
 
-- **Role lost when email confirmation is on** (no tracking issue yet —
-  the old reference, #138, no longer exists on GitHub). When Supabase
-  email confirmation is enabled, `signUp` returns no session, so
-  `src/app/(auth)/signup/page.tsx` can't insert the `profiles` row (RLS
-  needs `auth.uid()`). The chosen role isn't saved anywhere else, so on
-  first login `src/app/(auth)/login/page.tsx` finds no profile and
-  falls through to the renter dashboard. Read both files before
-  touching sign-up or login.
+- **Users without a `profiles` row land on the renter dashboard
+  (#170).** Sign-up creates the auth user first and inserts the
+  `profiles` row in a separate call (`src/app/(auth)/signup/page.tsx`).
+  If that insert fails, the account has no profile, and
+  `src/app/(auth)/login/page.tsx` silently defaults to the renter
+  dashboard. Read both files before touching sign-up or login.
+- **Don't turn on "Confirm email" in Supabase without fixing sign-up
+  first.** Email confirmation is currently **off** in the shared
+  project, and the sign-up flow depends on that. With it on, `signUp`
+  returns no session, so the `profiles` insert is skipped (RLS needs
+  `auth.uid()`) and the chosen role is lost — every new landlord lands
+  on the renter dashboard. Before enabling it, store `role` /
+  `full_name` as `options.data` in `signUp` and create the profile row
+  from that metadata (see #170 for details).
 - **Duplicated auth logic.** `src/components/LandlordAuthModal.tsx`
   has its own sign-in and landlord sign-up, separate from the login and
   sign-up pages and not using `loginSchema` / `signUpSchema` from
