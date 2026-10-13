@@ -13,6 +13,12 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 Context for any AI coding assistant (Claude Code, Cursor, Copilot, etc.)
 working in this repo. Read this before making changes.
 
+**Keep this file true.** If your change makes anything in this file
+wrong (a rule, a convention, a file path, a known gap), update it in
+the same PR. This file holds rules and conventions, not progress — for
+what's built and what's next, check the project board and the code
+itself; don't infer status from this file.
+
 ## What this project is
 
 Abangers ("abang" = rent in Bisaya; Abangers = the renters) — a web app
@@ -51,6 +57,12 @@ https://github.com/users/zedric-git/projects/3
   running `next dev`/`next build`/`next typegen` at least once. Don't
   remove that step from `.github/workflows/ci.yml` or the type check
   will fail on a clean checkout even when it passes on your machine.
+- **There are two `0002_*` migrations.** `0002_add_landlord_profile_fields.sql`
+  and `0002_grant_table_privileges.sql` were written in parallel and both
+  are already pushed to the shared database. Don't rename either one —
+  Supabase tracks applied migrations by filename, so a rename looks like a
+  new, unapplied migration. Number new migrations from the highest number
+  in `supabase/migrations/` + 1 (ignore the duplicate).
 - **Branch flow: `feature/*` → `dev` → `main`.** See "Branching strategy"
   below for the full rules and sprint schedule.
 
@@ -170,12 +182,16 @@ next sprint instead of forcing the merge.
 this project. Don't introduce Google Maps, Mapbox, or any other
 map/geocoding provider without asking the team.
 
-**Not decided yet:** exactly how the map is used (listing pins,
-navigation/directions, search by area or distance, location picker in
-the add-listing form). Don't assume a scope — check the relevant
-issue/backlog item or ask before building map features. The product
-backlog currently plans Leaflet + OSM tiles (S2-10); treat that as the
-default library choice unless the team changes it.
+**Library:** Leaflet + `react-leaflet` with OSM tiles. Existing map
+components live in `src/components/map/` (`LocationPicker` is used by
+the add/edit listing form, `ReadOnlyMap` by the listing detail view;
+both are loaded through `DynamicMap` without SSR). Reuse these before
+writing new map code.
+
+**Scope beyond that is not decided** (listing pins on search results,
+directions, search by area or distance). Don't assume a scope — check
+the relevant issue/backlog item or ask before building new map
+features.
 
 Constraints that come with OSM (keep these in mind when building):
 
@@ -185,35 +201,35 @@ Constraints that come with OSM (keep these in mind when building):
   and Nominatim (geocoding) are for light use: no bulk requests, no
   search-as-you-type against Nominatim, max ~1 request/second. If a
   feature needs more, ask before adding a paid/hosted provider.
-- **Store coordinates, not just addresses.** If listings need
-  location, use `latitude` / `longitude` columns (added via a new
-  migration, with RLS + grants like any other change).
+- **Store coordinates, not just addresses.** `listings` already has
+  `latitude` / `longitude` columns (`0001_init.sql`). Any new table that
+  needs a location should do the same (via a new migration, with RLS +
+  grants like any other change).
 - **Client-only rendering.** Leaflet touches `window`, so map
   components must be Client Components and loaded without SSR
   (`"use client"` + `next/dynamic` with `ssr: false`). Keep them in a
   dedicated `src/components/map/` folder.
 
-## Current state and known gaps
+## Known gaps
 
-As of the end of Sprint 1's first stories (keep this updated as things
-land):
+Problems in the code that aren't obvious from reading it. This is not a
+progress list — for what's done or still a stub, check the project
+board and the code. Each entry should link a tracking issue; delete the
+entry in the PR that closes it.
 
-- **Done:** sign-up (`src/app/(auth)/signup/page.tsx` + `signUpSchema`
-  in `src/lib/validations/auth.ts`), landing page with
-  `LandlordAuthModal`, `profiles`/`listings` schema + RLS + grants, seed
-  data.
-- **Still `TODO` stubs:** login page, landlord + renter dashboards,
-  add/edit listing, listings search, listing detail.
-- **Known gap (#138):** when Supabase email confirmation is on,
-  `signUp` returns no session, so the sign-up page can't insert the
-  `profiles` row (RLS needs `auth.uid()`). The user ends up with no
-  profile and their chosen role is lost. Fix belongs in the login flow
-  — see issue #138 before touching sign-up or login.
-- **Duplicated auth logic:** `src/components/LandlordAuthModal.tsx`
-  has its own sign-in (with role-based redirect) and landlord sign-up,
-  separate from the sign-up page and without the shared Zod schema.
-  When building the login page (S1-02), reuse/extract that logic rather
-  than writing a third copy, and move both onto `src/lib/validations/`.
+- **Role lost when email confirmation is on** (no tracking issue yet —
+  the old reference, #138, no longer exists on GitHub). When Supabase
+  email confirmation is enabled, `signUp` returns no session, so
+  `src/app/(auth)/signup/page.tsx` can't insert the `profiles` row (RLS
+  needs `auth.uid()`). The chosen role isn't saved anywhere else, so on
+  first login `src/app/(auth)/login/page.tsx` finds no profile and
+  falls through to the renter dashboard. Read both files before
+  touching sign-up or login.
+- **Duplicated auth logic.** `src/components/LandlordAuthModal.tsx`
+  has its own sign-in and landlord sign-up, separate from the login and
+  sign-up pages and not using `loginSchema` / `signUpSchema` from
+  `src/lib/validations/auth.ts`. Don't add a third copy; when touching
+  auth, move the modal onto the shared schemas.
 
 ## Commands
 
