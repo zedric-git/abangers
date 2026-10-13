@@ -159,9 +159,12 @@ next sprint instead of forcing the merge.
 - Board statuses: `Product Backlog` / `Sprint N Backlog` (stories) →
   `Todo` → `In Progress` → `Code Review` → `Done`.
 - **Every PR description must say `Closes #<issue>`** for each task it
-  finishes. That auto-closes the issue and moves its board card to
-  Done on merge. PRs that skip this leave the board stale (this
-  happened with the sign-up PR, #136).
+  finishes, so the PR and issue are linked.
+- **`Closes #` does NOT auto-close issues on PRs into `dev`.** GitHub
+  only auto-closes when a PR merges into the default branch, which is
+  `main`. After a PR into `dev` merges, close its issues by hand
+  (`gh issue close <n> --comment "Fixed by #<pr>"`) so the board card
+  moves to Done. Skipping this is why the board goes stale.
 
 ## Database (Supabase)
 
