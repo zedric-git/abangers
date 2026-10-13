@@ -57,12 +57,22 @@ https://github.com/users/zedric-git/projects/3
   running `next dev`/`next build`/`next typegen` at least once. Don't
   remove that step from `.github/workflows/ci.yml` or the type check
   will fail on a clean checkout even when it passes on your machine.
-- **There are two `0002_*` migrations.** `0002_add_landlord_profile_fields.sql`
-  and `0002_grant_table_privileges.sql` were written in parallel and both
-  are already pushed to the shared database. Don't rename either one —
-  Supabase tracks applied migrations by filename, so a rename looks like a
-  new, unapplied migration. Number new migrations from the highest number
-  in `supabase/migrations/` + 1 (ignore the duplicate).
+- **Migration numbers must be unique — Supabase tracks migrations by the
+  number prefix, not the full filename.** Two files with the same number
+  means the second is silently treated as already applied. This has
+  already happened: there are two `0002_*` files and only
+  `0002_grant_table_privileges.sql` was applied, so the columns in
+  `0002_add_landlord_profile_fields.sql` don't exist in the shared
+  database. `0003` and `0004` were also run by hand, so the shared
+  project's migration history doesn't match this folder yet. Until
+  that's repaired, check `npx supabase migration list --linked` before
+  any `db push`, and number new migrations from the highest number + 1.
+- **The database schema is the source of truth for types.**
+  `src/types/database.ts` is generated from the shared project with
+  `npm run db:types` — never edit it by hand; re-run the script after
+  any migration is pushed. Prefer it over hand-written types like
+  `src/types/listing.ts`, which has drifted (e.g. it has a `price`
+  field the table doesn't have).
 - **Branch flow: `feature/*` → `dev` → `main`.** See "Branching strategy"
   below for the full rules and sprint schedule.
 
@@ -233,11 +243,22 @@ entry in the PR that closes it.
 
 ## Commands
 
+- **`npm run check` — run this before saying a change is done.** It's
+  everything CI runs: `next typegen`, `tsc --noEmit`, ESLint, Prettier
+  check, and the unit tests.
 - `npm run dev` — local dev server
+- `npm test` — unit tests (`*.test.ts`, Vitest). Put a test next to the
+  file it tests; see `src/lib/validations/auth.test.ts` for the pattern.
+- `npm run test:db` — tests that run against the **shared** Supabase
+  project (`*.db.test.ts`), e.g. the listings RLS test. Needs
+  `.env.local` and the seed data. Not run in CI. Any new table's RLS
+  policies should get a test here; DB tests must leave shared data
+  unchanged.
 - `npm run lint` — ESLint
 - `npm run format` — Prettier (auto-runs on commit via Husky)
-- `npm run format:check` — what CI runs; CI also runs
-  `npx next typegen`, `npx tsc --noEmit`, and `npm run lint`
+- `npm run format:check` — Prettier check only
+- `npm run db:types` — regenerate `src/types/database.ts` from the
+  shared project's schema
 - `npx shadcn add <component>` — add a new shadcn/ui component
 - `npx supabase db push` — apply pending migrations to the linked project
   (run `npx supabase link --project-ref <ref>` once first)
