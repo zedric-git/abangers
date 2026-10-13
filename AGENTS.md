@@ -134,12 +134,13 @@ Three-tier flow: `feature/*` → `dev` → `main`.
   `fix/<bug>`, `chore/<tooling-or-data>`, `docs/<what>`.
   Open a PR into `dev` when ready; needs a passing CI check to merge.
   Delete the branch after it merges.
-- **`dev` branch** — the integration branch for the sprint currently in
-  progress. All `feature/*` branches merge here first. This is where we
-  test and stabilize everything the sprint is supposed to ship. Nothing
-  goes to `main` directly from a feature branch. CI runs on every PR
-  into `dev`, but `dev` isn't branch-protected yet — don't push to it
-  directly; always go through a PR.
+- **`dev` branch** — the repo's **default branch** and the integration
+  branch for the sprint currently in progress. All `feature/*` branches
+  merge here first. This is where we test and stabilize everything the
+  sprint is supposed to ship. Nothing goes to `main` directly from a
+  feature branch. **Protected for everyone, including admins:** changes
+  need a PR with a passing `checks` CI run (no approval required); no
+  direct pushes, force-pushes, or deleting the branch.
 - **`main` branch** — protected, always reflects the last stable,
   exam-ready state. `dev` only merges into `main` once every feature for
   the sprint is done and `dev` itself is stable (build/lint/tests all
@@ -172,12 +173,10 @@ next sprint instead of forcing the merge.
 - Board statuses: `Product Backlog` / `Sprint N Backlog` (stories) →
   `Todo` → `In Progress` → `Code Review` → `Done`.
 - **Every PR description must say `Closes #<issue>`** for each task it
-  finishes, so the PR and issue are linked.
-- **`Closes #` does NOT auto-close issues on PRs into `dev`.** GitHub
-  only auto-closes when a PR merges into the default branch, which is
-  `main`. After a PR into `dev` merges, close its issues by hand
-  (`gh issue close <n> --comment "Fixed by #<pr>"`) so the board card
-  moves to Done. Skipping this is why the board goes stale.
+  finishes. Because `dev` is the default branch, merging the PR closes
+  those issues and moves their board cards to Done automatically. (If
+  an issue was finished without a `Closes #` line, close it by hand:
+  `gh issue close <n> --comment "Fixed by #<pr>"`.)
 
 ## Database (Supabase)
 
@@ -306,7 +305,7 @@ follow them too):
 - `/new-migration <description>` — next migration number, RLS, grants,
   role checks, a DB test, and the apply steps for the PR.
 - `/open-pr [issues]` — `npm run check`, push, open a PR into `dev`
-  with `Closes #` lines, and remind you to close issues after merge.
+  with `Closes #` lines (they close the issues when it merges).
 
 If you change a workflow rule in this file, update the matching skill
 in the same PR.
