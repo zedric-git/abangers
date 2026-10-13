@@ -10,7 +10,11 @@
     "prepare": "husky",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:seed": "supabase db query --linked -f supabase/seed.sql"
+    "db:seed": "supabase db query --linked -f supabase/seed.sql",
+    "test": "vitest run --project unit",
+    "test:db": "vitest run --project db",
+    "db:types": "supabase gen types typescript --linked --schema public > src/types/database.ts && prettier --write src/types/database.ts",
+    "check": "next typegen && tsc --noEmit && eslint && prettier --check . && vitest run --project unit"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -45,7 +49,8 @@
     "prettier-plugin-tailwindcss": "^0.8.1",
     "supabase": "^2.116.0",
     "tailwindcss": "^4",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^3.2.7"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

@@ -30,3 +30,8 @@ jobs:
 
       - name: Format check
         run: npm run format:check
+
+      # Unit tests only — the *.db.test.ts suite talks to the shared
+      # Supabase project and is run by hand with `npm run test:db`.
+      - name: Unit tests
+        run: npm test
