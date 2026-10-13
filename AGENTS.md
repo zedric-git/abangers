@@ -230,19 +230,17 @@ progress list — for what's done or still a stub, check the project
 board and the code. Each entry should link a tracking issue; delete the
 entry in the PR that closes it.
 
-- **Role lost when email confirmation is on** (no tracking issue yet —
-  the old reference, #138, no longer exists on GitHub). When Supabase
-  email confirmation is enabled, `signUp` returns no session, so
-  `src/app/(auth)/signup/page.tsx` can't insert the `profiles` row (RLS
-  needs `auth.uid()`). The chosen role isn't saved anywhere else, so on
-  first login `src/app/(auth)/login/page.tsx` finds no profile and
-  falls through to the renter dashboard. Read both files before
-  touching sign-up or login.
-- **Duplicated auth logic.** `src/components/LandlordAuthModal.tsx`
-  has its own sign-in and landlord sign-up, separate from the login and
-  sign-up pages and not using `loginSchema` / `signUpSchema` from
-  `src/lib/validations/auth.ts`. Don't add a third copy; when touching
-  auth, move the modal onto the shared schemas.
+- **Email confirmation is off in Supabase, and untested with it on.**
+  Sign-up saves `role` / `full_name` in auth user metadata, and
+  `src/lib/auth/post-login.ts` recreates a missing `profiles` row from
+  it on login (#170), so turning "Confirm email" on _should_ work — but
+  test sign-up → confirm → login for both roles before enabling it.
+- **Duplicated auth forms.** Post-login routing is shared
+  (`resolvePostLoginPath` in `src/lib/auth/post-login.ts` — use it for
+  any new sign-in entry point), but `src/components/LandlordAuthModal.tsx`
+  still has its own sign-in/sign-up forms that don't use `loginSchema` /
+  `signUpSchema` from `src/lib/validations/auth.ts`. Don't add a third
+  copy; when touching auth, move the modal onto the shared schemas.
 - **RLS doesn't check roles (#173, #174).** The `listings` insert
   policy only checks `auth.uid() = landlord_id`, so a renter can create
   listings through the API. The `profiles` update policy lets users
