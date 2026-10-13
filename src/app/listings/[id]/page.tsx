@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import ListingDetailView from "@/components/ListingDetailView";
+import { listingRowToFormValues } from "@/lib/validations/listing";
 
 export default async function ListingDetailPage({
   params,
@@ -35,7 +36,7 @@ export default async function ListingDetailPage({
         </Link>
 
         {/* Reusable Public Listing Detail View */}
-        <ListingDetailView listing={listing} />
+        <ListingDetailView listing={listingRowToFormValues(listing)} />
       </div>
     </div>
   );

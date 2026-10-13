@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Listing } from "@/types/listing";
 
 /**
  * Validation rules for a single listing. Used by:
@@ -57,3 +58,50 @@ export const listingSchema = z.object({
 });
 
 export type ListingInput = z.infer<typeof listingSchema>;
+
+/**
+ * The database stores availability_status as text with a CHECK
+ * constraint, so the generated type is plain `string`. This narrows it
+ * to the three allowed values, falling back to "available".
+ */
+export function parseAvailabilityStatus(
+  value: string | null | undefined,
+): ListingInput["availability_status"] {
+  const result = listingSchema.shape.availability_status.safeParse(value);
+  return result.success ? result.data : "available";
+}
+
+/**
+ * Converts a database row into the shape the listing form and
+ * ListingDetailView use. The database returns `null` for empty optional
+ * columns; the form expects `undefined` / empty values instead.
+ * Values are passed through as-is — no defaults are invented here.
+ */
+export function listingRowToFormValues(row: Listing): Partial<ListingInput> {
+  return {
+    title: row.title,
+    address: row.address,
+    city: row.city ?? undefined,
+    monthly_rent: row.monthly_rent,
+    total_rooms: row.total_rooms ?? undefined,
+    available_rooms: row.available_rooms,
+    property_type: row.property_type ?? undefined,
+    occupancy_type: row.occupancy_type ?? undefined,
+    allowed_gender: row.allowed_gender ?? undefined,
+    amenities: row.amenities,
+    utilities: row.utilities ?? [],
+    room_features: row.room_features ?? [],
+    bathroom_features: row.bathroom_features ?? [],
+    kitchen_features: row.kitchen_features ?? [],
+    laundry_features: row.laundry_features ?? [],
+    safety_features: row.safety_features ?? [],
+    description: row.description ?? undefined,
+    house_rules: row.house_rules ?? undefined,
+    images: row.images ?? [],
+    cover_image: row.cover_image ?? undefined,
+    latitude: row.latitude ?? undefined,
+    longitude: row.longitude ?? undefined,
+    contact_info: row.contact_info,
+    availability_status: parseAvailabilityStatus(row.availability_status),
+  };
+}

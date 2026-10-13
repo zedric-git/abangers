@@ -25,7 +25,7 @@ export default function LandlordListingCard({
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const coverPhoto = listing.cover_image || listing.images?.[0] || "";
 
-  const displayPrice = listing.monthly_rent ?? listing.price ?? 0;
+  const displayPrice = listing.monthly_rent;
 
   const isAvailable =
     listing.availability_status === "available" ||

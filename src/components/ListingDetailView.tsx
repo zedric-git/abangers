@@ -19,7 +19,9 @@ import { ListingInput } from "@/lib/validations/listing";
 import { ReadOnlyMap } from "@/components/map";
 
 interface ListingDetailViewProps {
-  listing: ListingInput;
+  // Partial: the form preview shows a listing before every field is filled
+  // in, and saved rows can have empty optional columns.
+  listing: Partial<ListingInput>;
   isPreview?: boolean;
 }
 
@@ -40,7 +42,7 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
           {selectedPhoto || activeCover ? (
             <Image
               src={selectedPhoto || activeCover}
-              alt={listing.title}
+              alt={listing.title || "Listing photo"}
               fill
               className="object-cover transition-all duration-300"
               priority

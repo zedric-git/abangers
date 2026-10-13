@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, Eye } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import ListingDetailView from "@/components/ListingDetailView";
+import { listingRowToFormValues } from "@/lib/validations/listing";
 
 export default async function LandlordListingDetailPage({
   params,
@@ -64,7 +65,7 @@ export default async function LandlordListingDetailPage({
 
       {/* Reusable Public Listing Detail View */}
       <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
-        <ListingDetailView listing={listing} />
+        <ListingDetailView listing={listingRowToFormValues(listing)} />
       </div>
     </div>
   );
