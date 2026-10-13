@@ -52,6 +52,13 @@ export default function SignupPage() {
     const { data, error } = await supabase.auth.signUp({
       email: values.email,
       password: values.password,
+      options: {
+        // Also saved on the auth user itself, so if the `profiles` insert
+        // below fails (or is skipped because email confirmation is on),
+        // login can still recreate the row with the right role
+        // (src/lib/auth/post-login.ts).
+        data: { full_name: values.fullName, role: values.role },
+      },
     });
 
     if (error) {
@@ -79,8 +86,8 @@ export default function SignupPage() {
     // No session means email confirmation is required (Supabase project
     // setting). We can't insert into `profiles` yet — RLS requires
     // auth.uid() = id, which needs an authenticated session, not just a
-    // created auth user. The profile row has to be created after they
-    // confirm + log in (see TODO below).
+    // created auth user. The profile row is created on their first login
+    // instead, from the role saved in `options.data` above.
     if (!data.session) {
       setAwaitingConfirmation(true);
       return;

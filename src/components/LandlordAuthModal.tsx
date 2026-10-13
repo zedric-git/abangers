@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { X, Home, Loader2, Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { mapAuthError } from "@/lib/validations/auth";
+import { resolvePostLoginPath } from "@/lib/auth/post-login";
 
 interface LandlordAuthModalProps {
   isOpen: boolean;
@@ -49,24 +50,16 @@ export default function LandlordAuthModal({
         if (signInError) throw signInError;
 
         if (data.user) {
-          // Fetch user profile to verify role
-          const { data: profile, error: profileError } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", data.user.id)
-            .maybeSingle();
-
-          if (profileError) {
-            console.error("Profile not found:", profileError);
+          // Same role-based redirect as the login page (#170).
+          const result = await resolvePostLoginPath(supabase, data.user);
+          if (!result.ok) {
+            // Don't leave them signed in with no usable role.
+            await supabase.auth.signOut();
+            setError(result.message);
+            return;
           }
 
-          if (profile?.role === "landlord") {
-            router.push("/dashboard/landlord");
-          } else if (profile?.role === "renter") {
-            router.push("/dashboard/renter");
-          } else {
-            router.push("/dashboard/landlord");
-          }
+          router.push(result.path);
           onClose();
         }
       } else {

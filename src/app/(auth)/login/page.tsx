@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 
 import { createClient } from "@/lib/supabase/client";
+import { resolvePostLoginPath } from "@/lib/auth/post-login";
 import {
   loginSchema,
   type LoginInput,
@@ -58,26 +59,17 @@ export default function LoginPage() {
       return;
     }
 
-    // Fetch user profile to determine destination role
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .maybeSingle();
-
-    if (profileError) {
-      setSubmitError(
-        "Signed in successfully, but couldn't load user profile. Please contact support.",
-      );
+    // Pick the dashboard from the user's role (see src/lib/auth/post-login.ts
+    // for how a missing profile row is handled).
+    const result = await resolvePostLoginPath(supabase, data.user);
+    if (!result.ok) {
+      // Don't leave them signed in with no usable role.
+      await supabase.auth.signOut();
+      setSubmitError(result.message);
       return;
     }
 
-    const role = profile?.role;
-    if (role === "landlord") {
-      router.push("/dashboard/landlord");
-    } else {
-      router.push("/dashboard/renter");
-    }
+    router.push(result.path);
   }
 
   return (
