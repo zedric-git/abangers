@@ -303,8 +303,8 @@ follow them too):
 
 - `/start-task <issue>` — read the issue, cut a correctly named branch
   from the latest `dev`, assign it to you.
-- `/new-migration <description>` — next migration number, RLS + grants
-  - role checks, a DB test, and the apply steps for the PR.
+- `/new-migration <description>` — next migration number, RLS, grants,
+  role checks, a DB test, and the apply steps for the PR.
 - `/open-pr [issues]` — `npm run check`, push, open a PR into `dev`
   with `Closes #` lines, and remind you to close issues after merge.
 

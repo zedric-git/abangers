@@ -1,6 +1,6 @@
 ---
 name: open-pr
-description: Verify, push, and open a pull request into dev for the current Abangers branch, with the PR template filled in and Closes # lines for the right issues. Use when the user says "open a PR", "make a PR", or "ship this".
+description: 'Verify, push, and open a pull request into dev for the current Abangers branch, with the PR template filled in and Closes # lines for the right issues. Use when the user says "open a PR", "make a PR", or "ship this".'
 argument-hint: "[issue numbers this PR finishes, e.g. 142 143]"
 ---
 

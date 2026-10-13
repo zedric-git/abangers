@@ -1,6 +1,6 @@
 ---
 name: new-migration
-description: Create a new Supabase migration file for Abangers with the correct next number and the required RLS, grants, role checks, and DB test. Use for any database schema change — new table, new column, policy change, storage bucket.
+description: "Create a new Supabase migration file for Abangers with the correct next number and the required RLS, grants, role checks, and DB test. Use for any database schema change — new table, new column, policy change, storage bucket."
 argument-hint: <short description, e.g. "add favorites table">
 ---
 
