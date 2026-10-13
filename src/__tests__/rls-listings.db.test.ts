@@ -2,9 +2,10 @@
  * RLS test for public.listings (S1-11.3 / #75) — runs against the REAL
  * shared Supabase project, signed in as the seed landlords.
  *
- * Checks the policies in supabase/migrations/0001_init.sql:
+ * Checks the policies in supabase/migrations/0001_init.sql and 0007:
  * - Landlord A cannot update, delete, or insert-as Landlord B's listings.
  * - Anonymous visitors can read listings but not write them.
+ * - A renter cannot create a listing, even under their own id (#173).
  * - Landlord A can still update their own listing (so we know the
  *   "blocked" results above are RLS working, not every write failing).
  *
@@ -16,46 +17,19 @@
  * Run with: npm run test:db   (needs .env.local and the seed data loaded)
  */
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
-
-// Dev-only seed credentials, already public in supabase/seed.sql.
-const SEED_PASSWORD = "Abangers123!";
-const LANDLORD_A_EMAIL = "landlord1@abangers.test";
-const LANDLORD_B_EMAIL = "landlord2@abangers.test";
+import {
+  LANDLORD_A_EMAIL,
+  LANDLORD_B_EMAIL,
+  RENTER_EMAIL,
+  newClient,
+  signedInAs,
+} from "./db-helpers";
 
 // Fixed seed listing ids (see supabase/seed.sql).
 const LANDLORD_A_LISTING_ID = "a1b2c3d4-0000-4000-8000-000000000001";
 const LANDLORD_B_LISTING_ID = "a1b2c3d4-0000-4000-8000-000000000004";
-
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-/** A fresh client with its own session, so two users don't share one. */
-function newClient(): SupabaseClient {
-  if (!url || !anonKey) {
-    throw new Error(
-      "Missing NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY — copy .env.example to .env.local first.",
-    );
-  }
-  return createClient(url, anonKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
-
-async function signedInAs(email: string) {
-  const client = newClient();
-  const { data, error } = await client.auth.signInWithPassword({
-    email,
-    password: SEED_PASSWORD,
-  });
-  if (error || !data.user) {
-    throw new Error(
-      `Couldn't sign in as ${email} (${error?.message}). Is the seed data loaded? Run: npm run db:seed`,
-    );
-  }
-  return { client, userId: data.user.id };
-}
 
 describe("listings RLS", () => {
   let landlordA: SupabaseClient;
@@ -162,5 +136,35 @@ describe("listings RLS", () => {
       .update({ title: "Hijacked by anon" })
       .eq("id", LANDLORD_B_LISTING_ID);
     expect(writeError?.code).toBe("42501");
+  });
+
+  // #173: the insert policy used to check only auth.uid() = landlord_id.
+  it("a renter cannot create a listing, even under their own id", async () => {
+    const renter = await signedInAs(RENTER_EMAIL);
+
+    const { data, error } = await renter.client
+      .from("listings")
+      .insert({
+        landlord_id: renter.userId,
+        title: "Renter-posted listing (should be blocked)",
+        monthly_rent: 1000,
+        address: "Nowhere",
+        contact_info: "n/a",
+      })
+      .select("id");
+
+    // If the policy is ever broken, remove the stray row so shared data
+    // stays clean (the renter owns it, so the delete policy allows it).
+    if (data?.length) {
+      await renter.client
+        .from("listings")
+        .delete()
+        .in(
+          "id",
+          data.map((row) => row.id),
+        );
+    }
+
+    expect(error?.code).toBe("42501");
   });
 });
