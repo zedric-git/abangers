@@ -89,6 +89,15 @@ https://github.com/users/zedric-git/projects/3
      every app request fails with `permission denied for table ...`
      (Postgres 42501) no matter how correct the policies are. Grant
      only what the policies allow (no policy → no grant).
+   - **If only one role should do something, the policy must check the
+     role**, not just ownership — e.g. listing writes require
+     `exists (select 1 from profiles where id = auth.uid() and role =
+'landlord')` (see `0007_enforce_roles_in_rls.sql`). Checking only
+     `auth.uid() = owner_id` let renters create listings (#173).
+     `profiles.role` can't be changed by app users once set (trigger in
+     the same migration).
+   - Add a `*.db.test.ts` case for each policy (see
+     `src/__tests__/rls-listings.db.test.ts` and `db-helpers.ts`).
 2. **One Zod schema per data entity, used on both client and server.**
    Don't validate the same shape twice with different rules. Put schemas
    in `src/lib/validations/`.
@@ -241,11 +250,6 @@ entry in the PR that closes it.
   still has its own sign-in/sign-up forms that don't use `loginSchema` /
   `signUpSchema` from `src/lib/validations/auth.ts`. Don't add a third
   copy; when touching auth, move the modal onto the shared schemas.
-- **RLS doesn't check roles (#173, #174).** The `listings` insert
-  policy only checks `auth.uid() = landlord_id`, so a renter can create
-  listings through the API. The `profiles` update policy lets users
-  change their own `role`. Don't rely on RLS to enforce "landlords
-  only" until these are fixed, and don't build features that assume it.
 
 ## Commands
 
