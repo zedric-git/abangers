@@ -293,6 +293,20 @@ These only apply inside Claude Code (its `Bash` tool — not other shells
 or other AI tools). If you use Cursor/Copilot, the same rules still
 apply; you just don't get the automatic block.
 
+**Workflow skills** in `.claude/skills/` (run as `/<name>` in Claude
+Code; they're plain Markdown checklists, so other tools can read and
+follow them too):
+
+- `/start-task <issue>` — read the issue, cut a correctly named branch
+  from the latest `dev`, assign it to you.
+- `/new-migration <description>` — next migration number, RLS + grants
+  - role checks, a DB test, and the apply steps for the PR.
+- `/open-pr [issues]` — `npm run check`, push, open a PR into `dev`
+  with `Closes #` lines, and remind you to close issues after merge.
+
+If you change a workflow rule in this file, update the matching skill
+in the same PR.
+
 ## When you're unsure
 
 This is a learning project for the team, not just a shipping deadline.
