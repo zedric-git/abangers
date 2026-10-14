@@ -66,7 +66,14 @@ https://github.com/users/zedric-git/projects/3
   recorded. Before any `db push`, run
   `npx supabase migration list --linked` and
   `npx supabase db push --dry-run` and check only your new file is
-  pending.
+  pending. `scripts/check-migrations.mjs` (part of `npm run check` and
+  CI) fails on duplicate numbers and on any edit, rename, or delete of
+  a migration that's already on the base branch.
+- **CI builds with placeholder Supabase env vars.** The `Build` step in
+  `.github/workflows/ci.yml` has no real keys, which works because no
+  page fetches data at build time. If a build fails there with a
+  Supabase/network error, make that page dynamic — don't add real keys
+  to CI.
 - **The database schema is the source of truth for types.**
   `src/types/database.ts` is generated from the shared project with
   `npm run db:types` — never edit it by hand; re-run the script after
@@ -122,6 +129,11 @@ https://github.com/users/zedric-git/projects/3
    - `src/lib/validations/` — Zod schemas
    - `supabase/migrations/` — SQL migrations, sequentially numbered
    - `supabase/seed.sql` — dev test accounts + sample listings
+   - `scripts/` — repo checks run by `npm run check` and CI (plain
+     Node `.mjs`, no dependencies)
+   - `.vscode/` — shared editor settings + recommended extensions
+     (the team uses VS Code; personal settings stay in your user
+     settings)
 
 ## Branching strategy
 
@@ -257,8 +269,11 @@ entry in the PR that closes it.
 ## Commands
 
 - **`npm run check` — run this before saying a change is done.** It's
-  everything CI runs: `next typegen`, `tsc --noEmit`, ESLint, Prettier
-  check, and the unit tests.
+  everything CI runs except the production build: `next typegen`,
+  `tsc --noEmit`, ESLint, Prettier check, the migration check, and the
+  unit tests.
+- `npm run check:migrations` — just the migration check (unique numbers,
+  no edits to migrations already on `origin/dev`; `git fetch` first)
 - `npm run dev` — local dev server
 - `npm test` — unit tests (`*.test.ts`, Vitest). Put a test next to the
   file it tests; see `src/lib/validations/auth.test.ts` for the pattern.
@@ -294,7 +309,10 @@ overrides go in the gitignored `.claude/settings.local.json`):
 
 These only apply inside Claude Code (its `Bash` tool — not other shells
 or other AI tools). If you use Cursor/Copilot, the same rules still
-apply; you just don't get the automatic block.
+apply; you just don't get the automatic block. (The "don't edit applied
+migrations" rule is also enforced for everyone by
+`scripts/check-migrations.mjs` in CI; branch protection on GitHub
+blocks direct pushes to `dev`/`main` for everyone.)
 
 **Workflow skills** in `.claude/skills/` (run as `/<name>` in Claude
 Code; they're plain Markdown checklists, so other tools can read and
