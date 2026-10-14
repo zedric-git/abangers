@@ -17,7 +17,7 @@ Next.js 16 (App Router) · TypeScript · Tailwind + shadcn/ui · Supabase
 
 ## Getting started (do this once, on your own machine)
 
-You need **Node.js 22+** (CI uses 22) and **npm**.
+You need **Node.js 22+** (CI uses 22 — see `.nvmrc`) and **npm**.
 
 1. **Clone and install**
 
@@ -26,6 +26,11 @@ You need **Node.js 22+** (CI uses 22) and **npm**.
    cd abangers
    npm install
    ```
+
+   Open the folder in VS Code and accept the prompt to install the
+   recommended extensions (Prettier, ESLint, Tailwind, Vitest). The
+   repo's `.vscode/settings.json` then formats and fixes lint on save,
+   the same way CI checks it.
 
 2. **Get the Supabase keys.** The whole team shares **one** hosted
    Supabase project — don't create your own. Ask the PM for the
@@ -83,17 +88,22 @@ anything else.
 
 ## Everyday commands
 
-| Command                 | What it does                                                |
-| ----------------------- | ----------------------------------------------------------- |
-| `npm run dev`           | Local dev server                                            |
-| `npm run lint`          | ESLint                                                      |
-| `npm run format`        | Auto-format with Prettier                                   |
-| `npm run format:check`  | Check formatting without changing files (what CI runs)      |
-| `npm run db:seed`       | Load/reset test accounts + sample listings (safe to re-run) |
-| `npx supabase db push`  | Apply new migrations in `supabase/migrations/` to the DB    |
-| `npx shadcn add <name>` | Add a shadcn/ui component                                   |
+| Command                 | What it does                                                      |
+| ----------------------- | ----------------------------------------------------------------- |
+| `npm run dev`           | Local dev server                                                  |
+| `npm run check`         | **Everything CI checks** — run before opening a PR                |
+| `npm test`              | Unit tests (`*.test.ts`, Vitest)                                  |
+| `npm run test:db`       | RLS tests against the shared database (`*.db.test.ts`, not in CI) |
+| `npm run format`        | Auto-format with Prettier                                         |
+| `npm run db:seed`       | Load/reset test accounts + sample listings (safe to re-run)       |
+| `npm run db:types`      | Regenerate `src/types/database.ts` after a migration is pushed    |
+| `npx supabase db push`  | Apply new migrations in `supabase/migrations/` to the DB          |
+| `npx shadcn add <name>` | Add a shadcn/ui component                                         |
 
-A pre-commit hook (Husky) auto-formats staged files, so most formatting
+`npm run check` runs, in order: Next.js type generation, `tsc`, ESLint,
+the Prettier check, the migration check (`scripts/check-migrations.mjs`)
+and the unit tests. CI runs the same steps plus a production build. A
+pre-commit hook (Husky) auto-formats staged files, so most formatting
 happens for you on `git commit`.
 
 > [!WARNING]
@@ -104,51 +114,76 @@ happens for you on `git commit`.
 
 ## How we work
 
-- **Branches:** `feature/*` → `dev` → `main`. Cut your branch from the
-  latest `dev`, open a PR into `dev`, and merge once CI passes. `dev`
-  goes to `main` only at the end of each sprint. Full rules and the
-  sprint schedule are in [AGENTS.md](./AGENTS.md#branching-strategy).
+- **Branches:** `feature/*` → `dev` → `main`. `dev` is the default
+  branch and is protected — nobody (admins included) can push to it
+  directly. Cut your branch from the latest `dev`, open a PR into
+  `dev`, and merge once CI passes. `dev` goes to `main` only at the end
+  of each sprint. Full rules and the sprint schedule are in
+  [AGENTS.md](./AGENTS.md#branching-strategy).
 - **Branch names:** `feature/<task>`, `fix/<bug>`, `chore/<tooling>`,
   `docs/<what>` — e.g. `feature/login-form`.
 - **Issues:** every task is an issue on the
   [project board](https://github.com/users/zedric-git/projects/3),
   titled with its sprint ID (e.g. `[S1-02.1] Build login form UI`).
+  The board is the source of truth for what's done and who's on what.
 - **PRs:** write `Closes #<issue>` in the PR description so the issue
   closes and the board card moves to Done automatically when it merges.
 
-## Project status
+### A typical task, start to finish
 
-What works today on `dev`:
+```bash
+git switch dev && git pull                 # 1. start from the latest dev
+git switch -c feature/listing-search       # 2. one branch per task
+# ...write code, commit as you go...
+npm run check                              # 3. same checks as CI
+git push -u origin feature/listing-search  # 4. then open a PR into dev
+```
 
-- ✅ Sign-up (name, email, password, renter/landlord role) with Supabase
-  Auth and clear error messages
-- ✅ Landing page with a landlord sign-in / sign-up popup
-- ✅ Database schema (`profiles`, `listings`) with Row Level Security,
-  plus seed data
+**Changing the database?** Add a new file in `supabase/migrations/`
+(highest number + 1 — never edit an existing one), with RLS policies
+**and** grants, then `npx supabase db push` and `npm run db:types`. The
+full checklist is in
+[`.claude/skills/new-migration/SKILL.md`](./.claude/skills/new-migration/SKILL.md).
 
-Still placeholder pages (next up — see the board for owners):
+### Using Claude Code (optional)
 
-- ⏳ Login page, landlord + renter dashboards
-- ⏳ Add / edit listing, listings search, listing detail
+The repo ships shared Claude Code config in `.claude/`: safe commands
+are pre-approved, dangerous ones (`db reset`, force-push, pushing to
+`dev`/`main`) are blocked, and a hook stops it from editing applied
+migrations. It also adds three commands that automate the workflow
+above:
+
+- `/start-task <issue>` — read the issue and cut the right branch
+- `/new-migration <description>` — write a migration the safe way
+- `/open-pr` — run the checks and open a PR into `dev`
+
+They're plain Markdown checklists in `.claude/skills/`, so they're
+worth reading even if you don't use Claude Code.
 
 ## Project structure
 
 ```
 src/
   app/                     routes only (App Router)
-    (auth)/login, signup   auth pages
-    dashboard/landlord     landlord dashboard + listings/new, listings/[id]/edit
-    dashboard/renter       renter dashboard
-    listings, listings/[id] public search + detail
+    (auth)/                login, signup, profile-setup
+    dashboard/landlord/    dashboard, profile, listings (new, [id], [id]/edit)
+    dashboard/renter/      renter dashboard
+    listings/              public search + listings/[id] detail
   components/ui/           shadcn/ui primitives (generated by the CLI)
-  components/              shared components (e.g. LandlordAuthModal)
+  components/map/          Leaflet/OpenStreetMap maps (client-only)
+  components/              shared components (listing form, cards, modals, ...)
+  lib/auth/                post-login routing (where to send a user after login)
   lib/supabase/            Supabase clients (browser, server) + session refresh
   lib/validations/         Zod schemas — single source of truth for data rules
+  types/                   database.ts (generated — don't edit) + derived types
+  __tests__/               database (RLS) tests + helpers
   proxy.ts                 refreshes the auth session on every request
                            (Next.js 16's name for middleware.ts)
 supabase/
   migrations/              SQL migrations, applied in order (0001, 0002, ...)
   seed.sql                 test accounts + sample listings
+scripts/                   repo checks run by `npm run check` and CI
+.claude/                   shared Claude Code settings, hooks and skills
 ```
 
 ## Adding a UI component

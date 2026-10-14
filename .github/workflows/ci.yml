@@ -11,10 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, so the migration check can diff this branch
+          # against its base branch.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: "npm"
 
       - run: npm ci
@@ -31,7 +35,25 @@ jobs:
       - name: Format check
         run: npm run format:check
 
+      # Unique migration numbers, and no edits to migrations already on
+      # the PR's base branch (see scripts/check-migrations.mjs).
+      # base_ref is the PR's target branch; it's empty on pushes, where
+      # the script falls back to origin/dev.
+      - name: Migration check
+        run: node scripts/check-migrations.mjs --base "origin/${{ github.base_ref || 'dev' }}"
+
       # Unit tests only — the *.db.test.ts suite talks to the shared
       # Supabase project and is run by hand with `npm run test:db`.
       - name: Unit tests
         run: npm test
+
+      # Catches errors that only show up in a production build (e.g. a
+      # Server Component importing something client-only). Placeholder
+      # Supabase values are enough: no page fetches data at build time.
+      # If a page ever starts doing that, this step will fail — make the
+      # page dynamic rather than adding real keys here.
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder

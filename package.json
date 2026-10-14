@@ -2,6 +2,9 @@
   "name": "abangers",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -14,7 +17,8 @@
     "test": "vitest run --project unit",
     "test:db": "vitest run --project db",
     "db:types": "supabase gen types typescript --linked --schema public > src/types/database.ts && prettier --write src/types/database.ts",
-    "check": "next typegen && tsc --noEmit && eslint && prettier --check . && vitest run --project unit"
+    "check:migrations": "node scripts/check-migrations.mjs",
+    "check": "next typegen && tsc --noEmit && eslint && prettier --check . && node scripts/check-migrations.mjs && vitest run --project unit"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
