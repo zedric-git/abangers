@@ -10,6 +10,7 @@ import {
   signUpSchema,
 } from "@/lib/validations/auth";
 import { resolvePostLoginPath } from "@/lib/auth/post-login";
+import { signUpWithProfile } from "@/lib/auth/sign-up";
 
 interface LandlordAuthModalProps {
   isOpen: boolean;
@@ -103,47 +104,32 @@ export default function LandlordAuthModal({
           onClose();
         }
       } else {
-        // Sign Up (Landlord)
-        const { data, error: signUpError } = await supabase.auth.signUp({
+        // Sign Up (Landlord) — same flow as the /signup page, including
+        // the already-registered-email check (src/lib/auth/sign-up.ts).
+        const result = await signUpWithProfile(supabase, {
           email,
           password,
-          options: {
-            data: {
-              full_name: fullName,
-              role: "landlord",
-            },
-          },
+          fullName,
+          role: "landlord",
         });
 
-        if (signUpError) throw signUpError;
+        if (!result.ok) {
+          setError(result.message);
+          return;
+        }
 
-        if (data.user) {
-          // Insert the profiles row manually if not already inserted
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .insert({
-              id: data.user.id,
-              role: "landlord",
-              full_name: fullName,
-            });
-
-          if (profileError) {
-            console.error("Failed to insert profile row:", profileError);
-          }
-
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (sessionData.session) {
-            router.push("/profile-setup");
-            onClose();
-          } else {
-            setSuccess(
-              "Registration successful! Please check your email to confirm your account.",
-            );
-            setFullName("");
-            setEmail("");
-            setPassword("");
-            setConfirmPassword("");
-          }
+        if (result.kind === "signed-in") {
+          // New landlords fill in their contact details first.
+          router.push("/profile-setup");
+          onClose();
+        } else {
+          setSuccess(
+            "Registration successful! Please check your email to confirm your account.",
+          );
+          setFullName("");
+          setEmail("");
+          setPassword("");
+          setConfirmPassword("");
         }
       }
     } catch (err) {
