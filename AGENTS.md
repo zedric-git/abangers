@@ -86,11 +86,20 @@ https://github.com/users/zedric-git/projects/3
   `ListingDetailView`.
 - **`/dashboard/*` is guarded in the proxy, and logout must be a hard
   navigation.** `updateSession` in `src/lib/supabase/middleware.ts`
-  sends signed-out users to `/login` and keeps each role on its own
+  sends signed-out users to the home page (`/`) and keeps each role on its own
   dashboard (via `resolvePostLoginPath`). Logout uses
   `window.location.replace(...)`, not `router.push` — a client-side
   push leaves the dashboard in history and Next's client cache, so the
   Back button would show it again after logging out.
+- **There are no `/login` or `/signup` pages.** Login and sign-up both
+  happen in `src/components/LandlordAuthModal.tsx`, opened from the home
+  page; anything that needs a signed-out user to log in should send them
+  to `/`. The logic lives in shared helpers — validation (`loginSchema` /
+  `signUpSchema` in `src/lib/validations/auth.ts`), sign-up
+  (`signUpWithProfile` in `src/lib/auth/sign-up.ts`) and post-login
+  routing (`resolvePostLoginPath` in `src/lib/auth/post-login.ts`). Renter
+  sign-up (Sprint 2) should extend the modal with those helpers rather
+  than bring back a second auth form.
 - **Branch flow: `feature/*` → `dev` → `main`.** See "Branching strategy"
   below for the full rules and sprint schedule.
 
@@ -266,15 +275,6 @@ entry in the PR that closes it.
   `src/lib/auth/post-login.ts` recreates a missing `profiles` row from
   it on login (#170), so turning "Confirm email" on _should_ work — but
   test sign-up → confirm → login for both roles before enabling it.
-- **Duplicated auth form markup.** The auth _logic_ is shared —
-  validation (`loginSchema` / `signUpSchema` in
-  `src/lib/validations/auth.ts`), sign-up (`signUpWithProfile` in
-  `src/lib/auth/sign-up.ts`) and post-login routing
-  (`resolvePostLoginPath` in `src/lib/auth/post-login.ts`) — and both
-  `/login` + `/signup` and `src/components/LandlordAuthModal.tsx` use
-  it. Only the form markup is still duplicated (the modal uses plain
-  inputs, the pages use shadcn `Form`). Use the shared helpers for any
-  new auth entry point; don't add a third copy of the logic.
 
 ## Commands
 

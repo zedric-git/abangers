@@ -2,9 +2,10 @@ import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
 import { mapAuthError, type Role } from "@/lib/validations/auth";
 
 /**
- * Creates an account and its `profiles` row. Shared by the /signup page
- * and LandlordAuthModal so the two can't drift apart. Each caller still
- * decides where to send the user afterwards (see `SignUpResult`).
+ * Creates an account and its `profiles` row. Used by LandlordAuthModal;
+ * any future sign-up entry point (e.g. renter sign-up) should call this
+ * too, so the flows can't drift apart. Each caller still decides where to
+ * send the user afterwards (see `SignUpResult`).
  *
  * After `supabase.auth.signUp` there are four cases:
  *

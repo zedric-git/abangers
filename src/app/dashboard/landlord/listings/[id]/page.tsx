@@ -18,7 +18,7 @@ export default async function LandlordListingDetailPage({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/");
   }
 
   // Fetch listing by ID scoped to authenticated landlord

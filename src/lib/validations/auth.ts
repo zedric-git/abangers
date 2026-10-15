@@ -2,8 +2,7 @@ import { z } from "zod";
 import type { AuthError } from "@supabase/supabase-js";
 
 /**
- * Validation rules for the sign-up form. Used by:
- * - the sign-up form (client-side, via React Hook Form's zodResolver)
+ * Validation rules for sign-up. Used by:
  * - LandlordAuthModal sign-up state (role is always "landlord" there)
  * - re-checked implicitly by Supabase Auth + the `profiles.role` CHECK
  *   constraint on the server side (see supabase/migrations/0001_init.sql)
@@ -39,8 +38,7 @@ export const signUpSchema = z
 export type SignUpInput = z.infer<typeof signUpSchema>;
 
 /**
- * Validation rules for the login form. Used by:
- * - the login form (client-side, via React Hook Form's zodResolver)
+ * Validation rules for login. Used by:
  * - LandlordAuthModal login state
  */
 export const loginSchema = z.object({
