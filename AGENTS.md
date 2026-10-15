@@ -93,8 +93,11 @@ https://github.com/users/zedric-git/projects/3
   Back button would show it again after logging out.
 - **There are no `/login` or `/signup` pages.** Login and sign-up both
   happen in `src/components/LandlordAuthModal.tsx`, opened from the home
-  page; anything that needs a signed-out user to log in should send them
-  to `/`. The logic lives in shared helpers — validation (`loginSchema` /
+  page. The old `/login` and `/signup` URLs redirect to `/` (see
+  `redirects()` in `next.config.ts`) so they never show a 404 — if you
+  remove or rename any other page, add a redirect the same way. Anything
+  that needs a signed-out user to log in should send them to `/`. The
+  logic lives in shared helpers — validation (`loginSchema` /
   `signUpSchema` in `src/lib/validations/auth.ts`), sign-up
   (`signUpWithProfile` in `src/lib/auth/sign-up.ts`) and post-login
   routing (`resolvePostLoginPath` in `src/lib/auth/post-login.ts`). Renter
