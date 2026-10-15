@@ -43,9 +43,9 @@ export default function LandlordAuthModal({
   if (!isOpen) return null;
 
   /**
-   * Validates with the same schemas as the /login and /signup pages
-   * (src/lib/validations/auth.ts), so the modal can't drift from their
-   * rules. Returns true if the form is valid.
+   * Validates with the shared auth schemas (src/lib/validations/auth.ts),
+   * so the client and any future entry point use the same rules.
+   * Returns true if the form is valid.
    */
   const validate = () => {
     const result = isLoginMode
@@ -92,7 +92,7 @@ export default function LandlordAuthModal({
         if (signInError) throw signInError;
 
         if (data.user) {
-          // Same role-based redirect as the login page (#170).
+          // Shared role-based redirect (src/lib/auth/post-login.ts, #170).
           const result = await resolvePostLoginPath(supabase, data.user);
           if (!result.ok) {
             // Don't leave them signed in with no usable role.
@@ -105,8 +105,8 @@ export default function LandlordAuthModal({
           onClose();
         }
       } else {
-        // Sign Up (Landlord) — same flow as the /signup page, including
-        // the already-registered-email check (src/lib/auth/sign-up.ts).
+        // Sign Up (Landlord) — shared flow, including the
+        // already-registered-email check (src/lib/auth/sign-up.ts).
         const result = await signUpWithProfile(supabase, {
           email,
           password,

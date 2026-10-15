@@ -14,7 +14,7 @@ export default async function LandlordListingsPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/");
   }
 
   // Fetch listings created by this landlord (RLS + explicit landlord_id query)

@@ -165,7 +165,7 @@ worth reading even if you don't use Claude Code.
 ```
 src/
   app/                     routes only (App Router)
-    (auth)/                login, signup, profile-setup
+    (auth)/                profile-setup (login/sign-up is the modal on the home page)
     dashboard/landlord/    dashboard, profile, listings (new, [id], [id]/edit)
     dashboard/renter/      renter dashboard
     listings/              public search + listings/[id] detail

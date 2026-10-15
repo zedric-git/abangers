@@ -19,7 +19,7 @@ export default async function EditListingPage({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect("/");
   }
 
   // Fetch existing listing from database for editing

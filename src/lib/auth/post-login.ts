@@ -2,13 +2,14 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { roleSchema, type Role } from "@/lib/validations/auth";
 
 /**
- * Decides where a user goes right after signing in. Shared by the login
- * page and LandlordAuthModal so the two can't drift apart (#170).
+ * Decides where a user goes right after signing in. Used by
+ * LandlordAuthModal and the dashboard guard in
+ * src/lib/supabase/middleware.ts, so they can't drift apart (#170).
  *
  * The role normally comes from the user's `profiles` row. That row can be
  * missing — e.g. sign-up created the auth user but the separate
  * `profiles` insert failed. Older code guessed a dashboard in that case
- * (the login page guessed renter, the modal guessed landlord), silently
+ * (the old login page guessed renter, the modal guessed landlord), silently
  * putting people on the wrong side of the app. Now:
  *
  *   1. profiles row exists      → go to that role's dashboard

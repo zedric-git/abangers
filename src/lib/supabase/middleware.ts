@@ -9,7 +9,7 @@ import { resolvePostLoginPath } from "@/lib/auth/post-login";
  * get logged out while filling in the add-listing form.
  *
  * It also guards `/dashboard/*` (see `guardDashboard` below): signed-out
- * users go to /login, and signed-in users can only open their own role's
+ * users go to the home page, and signed-in users can only open their own role's
  * dashboard. Pages can still do their own checks on top of this.
  */
 export async function updateSession(request: NextRequest) {
@@ -72,15 +72,17 @@ async function guardDashboard(
   user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"],
   pathname: string,
 ): Promise<string | null> {
-  // Signed out (e.g. after logging out and pressing Back) → log in first.
+  // Signed out (e.g. after logging out and pressing Back) → home page,
+  // where they can log in again from the modal.
   if (!user) {
-    return "/login";
+    return "/";
   }
 
   const result = await resolvePostLoginPath(supabase, user);
   if (!result.ok) {
-    // No usable role — the login page shows the explanation.
-    return "/login";
+    // No usable role — send them home; logging in from the modal shows
+    // the explanation.
+    return "/";
   }
 
   // result.path is the user's own dashboard (or /profile-setup for a
