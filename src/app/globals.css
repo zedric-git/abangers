@@ -55,14 +55,13 @@ input:-webkit-autofill:active {
   transition: background-color 5000s ease-in-out 0s;
 }
 
-@media (prefers-color-scheme: dark) {
-  input:-webkit-autofill,
-  input:-webkit-autofill:hover,
-  input:-webkit-autofill:focus,
-  input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px #27272a inset !important;
-    -webkit-text-fill-color: #f4f4f5 !important;
-  }
+/* Follow the app's theme (.dark on <html>), not the OS setting */
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #27272a inset !important;
+  -webkit-text-fill-color: #f4f4f5 !important;
 }
 
 /* Remove native Windows arrow buttons on scrollbars */
