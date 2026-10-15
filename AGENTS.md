@@ -84,6 +84,13 @@ https://github.com/users/zedric-git/projects/3
   generated `listings` row). Rows use `null` for empty columns; convert
   with `listingRowToFormValues` before passing to the listing form or
   `ListingDetailView`.
+- **`/dashboard/*` is guarded in the proxy, and logout must be a hard
+  navigation.** `updateSession` in `src/lib/supabase/middleware.ts`
+  sends signed-out users to `/login` and keeps each role on its own
+  dashboard (via `resolvePostLoginPath`). Logout uses
+  `window.location.replace(...)`, not `router.push` — a client-side
+  push leaves the dashboard in history and Next's client cache, so the
+  Back button would show it again after logging out.
 - **Branch flow: `feature/*` → `dev` → `main`.** See "Branching strategy"
   below for the full rules and sprint schedule.
 
