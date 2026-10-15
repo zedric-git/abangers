@@ -259,14 +259,15 @@ entry in the PR that closes it.
   `src/lib/auth/post-login.ts` recreates a missing `profiles` row from
   it on login (#170), so turning "Confirm email" on _should_ work — but
   test sign-up → confirm → login for both roles before enabling it.
-- **Duplicated auth forms.** Post-login routing is shared
-  (`resolvePostLoginPath` in `src/lib/auth/post-login.ts` — use it for
-  any new sign-in entry point), and `src/components/LandlordAuthModal.tsx`
-  validates with the shared `loginSchema` / `signUpSchema`, but it still
-  has its own form markup and its own sign-up submit flow, which differs
-  from `/signup` (e.g. it doesn't catch an already-registered email that
-  Supabase reports with empty `identities`). Don't add a third copy; when
-  touching auth, move more of the modal onto the shared code.
+- **Duplicated auth form markup.** The auth _logic_ is shared —
+  validation (`loginSchema` / `signUpSchema` in
+  `src/lib/validations/auth.ts`), sign-up (`signUpWithProfile` in
+  `src/lib/auth/sign-up.ts`) and post-login routing
+  (`resolvePostLoginPath` in `src/lib/auth/post-login.ts`) — and both
+  `/login` + `/signup` and `src/components/LandlordAuthModal.tsx` use
+  it. Only the form markup is still duplicated (the modal uses plain
+  inputs, the pages use shadcn `Form`). Use the shared helpers for any
+  new auth entry point; don't add a third copy of the logic.
 
 ## Commands
 

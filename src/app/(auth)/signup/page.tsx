@@ -7,11 +7,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import {
-  signUpSchema,
-  type SignUpInput,
-  mapAuthError,
-} from "@/lib/validations/auth";
+import { signUpSchema, type SignUpInput } from "@/lib/validations/auth";
+import { signUpWithProfile } from "@/lib/auth/sign-up";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -47,62 +44,15 @@ export default function SignupPage() {
 
   async function onSubmit(values: SignUpInput) {
     setSubmitError(null);
-    const supabase = createClient();
+    const result = await signUpWithProfile(createClient(), values);
 
-    const { data, error } = await supabase.auth.signUp({
-      email: values.email,
-      password: values.password,
-      options: {
-        // Also saved on the auth user itself, so if the `profiles` insert
-        // below fails (or is skipped because email confirmation is on),
-        // login can still recreate the row with the right role
-        // (src/lib/auth/post-login.ts).
-        data: { full_name: values.fullName, role: values.role },
-      },
-    });
-
-    if (error) {
-      setSubmitError(mapAuthError(error));
+    if (!result.ok) {
+      setSubmitError(result.message);
       return;
     }
 
-    // Supabase returns a "successful" signUp with an empty identities
-    // array when the email is already registered (anti-enumeration
-    // behavior) — this is NOT a new user, even though there's no `error`.
-    if (data.user && data.user.identities?.length === 0) {
-      setSubmitError(
-        "An account with this email already exists. Try logging in instead.",
-      );
-      return;
-    }
-
-    if (!data.user) {
-      setSubmitError(
-        "Something went wrong creating your account. Please try again.",
-      );
-      return;
-    }
-
-    // No session means email confirmation is required (Supabase project
-    // setting). We can't insert into `profiles` yet — RLS requires
-    // auth.uid() = id, which needs an authenticated session, not just a
-    // created auth user. The profile row is created on their first login
-    // instead, from the role saved in `options.data` above.
-    if (!data.session) {
+    if (result.kind === "awaiting-confirmation") {
       setAwaitingConfirmation(true);
-      return;
-    }
-
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: data.user.id,
-      role: values.role,
-      full_name: values.fullName,
-    });
-
-    if (profileError) {
-      setSubmitError(
-        "Your account was created, but we couldn't save your profile. Please try logging in — if this keeps happening, contact support.",
-      );
       return;
     }
 
