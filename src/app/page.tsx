@@ -59,13 +59,18 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* Landlord Auth Modal */}
-      <LandlordAuthModal
-        key={modalMode}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        initialMode={modalMode}
-      />
+      {/*
+        Landlord Auth Modal — only mounted while open, so each open starts
+        fresh on `modalMode` (e.g. "post my rental property" always shows
+        sign-up, even if the user switched to login last time).
+      */}
+      {isModalOpen && (
+        <LandlordAuthModal
+          isOpen
+          onClose={() => setIsModalOpen(false)}
+          initialMode={modalMode}
+        />
+      )}
     </div>
   );
 }
