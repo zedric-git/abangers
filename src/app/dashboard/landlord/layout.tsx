@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { Building2, User, LogOut } from "lucide-react";
 import DashboardSidebar, { NavItem } from "@/components/DashboardSidebar";
 import { createClient } from "@/lib/supabase/client";
@@ -10,7 +9,6 @@ export default function LandlordLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const router = useRouter();
   const supabase = createClient();
 
   const handleLogout = async () => {
@@ -19,7 +17,11 @@ export default function LandlordLayout({
     } catch (err) {
       console.error("Logout error:", err);
     } finally {
-      router.push("/");
+      // Not router.push: that keeps the dashboard in browser history and
+      // in Next's client-side cache, so pressing Back would show it again
+      // without asking the server. A full replace drops the history entry
+      // and the cache, so any later visit hits the guard in the proxy.
+      window.location.replace("/");
     }
   };
 
