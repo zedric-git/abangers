@@ -38,7 +38,8 @@ export default function DashboardSidebar({
     () => false,
   );
 
-  const isDark = isMounted ? resolvedTheme === "dark" : true;
+  // Before mount the theme is unknown; assume the default (light).
+  const isDark = isMounted ? resolvedTheme === "dark" : false;
   const ThemeIcon = isDark ? Sun : Moon;
   const themeTooltip = isDark ? "Switch to Light Mode" : "Switch to Dark Mode";
 
