@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X, Home, Loader2, Eye, EyeOff } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { mapAuthError } from "@/lib/validations/auth";
+import {
+  loginSchema,
+  mapAuthError,
+  signUpSchema,
+} from "@/lib/validations/auth";
 import { resolvePostLoginPath } from "@/lib/auth/post-login";
 
 interface LandlordAuthModalProps {
@@ -25,18 +29,54 @@ export default function LandlordAuthModal({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // Per-field messages from the shared Zod schemas, keyed by field name
+  // (e.g. fieldErrors.confirmPassword = "Passwords don't match").
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   if (!isOpen) return null;
 
+  /**
+   * Validates with the same schemas as the /login and /signup pages
+   * (src/lib/validations/auth.ts), so the modal can't drift from their
+   * rules. Returns true if the form is valid.
+   */
+  const validate = () => {
+    const result = isLoginMode
+      ? loginSchema.safeParse({ email, password })
+      : signUpSchema.safeParse({
+          fullName,
+          email,
+          password,
+          confirmPassword,
+          role: "landlord",
+        });
+
+    if (result.success) {
+      setFieldErrors({});
+      return true;
+    }
+
+    // Keep the first message for each field.
+    const errors: Record<string, string> = {};
+    for (const issue of result.error.issues) {
+      const field = String(issue.path[0]);
+      errors[field] ??= issue.message;
+    }
+    setFieldErrors(errors);
+    return false;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError(null);
     setSuccess(null);
+    if (!validate()) return;
+    setLoading(true);
 
     try {
       if (isLoginMode) {
@@ -64,10 +104,6 @@ export default function LandlordAuthModal({
         }
       } else {
         // Sign Up (Landlord)
-        if (!fullName.trim()) {
-          throw new Error("Full name is required");
-        }
-
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -106,6 +142,7 @@ export default function LandlordAuthModal({
             setFullName("");
             setEmail("");
             setPassword("");
+            setConfirmPassword("");
           }
         }
       }
@@ -171,53 +208,78 @@ export default function LandlordAuthModal({
         )}
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* noValidate: the shared Zod schemas show the messages, not the browser */}
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {!isLoginMode && (
             <div className="space-y-1.5">
               <input
                 type="text"
-                required
                 placeholder="Full Name"
+                autoComplete="name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                aria-invalid={!!fieldErrors.fullName}
                 className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
               />
+              <FieldError message={fieldErrors.fullName} />
             </div>
           )}
 
           <div className="space-y-1.5">
             <input
               type="email"
-              required
               placeholder="Email address"
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              aria-invalid={!!fieldErrors.email}
               className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
             />
+            <FieldError message={fieldErrors.email} />
           </div>
 
-          <div className="relative space-y-1.5">
-            <input
-              type={showPassword ? "text" : "password"}
-              required
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pr-10 pl-4 text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute top-1/2 right-3 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? (
-                <EyeOff className="h-5 w-5" />
-              ) : (
-                <Eye className="h-5 w-5" />
-              )}
-            </button>
+          <div className="space-y-1.5">
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                autoComplete={isLoginMode ? "current-password" : "new-password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                aria-invalid={!!fieldErrors.password}
+                className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pr-10 pl-4 text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute top-1/2 right-3 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
+            </div>
+            <FieldError message={fieldErrors.password} />
           </div>
+
+          {!isLoginMode && (
+            <div className="space-y-1.5">
+              {/* Shares the show/hide toggle with the password field above */}
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="Confirm Password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                aria-invalid={!!fieldErrors.confirmPassword}
+                className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
+              />
+              <FieldError message={fieldErrors.confirmPassword} />
+            </div>
+          )}
 
           <button
             type="submit"
@@ -245,6 +307,7 @@ export default function LandlordAuthModal({
                   setIsLoginMode(false);
                   setError(null);
                   setSuccess(null);
+                  setFieldErrors({});
                 }}
                 className="font-semibold text-purple-700 hover:underline dark:text-purple-400"
               >
@@ -260,6 +323,7 @@ export default function LandlordAuthModal({
                   setIsLoginMode(true);
                   setError(null);
                   setSuccess(null);
+                  setFieldErrors({});
                 }}
                 className="font-semibold text-purple-700 hover:underline dark:text-purple-400"
               >
@@ -270,5 +334,13 @@ export default function LandlordAuthModal({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Red message under a field, or nothing when the field is valid. */
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return (
+    <p className="px-1 text-xs text-red-600 dark:text-red-400">{message}</p>
   );
 }
