@@ -4,6 +4,7 @@ import type { AuthError } from "@supabase/supabase-js";
 /**
  * Validation rules for the sign-up form. Used by:
  * - the sign-up form (client-side, via React Hook Form's zodResolver)
+ * - LandlordAuthModal sign-up state (role is always "landlord" there)
  * - re-checked implicitly by Supabase Auth + the `profiles.role` CHECK
  *   constraint on the server side (see supabase/migrations/0001_init.sql)
  *

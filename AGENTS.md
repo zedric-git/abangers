@@ -261,10 +261,12 @@ entry in the PR that closes it.
   test sign-up → confirm → login for both roles before enabling it.
 - **Duplicated auth forms.** Post-login routing is shared
   (`resolvePostLoginPath` in `src/lib/auth/post-login.ts` — use it for
-  any new sign-in entry point), but `src/components/LandlordAuthModal.tsx`
-  still has its own sign-in/sign-up forms that don't use `loginSchema` /
-  `signUpSchema` from `src/lib/validations/auth.ts`. Don't add a third
-  copy; when touching auth, move the modal onto the shared schemas.
+  any new sign-in entry point), and `src/components/LandlordAuthModal.tsx`
+  validates with the shared `loginSchema` / `signUpSchema`, but it still
+  has its own form markup and its own sign-up submit flow, which differs
+  from `/signup` (e.g. it doesn't catch an already-registered email that
+  Supabase reports with empty `identities`). Don't add a third copy; when
+  touching auth, move more of the modal onto the shared code.
 
 ## Commands
 
