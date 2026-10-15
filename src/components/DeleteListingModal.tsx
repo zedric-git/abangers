@@ -64,7 +64,7 @@ export default function DeleteListingModal({
               &quot;{listingTitle}&quot;
             </span>
             ? This action cannot be undone and will permanently remove the
-            property from BoardingHub.
+            property from Abangers.
           </p>
         </div>
 
