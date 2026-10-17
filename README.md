@@ -126,17 +126,22 @@ happens for you on `git commit`.
   [project board](https://github.com/users/zedric-git/projects/3),
   titled with its sprint ID (e.g. `[S1-02.1] Build login form UI`).
   The board is the source of truth for what's done and who's on what.
+- **Plans:** no code until there's a plan. Post yours as a comment on
+  the issue and wait for the PM's 👍 before you start building — a
+  small fix needs only a few lines. The template and rules are in
+  [AGENTS.md](./AGENTS.md#plan-before-you-build).
 - **PRs:** write `Closes #<issue>` in the PR description so the issue
   closes and the board card moves to Done automatically when it merges.
 
 ### A typical task, start to finish
 
 ```bash
-git switch dev && git pull                 # 1. start from the latest dev
-git switch -c feature/listing-search       # 2. one branch per task
-# ...write code, commit as you go...
-npm run check                              # 3. same checks as CI
-git push -u origin feature/listing-search  # 4. then open a PR into dev
+# 1. post your plan on the issue and wait for the PM's 👍 — no code before this
+git switch dev && git pull                 # 2. start from the latest dev
+git switch -c feature/listing-search       # 3. one branch per task
+# ...build what the plan says, commit as you go...
+npm run check                              # 4. same checks as CI
+git push -u origin feature/listing-search  # 5. then open a PR into dev
 ```
 
 **Changing the database?** Add a new file in `supabase/migrations/`
@@ -153,9 +158,11 @@ are pre-approved, dangerous ones (`db reset`, force-push, pushing to
 migrations. It also adds three commands that automate the workflow
 above:
 
-- `/start-task <issue>` — read the issue and cut the right branch
+- `/start-task <issue>` — read the issue, write and post the plan, and
+  cut the right branch once the PM approves it
 - `/new-migration <description>` — write a migration the safe way
-- `/open-pr` — run the checks and open a PR into `dev`
+- `/open-pr` — run the checks and open a PR into `dev` that links the
+  plan
 
 They're plain Markdown checklists in `.claude/skills/`, so they're
 worth reading even if you don't use Claude Code.

@@ -11,7 +11,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 # Abangers — project context
 
 Context for any AI coding assistant (Claude Code, Cursor, Copilot, etc.)
-working in this repo. Read this before making changes.
+working in this repo. Read this before making changes — and make none
+until your plan is approved (see "Plan before you build").
 
 **Keep this file true.** If your change makes anything in this file
 wrong (a rule, a convention, a file path, a known gap), update it in
@@ -105,6 +106,66 @@ https://github.com/users/zedric-git/projects/3
   than bring back a second auth form.
 - **Branch flow: `feature/*` → `dev` → `main`.** See "Branching strategy"
   below for the full rules and sprint schedule.
+
+## Plan before you build
+
+**Every implementation starts with a written plan — the design and the
+approach — and no code is written until the PM (`@zedric-git`) has
+approved it.** That covers features, bug fixes, refactors, migrations,
+config and docs changes, for everyone on the team and every AI
+assistant. (Answering questions, reviewing code and running checks
+aren't implementation, so they don't need a plan.) A plan is cheap to
+change and code isn't: reviewing the plan first catches a wrong
+approach, a missing RLS policy, or a clash with a teammate's task
+before anyone builds it.
+
+1. **Post the plan as a comment on the issue** before your first
+   commit, using the template below. No issue for the work yet (e.g. a
+   bug you just found)? Open one first — every task is an issue anyway.
+2. **Wait for the PM's approval:** a 👍 reaction on the plan comment or
+   a reply approving it. If the PM asks for changes, update the plan
+   and wait again. When the PM is the one building it, the plan still
+   goes on the issue before any code.
+3. **Build what the plan says.** If the approach or scope has to change
+   partway (a different design, a migration you didn't plan, work in
+   files the plan doesn't mention), stop, update the plan on the issue,
+   and get it approved again before carrying on. Smaller differences
+   just get listed in the PR.
+4. **Link the plan in the PR**, along with anything you built
+   differently (the PR template has a section for this).
+
+Size the plan to the task: a one-line fix needs only Goal, Files and
+Testing, in a few lines; a feature needs every section.
+
+```markdown
+## Plan
+
+**Goal:** what the issue asks, in your own words, and how we'll know it's done.
+
+**Design**
+
+- UI: screens and components, their states (loading, empty, error), mockup link
+- Data: tables and columns touched; new migration? RLS + grants + role check
+- Validation: which Zod schema in `src/lib/validations/` (new or existing)
+
+**Files:** what you'll add or change, and which need `"use client"` (and why).
+
+**Risks / questions:** anything unclear, or that needs a team decision.
+
+**Testing:** unit tests, `*.db.test.ts` cases, what you'll check in the browser.
+
+**Out of scope:** what this deliberately won't do.
+```
+
+**AI assistants:** your first output on a task is the plan, not an
+edit. Read the issue and the code, then show the plan to the person
+you're working with and wait for their explicit go-ahead before you
+edit files, create a branch, or post anything. With their OK, post it
+on the issue and wait for the PM's approval — if you're working with
+the PM, their go-ahead in chat is that approval (still post the plan
+before building). If the plan stops fitting mid-build, stop and say
+so; never quietly build something different from what was approved.
+In Claude Code, `/start-task` walks through all of this.
 
 ## Non-negotiable rules
 
@@ -201,6 +262,9 @@ next sprint instead of forcing the merge.
   `[S1-02] As a registered user, I want to log in ...`) and
   `[S<sprint>-<story>.<task>] ...` for the sub-issues under them (e.g.
   `[S1-02.1] Build login form UI`).
+- **Every task's plan is a comment on its issue**, approved by the PM
+  before any code is written (see "Plan before you build"). The PR
+  links to it.
 - Board statuses: `Product Backlog` / `Sprint N Backlog` (stories) →
   `Todo` → `In Progress` → `Code Review` → `Done`.
 - **Every PR description must say `Closes #<issue>`** for each task it
@@ -331,12 +395,15 @@ blocks direct pushes to `dev`/`main` for everyone.)
 Code; they're plain Markdown checklists, so other tools can read and
 follow them too):
 
-- `/start-task <issue>` — read the issue, cut a correctly named branch
-  from the latest `dev`, assign it to you.
+- `/start-task <issue>` — read the issue, write the plan with you,
+  post it on the issue and assign it to you; once the PM has approved
+  the plan, cut a correctly named branch from the latest `dev`. (If it
+  had to wait for approval, run it again once the plan is approved.)
 - `/new-migration <description>` — next migration number, RLS, grants,
   role checks, a DB test, and the apply steps for the PR.
 - `/open-pr [issues]` — `npm run check`, push, open a PR into `dev`
-  with `Closes #` lines (they close the issues when it merges).
+  with `Closes #` lines (they close the issues when it merges) and a
+  link to the approved plan.
 
 If you change a workflow rule in this file, update the matching skill
 in the same PR.

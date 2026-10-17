@@ -8,6 +8,11 @@ argument-hint: <short description, e.g. "add favorites table">
 
 Change: `$ARGUMENTS`. If it's unclear what the change is, ask first.
 
+The migration should already be in the task's approved plan (AGENTS.md,
+"Plan before you build"). If it isn't, or it differs from what the plan
+says, update the plan on the issue and get the PM's approval before
+writing it — a schema change affects the whole team.
+
 The database is **one shared project for the whole team** — nothing in
 this skill touches it except the read-only checks. Applying the
 migration happens after the PR is merged (step 6).

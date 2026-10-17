@@ -1,6 +1,6 @@
 ---
 name: open-pr
-description: 'Verify, push, and open a pull request into dev for the current Abangers branch, with the PR template filled in and Closes # lines for the right issues. Use when the user says "open a PR", "make a PR", or "ship this".'
+description: 'Verify, push, and open a pull request into dev for the current Abangers branch, with the PR template filled in, Closes # lines for the right issues, and a link to each approved plan. Use when the user says "open a PR", "make a PR", or "ship this".'
 argument-hint: "[issue numbers this PR finishes, e.g. 142 143]"
 ---
 
@@ -49,7 +49,31 @@ If none were passed in:
 Confirm the list with the user if it's not obvious. Every finished task
 gets its own `Closes #<n>` line.
 
-## 4. Push and open the PR
+## 4. Find the approved plan
+
+Every task needs a plan the PM approved before any code was written
+(AGENTS.md, "Plan before you build"). For each issue, find the plan
+comment (it starts with `## Plan`) and the PM's approval — a 👍 from
+`zedric-git` on it, or a reply from `zedric-git` approving it:
+
+```bash
+# comments on the issue: id, link, author, 👍 count, start of the body
+gh api repos/zedric-git/abangers/issues/<n>/comments --jq '.[] | {id, url: .html_url, user: .user.login, thumbs_up: .reactions["+1"], body: .body[0:120]}'
+# who gave the plan comment a 👍
+gh api repos/zedric-git/abangers/issues/comments/<plan-comment-id>/reactions --jq '.[] | select(.content == "+1") | .user.login'
+```
+
+Compare the plan with what the branch changes
+(`git diff --stat origin/dev...HEAD`) and note anything built
+differently, for the PR's "Changes from the plan".
+
+**No plan, or never approved?** Stop and tell the user — this work
+skipped the plan step. Don't write a plan now and present it as if it
+came first. Ask how they want to handle it (e.g. post the plan now,
+saying it was written after the code, and get the PM's OK before
+opening the PR).
+
+## 5. Push and open the PR
 
 ```bash
 git push -u origin <branch>
@@ -60,6 +84,8 @@ end-of-sprint merge). Fill in `.github/pull_request_template.md`:
 
 - **What:** one or two sentences, plus a short bullet list of changes.
 - `Closes #<n>` lines.
+- **Plan:** the link to each approved plan comment, and anything built
+  differently from it (or "None").
 - **Checklist:** tick only what's actually true.
 - **Tested:** what you ran and saw, and what you didn't test.
 
@@ -70,7 +96,7 @@ gh pr create --repo zedric-git/abangers --base dev --head <branch> --title "<typ
 Title style matches the repo history: `feat(...)`, `fix(...)`,
 `chore(...)`, `docs(...)`.
 
-## 5. Tell the user what happens after merge
+## 6. Tell the user what happens after merge
 
 `dev` is the default branch, so the `Closes #` lines close the issues
 and move their board cards to Done when the PR merges. `dev` is also
