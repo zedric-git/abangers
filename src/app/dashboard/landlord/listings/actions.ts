@@ -2,14 +2,19 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { listingSchema, ListingInput } from "@/lib/validations/listing";
+import {
+  CANNOT_CREATE_LISTINGS_MESSAGE,
+  checkCanCreateListings,
+} from "@/lib/auth/can-create-listings";
 
 export type ActionResult<T = unknown> =
   { success: true; data: T } | { success: false; error: string };
 
 /**
  * Server action to create a new property listing (S1-05.4).
- * Re-validates the form input against listingSchema server-side and
- * inserts the record with landlord_id set to the currently logged-in user.
+ * Checks the landlord may post (complete profile + approved verification,
+ * S1-15.3), re-validates the form input against listingSchema server-side,
+ * and inserts the record with landlord_id set to the currently logged-in user.
  */
 export async function createListingAction(
   rawInput: ListingInput,
@@ -30,13 +35,23 @@ export async function createListingAction(
       };
     }
 
-    // 2. Validate input server-side with shared Zod schema
+    // 2. Only landlords with a complete profile and an approved
+    //    verification can post (S1-15.3). The database enforces this too
+    //    (listings insert policy, migration 0010), but it only answers
+    //    "permission denied"; checking first tells the landlord which step
+    //    is missing.
+    const permission = await checkCanCreateListings(supabase, user.id);
+    if (!permission.ok) {
+      return { success: false, error: permission.message };
+    }
+
+    // 3. Validate input server-side with shared Zod schema
     const validatedData = listingSchema.parse(rawInput);
     if (validatedData.available_rooms <= 0) {
       validatedData.availability_status = "fully_occupied";
     }
 
-    // 3. Insert into Supabase listings table with landlord_id set to authenticated user ID
+    // 4. Insert into Supabase listings table with landlord_id set to authenticated user ID
     const { data, error: insertError } = await supabase
       .from("listings")
       .insert({
@@ -48,6 +63,12 @@ export async function createListingAction(
 
     if (insertError) {
       console.error("Database insert error:", insertError);
+      // 42501 = the insert policy refused it. Step 2 normally catches that
+      // first, so something changed in between (e.g. the profile was edited
+      // in another tab); still show a message the landlord can act on.
+      if (insertError.code === "42501") {
+        return { success: false, error: CANNOT_CREATE_LISTINGS_MESSAGE };
+      }
       return {
         success: false,
         error: insertError.message || "Failed to create listing in database.",

@@ -108,6 +108,14 @@ https://github.com/users/zedric-git/projects/3
   Once a landlord is verified, a trigger rejects any change to
   `profiles.full_name` with `42501`; saving the same name back is fine
   (the profile form upserts it on every save).
+  Only a verified landlord with a complete profile can create a listing
+  (editing existing ones doesn't need it): the listings insert policy
+  (`0010`) enforces it, and `createListingAction` checks first with
+  `src/lib/auth/can-create-listings.ts` to say which step is missing.
+  "Complete" is `landlordProfileSchema` in `src/lib/validations/profile.ts`
+  (a name, an 11-digit contact number, one social link), not the
+  `profile_completed` flag, which landlords can set themselves — change
+  the schema and the policy together.
 - **Storage errors arrive as HTTP 400 — read `error.statusCode`, not
   `error.status`.** Supabase Storage answers every refused request with
   status 400 and puts the real code in the response body, which
