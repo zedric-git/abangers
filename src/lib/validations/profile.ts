@@ -8,7 +8,7 @@ import { z } from "zod";
  *   it first (src/lib/auth/can-create-listings.ts)
  *
  * The listings insert policy in
- * supabase/migrations/0010_require_verified_landlord_for_new_listings.sql
+ * supabase/migrations/0011_readable_listings_insert_policy.sql
  * checks the same three rules in SQL. Change both together: if this schema
  * and the policy disagree, landlords get errors the app can't explain.
  */

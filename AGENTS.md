@@ -110,8 +110,9 @@ https://github.com/users/zedric-git/projects/3
   (the profile form upserts it on every save).
   Only a verified landlord with a complete profile can create a listing
   (editing existing ones doesn't need it): the listings insert policy
-  (`0010`) enforces it, and `createListingAction` checks first with
-  `src/lib/auth/can-create-listings.ts` to say which step is missing.
+  (`0010`, now defined in `0011`) enforces it, and `createListingAction`
+  checks first with `src/lib/auth/can-create-listings.ts` to say which
+  step is missing.
   "Complete" is `landlordProfileSchema` in `src/lib/validations/profile.ts`
   (a name, an 11-digit contact number, one social link), not the
   `profile_completed` flag, which landlords can set themselves — change

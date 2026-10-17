@@ -2,7 +2,8 @@
  * RLS test for public.listings (S1-11.3 / #75) — runs against the REAL
  * shared Supabase project, signed in as the seed landlords.
  *
- * Checks the policies in supabase/migrations/0001_init.sql, 0007 and 0010:
+ * Checks the policies in supabase/migrations/0001_init.sql, 0007 and 0010
+ * (0011 rewrote 0010's insert policy with readable escapes, same rule):
  * - Landlord A cannot update, delete, or insert-as Landlord B's listings.
  * - Anonymous visitors can read listings but not write them.
  * - A renter cannot create a listing, even under their own id (#173).
