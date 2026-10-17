@@ -70,6 +70,15 @@ https://github.com/users/zedric-git/projects/3
   pending. `scripts/check-migrations.mjs` (part of `npm run check` and
   CI) fails on duplicate numbers and on any edit, rename, or delete of
   a migration that's already on the base branch.
+- **Only three files in `supabase/.temp/` are committed, on purpose.**
+  `project-ref`, `linked-project.json` and `pooler-url` are what
+  `npx supabase link` saves for the shared project, so every clone and
+  worktree starts out linked to it (#211). The rest of the folder is
+  the CLI's cache, which it rewrites by itself (`cli-latest`, the
+  `*-version` files), so `.gitignore` ignores it. Don't ignore the
+  whole folder — every new worktree would then need
+  `npx supabase link` first. If `git status` ever shows `project-ref`
+  as changed, someone linked a different project: don't commit it.
 - **CI builds with placeholder Supabase env vars.** The `Build` step in
   `.github/workflows/ci.yml` has no real keys, which works because no
   page fetches data at build time. If a build fails there with a
