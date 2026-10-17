@@ -6,8 +6,19 @@ Closes #
 
 <!-- One "Closes #<issue>" line per task this PR finishes — it moves the board card to Done on merge. -->
 
+## Plan
+
+<!-- Link the PM-approved plan comment on each issue (see "Plan before you build" in AGENTS.md). Not needed for the end-of-sprint dev → main merge. -->
+
+Plan:
+
+<!-- Anything you built differently from the plan, and why. "None" if it matches. -->
+
+Changes from the plan:
+
 ## Checklist
 
+- [ ] The plan was posted on the issue and approved by the PM before any code was written
 - [ ] Targets `dev` (not `main`, unless this is the end-of-sprint merge)
 - [ ] `npm run check` passes locally
 - [ ] Tested the change in the browser (`npm run dev`) — logged in as the relevant seed account if it's behind auth
