@@ -4,8 +4,9 @@ import { defineConfig } from "vitest/config";
 
 // Two kinds of tests live in this repo:
 //
-// - "unit" (`*.test.ts`): pure logic like Zod schemas. Fast, no network,
-//   safe to run anywhere. This is what `npm test` and CI run.
+// - "unit" (`*.test.ts`): pure logic like Zod schemas, and the repo checks
+//   in scripts/. Fast, no network, safe to run anywhere. This is what
+//   `npm test` and CI run.
 // - "db" (`*.db.test.ts`): talk to the SHARED hosted Supabase project
 //   using the seed accounts from supabase/seed.sql. Run them on purpose
 //   with `npm run test:db` — they need .env.local and the seed data.
@@ -25,7 +26,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "unit",
-          include: ["src/**/*.test.ts"],
+          include: ["src/**/*.test.ts", "scripts/**/*.test.ts"],
           exclude: ["src/**/*.db.test.ts"],
         },
       },

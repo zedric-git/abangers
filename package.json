@@ -18,7 +18,8 @@
     "test:db": "vitest run --project db",
     "db:types": "supabase gen types typescript --linked --schema public > src/types/database.ts && prettier --write src/types/database.ts",
     "check:migrations": "node scripts/check-migrations.mjs",
-    "check": "next typegen && tsc --noEmit && eslint && prettier --check . && node scripts/check-migrations.mjs && vitest run --project unit"
+    "check:invisible-chars": "node scripts/check-invisible-chars.mjs",
+    "check": "next typegen && tsc --noEmit && eslint && prettier --check . && node scripts/check-migrations.mjs && node scripts/check-invisible-chars.mjs && vitest run --project unit"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
