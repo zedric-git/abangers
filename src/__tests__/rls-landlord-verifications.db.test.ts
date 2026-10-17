@@ -11,29 +11,36 @@
  * - A landlord can't read another landlord's submissions.
  * - The CHECK rules: a back photo for every ID except a passport, and
  *   every file inside the landlord's own folder.
+ * - With landlord1's approved submission (#206): they can read it, can't
+ *   change or withdraw it, and can't submit another one while it's
+ *   approved (23505). Other landlords and renters can't read it.
+ *
+ * SEED DATA (supabase/seed.sql, #206): landlord1 (A) has one approved
+ * submission (LANDLORD_A_SUBMISSION_ID) and landlord2 (B) has none. If a
+ * test says otherwise, run `npm run db:seed`. The name lock that comes
+ * with being verified is tested in rls-profiles.db.test.ts.
  *
  * SAFE ON SHARED DATA: nothing here is ever saved. Each insert is either
- * blocked by RLS (42501) or gets past RLS and is then stopped by a CHECK
- * rule (23514). Postgres runs RLS checks *before* CHECK constraints, so a
- * 23514 proves RLS allowed the insert — that's how the "allowed" case is
- * tested without leaving a row behind. A real row couldn't be removed
- * from here (landlords have no delete policy, on purpose), so if a test
- * fails because an insert went through, delete the stray row in the
- * Supabase dashboard (Table Editor → landlord_verifications).
- *
- * landlord1 (A) becomes the verified seed landlord and landlord2 (B)
- * stays unverified (#206). The cases that need A's approved row — reading
- * your own row, resubmitting (23505), the name lock — are added with that
- * seed data in #206.
+ * blocked by RLS (42501), or gets past RLS and is then stopped by a CHECK
+ * rule (23514) or by the one-open-submission index (23505). Postgres runs
+ * RLS checks *before* CHECK constraints, so a 23514 proves RLS allowed
+ * the insert — that's how the "allowed" case is tested without leaving a
+ * row behind. A real row couldn't be removed from here (landlords have no
+ * delete policy, on purpose), so if a test fails because an insert went
+ * through, run `npm run db:seed` (it deletes the seed landlords' other
+ * submissions) or delete the stray row in the Supabase dashboard (Table
+ * Editor → landlord_verifications).
  *
  * Run with: npm run test:db   (needs .env.local, the seed data, and
  * migration 0008 pushed to the shared project)
  */
 
+import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   LANDLORD_A_EMAIL,
+  LANDLORD_A_SUBMISSION_ID,
   LANDLORD_B_EMAIL,
   RENTER_EMAIL,
   newClient,
@@ -43,7 +50,9 @@ import {
 /**
  * A submission that passes every rule for `ownerId`. Each test changes
  * one thing about it — never insert it unchanged, or it would really be
- * saved. The files don't need to exist in storage for these tests.
+ * saved (the one exception is the resubmit test: landlord1 is already
+ * approved, so the one-open-submission index stops it). The files don't
+ * need to exist in storage for these tests.
  */
 function submissionFor(ownerId: string) {
   return {
@@ -103,6 +112,25 @@ describe("landlord_verifications RLS", () => {
     expect(error?.code).toBe("42501");
   });
 
+  it("a verified landlord cannot submit another verification", async () => {
+    // A valid submission: it gets past RLS and every CHECK rule, and only
+    // the one-open-submission index stops it, because landlord1 is already
+    // approved. If that index were ever missing, this row would really be
+    // saved, so it gets an id the failure message can name.
+    const id = randomUUID();
+    const error = await submit(landlordA.client, {
+      ...submissionFor(landlordA.userId),
+      id,
+    });
+    expect(
+      error?.code,
+      `If this says undefined, submission ${id} was saved: run npm run db:seed to remove it.`,
+    ).toBe("23505");
+    expect(error?.message).toContain(
+      "landlord_verifications_one_pending_or_approved",
+    );
+  });
+
   it("a renter cannot submit a verification, even for themselves", async () => {
     const renter = await signedInAs(RENTER_EMAIL);
     const error = await submit(renter.client, submissionFor(renter.userId));
@@ -155,11 +183,55 @@ describe("landlord_verifications RLS", () => {
     expect(deleteError?.code).toBe("42501");
   });
 
+  it("a verified landlord cannot change or withdraw their approved submission", async () => {
+    // The same permission errors, this time on a real row. The update
+    // writes the status it already has, so even if it got through,
+    // nothing would change. If the delete ever got through, run
+    // `npm run db:seed` to put the row back.
+    const { error: updateError } = await landlordA.client
+      .from("landlord_verifications")
+      .update({ status: "approved" })
+      .eq("id", LANDLORD_A_SUBMISSION_ID);
+    expect(updateError?.code).toBe("42501");
+
+    const { error: deleteError } = await landlordA.client
+      .from("landlord_verifications")
+      .delete()
+      .eq("id", LANDLORD_A_SUBMISSION_ID);
+    expect(deleteError?.code).toBe("42501");
+  });
+
+  it("a landlord can read their own submission", async () => {
+    // landlord1's approved submission from the seed data (#206), with its
+    // files in their own folder.
+    const { data, error } = await landlordA.client
+      .from("landlord_verifications")
+      .select("id, status, id_front_path")
+      .eq("landlord_id", landlordA.userId);
+    expect(error).toBeNull();
+    expect(data).toEqual([
+      {
+        id: LANDLORD_A_SUBMISSION_ID,
+        status: "approved",
+        id_front_path: `${landlordA.userId}/${LANDLORD_A_SUBMISSION_ID}/id-front.jpg`,
+      },
+    ]);
+  });
+
   it("a landlord cannot read another landlord's submissions", async () => {
-    // RLS filters other landlords' rows out: no error, just nothing back.
-    // (Until #206 seeds landlord A's approved submission, A has no rows
-    // anyway — the seed is what makes this case bite.)
+    // RLS filters other landlords' rows out: no error, just nothing back,
+    // although landlord1 has a submission (see the test above).
     const { data, error } = await landlordB.client
+      .from("landlord_verifications")
+      .select("id")
+      .eq("landlord_id", landlordA.userId);
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+  });
+
+  it("a renter cannot read a landlord's submissions", async () => {
+    const renter = await signedInAs(RENTER_EMAIL);
+    const { data, error } = await renter.client
       .from("landlord_verifications")
       .select("id")
       .eq("landlord_id", landlordA.userId);

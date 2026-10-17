@@ -11,6 +11,14 @@ export const LANDLORD_A_EMAIL = "landlord1@abangers.test";
 export const LANDLORD_B_EMAIL = "landlord2@abangers.test";
 export const RENTER_EMAIL = "renter1@abangers.test";
 
+/**
+ * landlord1's approved verification: the fixed id in supabase/seed.sql
+ * (section 3, #206). Its files are in the verification-documents bucket,
+ * uploaded by supabase/seed-storage.mjs (part of `npm run db:seed`).
+ * landlord2 has no verification at all.
+ */
+export const LANDLORD_A_SUBMISSION_ID = "b1b2c3d4-0000-4000-8000-000000000001";
+
 /** A fresh client with its own session, so two users don't share one. */
 export function newClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -39,3 +47,6 @@ export async function signedInAs(email: string) {
   }
   return { client, userId: data.user.id };
 }
+
+/** A signed-in seed account: what signedInAs returns. */
+export type SeedUser = Awaited<ReturnType<typeof signedInAs>>;
