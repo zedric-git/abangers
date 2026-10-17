@@ -42,6 +42,13 @@ jobs:
       - name: Migration check
         run: node scripts/check-migrations.mjs --base "origin/${{ github.base_ref || 'dev' }}"
 
+      # Raw invisible or unusual-space characters (no-break space,
+      # zero-width space, BOM, text-direction marks, ...) in any file in
+      # the repo: write them as escapes instead. The full list and the
+      # skipped files are in scripts/check-invisible-chars.mjs.
+      - name: Invisible character check
+        run: npm run check:invisible-chars
+
       # Unit tests only — the *.db.test.ts suite talks to the shared
       # Supabase project and is run by hand with `npm run test:db`.
       - name: Unit tests

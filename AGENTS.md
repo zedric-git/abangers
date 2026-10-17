@@ -143,6 +143,21 @@ https://github.com/users/zedric-git/projects/3
   routing (`resolvePostLoginPath` in `src/lib/auth/post-login.ts`). Renter
   sign-up (Sprint 2) should extend the modal with those helpers rather
   than bring back a second auth form.
+- **Write invisible characters as escapes, never raw.** A no-break
+  space, a zero-width space, a byte order mark, a text-direction mark
+  and the like look like a normal space, or like nothing at all, in an
+  editor and in a PR diff, so nobody can review them. When code needs
+  one (a test input, a regex that strips them), write it as an escape:
+  `\u00A0` in JS/TS strings and regexes and inside a Postgres regex,
+  `E'\u00A0'` elsewhere in SQL. AI tools sometimes write the raw
+  character when they meant the escape; that's how `0010` got a regex
+  nobody could read (#216). `scripts/check-invisible-chars.mjs` (part
+  of `npm run check` and CI) fails on them in every file git tracks,
+  and in new files not yet added, naming the file, line and column. The
+  full list of characters is at its top. It skips binary files,
+  `package-lock.json`, and `0010` (applied, so it can't change; `0011`
+  recreates its policy with escapes). Visible non-ASCII is fine: em
+  dashes, arrows, `₱`, full-width digits, emoji.
 - **Branch flow: `feature/*` → `dev` → `main`.** See "Branching strategy"
   below for the full rules and sprint schedule.
 
@@ -249,7 +264,7 @@ In Claude Code, `/start-task` walks through all of this.
    - `supabase/migrations/` — SQL migrations, sequentially numbered
    - `supabase/seed.sql` — dev test accounts + sample listings
    - `scripts/` — repo checks run by `npm run check` and CI (plain
-     Node `.mjs`, no dependencies)
+     Node `.mjs`, no dependencies), plus their unit tests
    - `.vscode/` — shared editor settings + recommended extensions
      (the team uses VS Code; personal settings stay in your user
      settings)
@@ -386,10 +401,13 @@ entry in the PR that closes it.
 
 - **`npm run check` — run this before saying a change is done.** It's
   everything CI runs except the production build: `next typegen`,
-  `tsc --noEmit`, ESLint, Prettier check, the migration check, and the
-  unit tests.
+  `tsc --noEmit`, ESLint, Prettier check, the migration check, the
+  invisible-character check, and the unit tests.
 - `npm run check:migrations` — just the migration check (unique numbers,
   no edits to migrations already on `origin/dev`; `git fetch` first)
+- `npm run check:invisible-chars` — just the invisible-character check
+  (see "Write invisible characters as escapes" above); put file paths
+  after `--` to check only those files
 - `npm run dev` — local dev server
 - `npm test` — unit tests (`*.test.ts`, Vitest). Put a test next to the
   file it tests; see `src/lib/validations/auth.test.ts` for the pattern.

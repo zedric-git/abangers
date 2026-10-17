@@ -101,8 +101,9 @@ anything else.
 | `npx shadcn add <name>` | Add a shadcn/ui component                                         |
 
 `npm run check` runs, in order: Next.js type generation, `tsc`, ESLint,
-the Prettier check, the migration check (`scripts/check-migrations.mjs`)
-and the unit tests. CI runs the same steps plus a production build. A
+the Prettier check, the migration check (`scripts/check-migrations.mjs`),
+the invisible-character check (`scripts/check-invisible-chars.mjs`) and
+the unit tests. CI runs the same steps plus a production build. A
 pre-commit hook (Husky) auto-formats staged files, so most formatting
 happens for you on `git commit`.
 
