@@ -14,6 +14,56 @@ export type Database = {
   };
   public: {
     Tables: {
+      landlord_verifications: {
+        Row: {
+          consent_given_at: string;
+          id: string;
+          id_back_path: string | null;
+          id_front_path: string;
+          id_type: string;
+          landlord_id: string;
+          rejection_reason: string | null;
+          reviewed_at: string | null;
+          selfie_path: string;
+          status: string;
+          submitted_at: string;
+        };
+        Insert: {
+          consent_given_at: string;
+          id?: string;
+          id_back_path?: string | null;
+          id_front_path: string;
+          id_type: string;
+          landlord_id: string;
+          rejection_reason?: string | null;
+          reviewed_at?: string | null;
+          selfie_path: string;
+          status?: string;
+          submitted_at?: string;
+        };
+        Update: {
+          consent_given_at?: string;
+          id?: string;
+          id_back_path?: string | null;
+          id_front_path?: string;
+          id_type?: string;
+          landlord_id?: string;
+          rejection_reason?: string | null;
+          reviewed_at?: string | null;
+          selfie_path?: string;
+          status?: string;
+          submitted_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "landlord_verifications_landlord_id_fkey";
+            columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       listings: {
         Row: {
           address: string;
