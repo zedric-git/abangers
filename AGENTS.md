@@ -91,6 +91,11 @@ https://github.com/users/zedric-git/projects/3
   Each submission is a row ("verified" = the landlord has an `approved`
   row); landlords can only insert their own pending rows and read their
   own — no update or delete (`0008_create_landlord_verifications.sql`).
+  The ID photos and selfie go in the private `verification-documents`
+  bucket (`0009`), one folder per submission
+  (`<landlord id>/<submission id>/<file>`): landlords can upload to and
+  read only their own folder, and can't replace or delete a file, so a
+  resubmission always uploads to a new folder.
   Once a landlord is verified, a trigger rejects any change to
   `profiles.full_name` with `42501`; saving the same name back is fine
   (the profile form upserts it on every save).
