@@ -108,6 +108,13 @@ https://github.com/users/zedric-git/projects/3
   Once a landlord is verified, a trigger rejects any change to
   `profiles.full_name` with `42501`; saving the same name back is fine
   (the profile form upserts it on every save).
+- **Storage errors arrive as HTTP 400 — read `error.statusCode`, not
+  `error.status`.** Supabase Storage answers every refused request with
+  status 400 and puts the real code in the response body, which
+  supabase-js exposes as `error.statusCode` (a string): `"403"` not
+  allowed (RLS), `"409"` the file already exists, `"413"` too big,
+  `"415"` wrong file type (#213). `0009`'s header comment says
+  `error.status`; it's already applied, so it can't be fixed there.
 - **`/dashboard/*` is guarded in the proxy, and logout must be a hard
   navigation.** `updateSession` in `src/lib/supabase/middleware.ts`
   sends signed-out users to the home page (`/`) and keeps each role on its own
