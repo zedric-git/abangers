@@ -24,7 +24,7 @@ for await (const chunk of process.stdin) input += chunk;
 let filePath;
 try {
   // Strip a UTF-8 byte-order mark (Windows PowerShell adds one when piping).
-  filePath = JSON.parse(input.replace(/^﻿/, "")).tool_input?.file_path;
+  filePath = JSON.parse(input.replace(/^\uFEFF/, "")).tool_input?.file_path;
 } catch {
   process.exit(0); // Unexpected input — don't get in the way.
 }

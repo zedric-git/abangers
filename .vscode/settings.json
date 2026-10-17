@@ -23,5 +23,14 @@
   // checker doesn't understand.
   "files.associations": {
     "*.css": "tailwindcss"
+  },
+
+  // Migration 0010 has raw U+2028 / U+2029 characters in a regex
+  // (#216). VS Code offers to remove these "unusual line terminators",
+  // but that would edit an applied migration, so don't prompt in SQL
+  // files. Other files keep the prompt: in TS/JS, a U+2028 can end a
+  // `//` comment and turn the rest of the line into code.
+  "[sql]": {
+    "editor.unusualLineTerminators": "off"
   }
 }

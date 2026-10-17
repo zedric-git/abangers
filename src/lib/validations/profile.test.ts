@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { landlordProfileSchema, profileSetupSchema } from "./profile";
 
 // landlordProfileSchema is checked again in SQL by the listings insert
-// policy (supabase/migrations/0010_require_verified_landlord_for_new_listings.sql).
+// policy (supabase/migrations/0011_readable_listings_insert_policy.sql).
 // These are the cases the two have to agree on: if a rule changes here,
 // the policy needs a new migration too.
 
@@ -52,7 +52,9 @@ describe("landlordProfileSchema", () => {
   });
 
   // The policy's regex lists exactly the characters .trim() removes.
-  it.each(["", "   ", "\t", "\r\n", " ", "　"])(
+  // "\u00a0" is a no-break space and "\u3000" an ideographic space:
+  // write them as escapes, because the characters themselves are invisible.
+  it.each(["", "   ", "\t", "\r\n", "\u00a0", "\u3000"])(
     "counts a link of only %j as missing",
     (blank) => {
       const result = landlordProfileSchema.safeParse({

@@ -7,7 +7,7 @@ import { landlordProfileSchema } from "@/lib/validations/profile";
  * #201), and if not, what to tell them. Used by createListingAction.
  *
  * The database enforces this rule: the listings insert policy in
- * supabase/migrations/0010_require_verified_landlord_for_new_listings.sql.
+ * supabase/migrations/0011_readable_listings_insert_policy.sql.
  * The app checks the same rule first, because RLS only answers "42501"
  * whatever is missing, while this tells the landlord which step to do.
  * A user can create listings when:
