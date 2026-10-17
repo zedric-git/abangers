@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Claude Code worktrees: full repo copies with their own .next/ build
+    // output. ESLint doesn't read .gitignore, so they're listed here too.
+    ".claude/worktrees/**",
   ]),
 ]);
 
