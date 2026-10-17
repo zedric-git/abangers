@@ -13,7 +13,7 @@
     "prepare": "husky",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "db:seed": "supabase db query --linked -f supabase/seed.sql",
+    "db:seed": "supabase db query --linked -f supabase/seed.sql && node supabase/seed-storage.mjs",
     "test": "vitest run --project unit",
     "test:db": "vitest run --project db",
     "db:types": "supabase gen types typescript --linked --schema public > src/types/database.ts && prettier --write src/types/database.ts",
