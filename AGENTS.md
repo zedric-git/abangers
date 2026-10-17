@@ -85,6 +85,15 @@ https://github.com/users/zedric-git/projects/3
   generated `listings` row). Rows use `null` for empty columns; convert
   with `listingRowToFormValues` before passing to the listing form or
   `ListingDetailView`.
+- **Landlord verification lives in `landlord_verifications`, not
+  `profiles`.** Any signed-in user can read `profiles` and landlords can
+  edit it, so a status column there would be public and self-approvable.
+  Each submission is a row ("verified" = the landlord has an `approved`
+  row); landlords can only insert their own pending rows and read their
+  own — no update or delete (`0008_create_landlord_verifications.sql`).
+  Once a landlord is verified, a trigger rejects any change to
+  `profiles.full_name` with `42501`; saving the same name back is fine
+  (the profile form upserts it on every save).
 - **`/dashboard/*` is guarded in the proxy, and logout must be a hard
   navigation.** `updateSession` in `src/lib/supabase/middleware.ts`
   sends signed-out users to the home page (`/`) and keeps each role on its own
