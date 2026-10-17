@@ -2,23 +2,37 @@
  * RLS test for public.listings (S1-11.3 / #75) — runs against the REAL
  * shared Supabase project, signed in as the seed landlords.
  *
- * Checks the policies in supabase/migrations/0001_init.sql and 0007:
+ * Checks the policies in supabase/migrations/0001_init.sql, 0007 and 0010:
  * - Landlord A cannot update, delete, or insert-as Landlord B's listings.
  * - Anonymous visitors can read listings but not write them.
  * - A renter cannot create a listing, even under their own id (#173).
  * - Landlord A can still update their own listing (so we know the
  *   "blocked" results above are RLS working, not every write failing).
+ * - A landlord who isn't verified cannot create a listing (#201, 0010),
+ *   and createListingAction's own check agrees, but they can still edit
+ *   their existing listings.
  *
  * SAFE ON SHARED DATA: every write here is either blocked by RLS (so
  * nothing changes) or writes a listing's current title back to itself.
+ * The #201 inserts also use monthly_rent 0, which a CHECK always refuses,
+ * so they can never be saved (see neverSavedListing below).
  * If RLS is ever broken and a write gets through, run `npm run db:seed`
  * to restore the seed listings.
+ *
+ * landlord1 (A) becomes the verified seed landlord and landlord2 (B) stays
+ * unverified, both with complete profiles (#206). The #201 cases that need
+ * that seed data are added in #206:
+ * - A passes RLS (23514 from the CHECK, not 42501);
+ * - A with the contact number blanked, and A with no social links but
+ *   profile_completed = true, get 42501 (values put back in a `finally`);
+ * - B's profile is complete, so B's 42501 is only about verification.
  *
  * Run with: npm run test:db   (needs .env.local and the seed data loaded)
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
+import { checkCanCreateListings } from "@/lib/auth/can-create-listings";
 import {
   LANDLORD_A_EMAIL,
   LANDLORD_B_EMAIL,
@@ -166,5 +180,77 @@ describe("listings RLS", () => {
     }
 
     expect(error?.code).toBe("42501");
+  });
+});
+
+/**
+ * A listing that can never be saved: monthly_rent 0 breaks the
+ * listings_monthly_rent_check CHECK. Postgres runs RLS checks *before*
+ * CHECK constraints, so the error says which one stopped the insert:
+ * 42501 = RLS refused it, 23514 = RLS allowed it and the CHECK stopped it.
+ */
+function neverSavedListing(ownerId: string) {
+  return {
+    landlord_id: ownerId,
+    title: "RLS test listing (never saved)",
+    monthly_rent: 0,
+    address: "Nowhere",
+    contact_info: "n/a",
+  };
+}
+
+// #201: only landlords with a complete profile and an approved
+// verification can create listings (0010). Existing listings stay up.
+describe("listings insert rule: complete profile + approved verification", () => {
+  let landlordB: { client: SupabaseClient; userId: string };
+
+  beforeAll(async () => {
+    landlordB = await signedInAs(LANDLORD_B_EMAIL);
+  });
+
+  it("a landlord who isn't verified cannot create a listing", async () => {
+    // This test relies on landlord2 having no approved verification
+    // (they stay unverified in the seed data, #206).
+    const { data: approved, error: readError } = await landlordB.client
+      .from("landlord_verifications")
+      .select("id")
+      .eq("landlord_id", landlordB.userId)
+      .eq("status", "approved");
+    expect(readError).toBeNull();
+    expect(approved).toEqual([]);
+
+    // A plain insert, without .select(), so only the INSERT policy decides.
+    const { error } = await landlordB.client
+      .from("listings")
+      .insert(neverSavedListing(landlordB.userId));
+    expect(error?.code).toBe("42501");
+  });
+
+  it("createListingAction's check turns them down too", async () => {
+    // Same rule, checked by the app before it inserts (read-only).
+    const result = await checkCanCreateListings(
+      landlordB.client,
+      landlordB.userId,
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it("a landlord who isn't verified can still edit their existing listing", async () => {
+    // 0010 only changed inserts: writing the current title back proves the
+    // update policy still lets them in, without changing shared data.
+    const { data: own } = await landlordB.client
+      .from("listings")
+      .select("title")
+      .eq("id", LANDLORD_B_LISTING_ID)
+      .single();
+    expect(own).not.toBeNull();
+
+    const { data, error } = await landlordB.client
+      .from("listings")
+      .update({ title: own!.title })
+      .eq("id", LANDLORD_B_LISTING_ID)
+      .select("id");
+    expect(error).toBeNull();
+    expect(data).toHaveLength(1);
   });
 });
