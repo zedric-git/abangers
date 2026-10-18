@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm, useWatch } from "react-hook-form";
@@ -144,9 +145,28 @@ export default function LandlordListingForm({
     }
   };
 
+  // Switches between the form and the preview, and starts the new step at
+  // the top of the page (#223).
+  const showStep = (nextStep: "form" | "preview") => {
+    // flushSync puts the new step on the page right away. Without it, React
+    // re-renders only after this function returns, so the scroll below
+    // would happen on the step we're leaving.
+    flushSync(() => setStep(nextStep));
+
+    // The landlord dashboard scrolls inside its <main>, not the window: the
+    // layout (src/app/dashboard/landlord/layout.tsx) is h-dvh with
+    // overflow-hidden since #161, so window.scrollTo does nothing here.
+    // That <main> is the only one on dashboard pages. (A ref on this form +
+    // closest("main") would also find it, but the react-hooks/refs lint rule
+    // rejects reading a ref here: handlePreviewSubmit is passed to
+    // handleSubmit during render.)
+    // "instant", not "smooth": the whole step is new, so there's nothing to
+    // animate past.
+    document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
+  };
+
   const handlePreviewSubmit = () => {
-    setStep("preview");
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    showStep("preview");
   };
 
   const handleSave = async (data: ListingInput) => {
@@ -266,10 +286,7 @@ export default function LandlordListingForm({
           <div className="flex items-center justify-end gap-3 pt-4">
             <button
               type="button"
-              onClick={() => {
-                setStep("form");
-                window.scrollTo({ top: 0, behavior: "smooth" });
-              }}
+              onClick={() => showStep("form")}
               className="inline-flex items-center gap-2 rounded-xl border border-zinc-300 bg-white px-5 py-3 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               <Pencil className="h-4 w-4" />
