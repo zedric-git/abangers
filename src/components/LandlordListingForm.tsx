@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm, useWatch } from "react-hook-form";
@@ -18,6 +18,9 @@ import {
 import { listingSchema, ListingInput } from "@/lib/validations/listing";
 import ImageUploader from "@/components/ImageUploader";
 import ListingDetailView from "@/components/ListingDetailView";
+import ListingSaveErrorModal, {
+  type ListingSaveError,
+} from "@/components/ListingSaveErrorModal";
 import { LocationPicker } from "@/components/map";
 import {
   createListingAction,
@@ -73,7 +76,10 @@ export default function LandlordListingForm({
   const router = useRouter();
   const [step, setStep] = useState<"form" | "preview">("form");
   const [submitting, setSubmitting] = useState(false);
-  const [serverError, setServerError] = useState<string | null>(null);
+  // Why Publish / Save failed, shown in ListingSaveErrorModal (#221).
+  const [saveError, setSaveError] = useState<ListingSaveError | null>(null);
+  // The Publish / Save button, which gets the focus back when the card closes.
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
 
   const {
     register,
@@ -139,14 +145,12 @@ export default function LandlordListingForm({
   };
 
   const handlePreviewSubmit = () => {
-    setServerError(null);
     setStep("preview");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSave = async (data: ListingInput) => {
     setSubmitting(true);
-    setServerError(null);
 
     if (data.available_rooms <= 0) {
       data.availability_status = "fully_occupied";
@@ -164,15 +168,20 @@ export default function LandlordListingForm({
         router.push("/dashboard/landlord/listings");
         router.refresh();
       } else {
-        setServerError(res.error);
-        setStep("form");
+        // Shown in a card over the page, and we stay on the preview:
+        // closing the card puts the landlord back next to Edit Listing
+        // and Publish (#221).
+        setSaveError({
+          message: res.error,
+          fixOnProfilePage: res.fixOnProfilePage ?? false,
+        });
       }
     } catch (err) {
       console.error("Form submit error:", err);
-      setServerError(
-        err instanceof Error ? err.message : "Failed to save listing.",
-      );
-      setStep("form");
+      setSaveError({
+        message: err instanceof Error ? err.message : "Failed to save listing.",
+        fixOnProfilePage: false,
+      });
     } finally {
       setSubmitting(false);
     }
@@ -219,13 +228,13 @@ export default function LandlordListingForm({
         </div>
       </div>
 
-      {/* Global Server Error Alert */}
-      {serverError && (
-        <div className="flex items-center gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-xs font-medium text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/50 dark:text-rose-200">
-          <AlertCircle className="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
-          <p>{serverError}</p>
-        </div>
-      )}
+      {/* Publish / Save Error Card */}
+      <ListingSaveErrorModal
+        error={saveError}
+        isEditing={isEditing}
+        onClose={() => setSaveError(null)}
+        returnFocusRef={saveButtonRef}
+      />
 
       {/* STEP 2: PREVIEW MODE */}
       {step === "preview" ? (
@@ -267,6 +276,7 @@ export default function LandlordListingForm({
               Edit Listing
             </button>
             <button
+              ref={saveButtonRef}
               type="button"
               onClick={() => handleSave(getValues() as ListingInput)}
               disabled={submitting}
