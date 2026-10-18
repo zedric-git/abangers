@@ -5,10 +5,19 @@ import { listingSchema, ListingInput } from "@/lib/validations/listing";
 import {
   CANNOT_CREATE_LISTINGS_MESSAGE,
   checkCanCreateListings,
+  isFixedOnProfilePage,
 } from "@/lib/auth/can-create-listings";
 
 export type ActionResult<T = unknown> =
-  { success: true; data: T } | { success: false; error: string };
+  | { success: true; data: T }
+  | {
+      success: false;
+      error: string;
+      // Set by createListingAction when the landlord fixes this on their
+      // Profile page (complete the profile, or verify the account), so the
+      // listing form's error card can link there (#221).
+      fixOnProfilePage?: boolean;
+    };
 
 /**
  * Server action to create a new property listing (S1-05.4).
@@ -42,7 +51,11 @@ export async function createListingAction(
     //    is missing.
     const permission = await checkCanCreateListings(supabase, user.id);
     if (!permission.ok) {
-      return { success: false, error: permission.message };
+      return {
+        success: false,
+        error: permission.message,
+        fixOnProfilePage: isFixedOnProfilePage(permission.reason),
+      };
     }
 
     // 3. Validate input server-side with shared Zod schema
@@ -67,7 +80,12 @@ export async function createListingAction(
       // first, so something changed in between (e.g. the profile was edited
       // in another tab); still show a message the landlord can act on.
       if (insertError.code === "42501") {
-        return { success: false, error: CANNOT_CREATE_LISTINGS_MESSAGE };
+        return {
+          success: false,
+          error: CANNOT_CREATE_LISTINGS_MESSAGE,
+          // The message sends them to the Profile page.
+          fixOnProfilePage: true,
+        };
       }
       return {
         success: false,

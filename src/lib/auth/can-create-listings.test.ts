@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   decideCanCreateListings,
+  isFixedOnProfilePage,
   isProfileComplete,
+  type CannotCreateListingsReason,
   type ListingProfile,
 } from "./can-create-listings";
 
@@ -107,4 +109,22 @@ describe("decideCanCreateListings", () => {
     expect(new Set(messages).size).toBe(messages.length);
     messages.forEach((message) => expect(message).not.toBe(""));
   });
+});
+
+describe("isFixedOnProfilePage", () => {
+  // true = the message sends the landlord to their Profile page, so the
+  // listing form's error card links there (#221).
+  it.each([
+    ["profile_incomplete", true],
+    ["not_verified", true],
+    ["verification_rejected", true],
+    ["verification_pending", false],
+    ["not_landlord", false],
+    ["check_failed", false],
+  ] satisfies [CannotCreateListingsReason, boolean][])(
+    "%s → %s",
+    (reason, expected) => {
+      expect(isFixedOnProfilePage(reason)).toBe(expected);
+    },
+  );
 });

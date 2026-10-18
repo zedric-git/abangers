@@ -59,9 +59,34 @@ const MESSAGES: Record<CannotCreateListingsReason, string> = {
 /**
  * For when the insert itself comes back 42501 (the policy refused it)
  * even though the check passed, e.g. the profile changed in between.
+ * Like most of the messages above, it sends the landlord to their Profile
+ * page, so createListingAction sets fixOnProfilePage with it (#221).
  */
 export const CANNOT_CREATE_LISTINGS_MESSAGE =
   "You can't post listings yet: your profile must be complete and your account verified. Check your Profile page, then try again.";
+
+/**
+ * Whether the landlord fixes each reason on their Profile page, which is
+ * where its message sends them. When it's true, the listing form's error
+ * card links there (#221). A Record, so whoever adds a reason has to
+ * decide this too.
+ */
+const FIXED_ON_PROFILE_PAGE: Record<CannotCreateListingsReason, boolean> = {
+  not_landlord: false,
+  profile_incomplete: true,
+  // Nothing to do but wait for the review.
+  verification_pending: false,
+  verification_rejected: true,
+  not_verified: true,
+  // The check couldn't read the database: trying again is the fix.
+  check_failed: false,
+};
+
+export function isFixedOnProfilePage(
+  reason: CannotCreateListingsReason,
+): boolean {
+  return FIXED_ON_PROFILE_PAGE[reason];
+}
 
 function cannotCreate(
   reason: CannotCreateListingsReason,
