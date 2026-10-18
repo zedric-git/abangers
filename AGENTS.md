@@ -263,6 +263,8 @@ In Claude Code, `/start-task` walks through all of this.
    - `src/lib/validations/` — Zod schemas
    - `supabase/migrations/` — SQL migrations, sequentially numbered
    - `supabase/seed.sql` — dev test accounts + sample listings
+   - `supabase/seed-storage.mjs` + `supabase/seed-storage/` — uploads
+     the seed data's sample files (placeholder ID photos) to Storage
    - `scripts/` — repo checks run by `npm run check` and CI (plain
      Node `.mjs`, no dependencies), plus their unit tests
    - `.vscode/` — shared editor settings + recommended extensions
@@ -339,14 +341,24 @@ next sprint instead of forcing the merge.
   pushed — write a new one.
 - **`npx supabase db reset --linked` wipes the shared database for the
   whole team** (all accounts and listings), then re-applies migrations
-  and runs `supabase/seed.sql`. Never run it without asking the team
-  first.
+  and runs `supabase/seed.sql` (run `npm run db:seed` after it for the
+  sample files). Never run it without asking the team first.
 - **`supabase/seed.sql` must stay idempotent** (safe to re-run with
   `npm run db:seed`). Seed accounts are matched by email and seed
   listings by fixed UUID, with `on conflict ... do update`. Follow that
   pattern for any new seed data — no plain `INSERT`s that duplicate on
   a second run. Seed credentials are dev-only; the shared password is in
   the file header.
+- **Seed landlords: landlord1 is verified, landlord2 isn't** (#206).
+  Both have a complete profile; landlord1 also has an approved
+  verification with sample ID photos, so only landlord1 can create
+  listings. The DB tests rely on both, so try the verification flow on
+  landlord2, then re-run `npm run db:seed`: it deletes every other
+  verification the two seed landlords have. SQL can't upload files, so
+  `npm run db:seed` runs `supabase/seed-storage.mjs` after `seed.sql`.
+  It signs in as landlord1 with the anon key (needs `.env.local`) and
+  skips files that are already there. Put only placeholder images in
+  `supabase/seed-storage/`, never a real ID or photo.
 - Supabase Auth only stores email/password. App fields (role, name)
   live in `public.profiles`, one row per `auth.users` row, same `id`.
 
@@ -425,7 +437,9 @@ entry in the PR that closes it.
 - `npx supabase db push` — apply pending migrations to the linked project
   (run `npx supabase link --project-ref <ref>` once first)
 - `npm run db:seed` — load test accounts + sample listings from
-  `supabase/seed.sql` into the linked project (safe to re-run)
+  `supabase/seed.sql` into the linked project, then upload landlord1's
+  sample verification files (`supabase/seed-storage.mjs`, needs
+  `.env.local`); safe to re-run
 
 ## Agent guardrails (Claude Code)
 

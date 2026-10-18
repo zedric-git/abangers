@@ -75,16 +75,21 @@ need to run migrations or the seed just to start developing. Only run
 log in). They all share one password — it's in the header comment of
 `supabase/seed.sql`.
 
-| Email                     | Name          | Role     | Listings |
-| ------------------------- | ------------- | -------- | -------- |
-| `landlord1@abangers.test` | Maria Santos  | landlord | 3        |
-| `landlord2@abangers.test` | Jun Dela Cruz | landlord | 3        |
-| `renter1@abangers.test`   | Ana Reyes     | renter   | —        |
-| `renter2@abangers.test`   | Paolo Garcia  | renter   | —        |
+| Email                     | Name          | Role     | Listings | Verified |
+| ------------------------- | ------------- | -------- | -------- | -------- |
+| `landlord1@abangers.test` | Maria Santos  | landlord | 3        | yes      |
+| `landlord2@abangers.test` | Jun Dela Cruz | landlord | 3        | no       |
+| `renter1@abangers.test`   | Ana Reyes     | renter   | —        | —        |
+| `renter2@abangers.test`   | Paolo Garcia  | renter   | —        | —        |
+
+Both landlords have a complete profile, but only a verified landlord can
+create listings, so use landlord1 for that. Try the verification flow on
+landlord2: the DB tests need landlord1 verified and landlord2 not.
 
 If the seed data gets messed up, run `npm run db:seed` — it's safe to
-re-run and puts the seed accounts and listings back without touching
-anything else.
+re-run and puts the seed accounts, listings and verifications back
+without touching anything else. It also uploads landlord1's sample ID
+photos, so it needs `.env.local`.
 
 ## Everyday commands
 
@@ -95,7 +100,7 @@ anything else.
 | `npm test`              | Unit tests (`*.test.ts`, Vitest)                                  |
 | `npm run test:db`       | RLS tests against the shared database (`*.db.test.ts`, not in CI) |
 | `npm run format`        | Auto-format with Prettier                                         |
-| `npm run db:seed`       | Load/reset test accounts + sample listings (safe to re-run)       |
+| `npm run db:seed`       | Load/reset test accounts + sample data (safe to re-run)           |
 | `npm run db:types`      | Regenerate `src/types/database.ts` after a migration is pushed    |
 | `npx supabase db push`  | Apply new migrations in `supabase/migrations/` to the DB          |
 | `npx shadcn add <name>` | Add a shadcn/ui component                                         |
@@ -190,6 +195,7 @@ src/
 supabase/
   migrations/              SQL migrations, applied in order (0001, 0002, ...)
   seed.sql                 test accounts + sample listings
+  seed-storage.mjs         uploads the seed's sample files (seed-storage/)
 scripts/                   repo checks run by `npm run check` and CI
 .claude/                   shared Claude Code settings, hooks and skills
 ```

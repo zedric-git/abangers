@@ -5,21 +5,31 @@
 -- team can log in and see real-looking data right away.
 --
 -- HOW TO RUN
---   npm run db:seed              (runs this file against the linked project)
+--   npm run db:seed              (runs this file against the linked project,
+--                                 then supabase/seed-storage.mjs, which
+--                                 uploads landlord1's sample ID photos)
 --   npx supabase db reset --linked   (wipes the DB, re-runs migrations, then
---                                     runs this file automatically)
+--                                     runs this file automatically; run
+--                                     npm run db:seed afterwards for the
+--                                     photos)
 --
 -- IDEMPOTENT: safe to run as many times as you like. Running it again
 -- does NOT create duplicates — it brings the seed accounts and listings
 -- back to exactly what's written below (resetting passwords, names,
--- roles and listing details). Anything NOT in this file (e.g. accounts
--- you created by signing up in the app) is left alone.
+-- roles, landlord profiles, verifications and listing details). Anything
+-- NOT in this file (e.g. accounts you created by signing up in the app)
+-- is left alone.
 --
 -- TEST ACCOUNTS — every account uses the same password: Abangers123!
---   landlord1@abangers.test   Maria Santos      (landlord)
---   landlord2@abangers.test   Jun Dela Cruz     (landlord)
+--   landlord1@abangers.test   Maria Santos      (landlord, verified)
+--   landlord2@abangers.test   Jun Dela Cruz     (landlord, NOT verified)
 --   renter1@abangers.test     Ana Reyes         (renter)
 --   renter2@abangers.test     Paolo Garcia      (renter)
+--
+-- Both landlords have a complete profile. landlord1 is also verified, so
+-- they can create listings; landlord2 isn't, so they can't (S1-15, #206).
+-- The DB tests (npm run test:db) rely on both: try the verification flow
+-- on landlord2, then run this file again to make them unverified again.
 --
 -- These are fake, dev-only credentials. Never reuse them anywhere real.
 
@@ -102,7 +112,94 @@ begin
 end $$;
 
 
--- ── 2. Listings ─────────────────────────────────────────────────────
+-- ── 2. Landlord profiles: complete ──────────────────────────────────
+-- What a landlord fills in on the Profile page. A complete profile is a
+-- name, an 11-digit contact number and at least one social media link
+-- (landlordProfileSchema in src/lib/validations/profile.ts), and the
+-- listings insert policy (0011) checks it. The numbers are the ones in
+-- their listings below; the links are made up. landlord1 has only a
+-- Facebook link and landlord2 only an Instagram one, so the policy's
+-- "any of the three links" is tested both ways. email and
+-- profile_completed are what the profile forms save too (nothing checks
+-- profile_completed). Renters' profiles are left alone.
+update public.profiles as p
+set contact_number    = v.contact_number,
+    email             = v.email,
+    facebook_url      = v.facebook_url,
+    instagram_url     = v.instagram_url,
+    x_url             = v.x_url,
+    profile_completed = true
+from (
+  values
+    ('landlord1@abangers.test', '09175550101',
+     'https://www.facebook.com/abangers.test.landlord1', null::text, null::text),
+    ('landlord2@abangers.test', '09285550202',
+     null::text, 'https://www.instagram.com/abangers.test.landlord2', null::text)
+) as v (email, contact_number, facebook_url, instagram_url, x_url)
+join auth.users as u on u.email = v.email
+where p.id = u.id;
+
+
+-- ── 3. Landlord verification: landlord1 verified, landlord2 not ─────
+-- "Verified" means the landlord has an approved landlord_verifications
+-- row (0008). landlord1 gets exactly one: an approved submission with a
+-- fixed id. landlord2 gets none.
+--
+-- Anything else the two seed landlords submitted (e.g. while trying the
+-- submit form, #204) is deleted first, so every run ends in exactly this
+-- state. That also keeps the insert below from clashing with another
+-- pending or approved row (a landlord can only have one, 23505). The
+-- deleted rows' files stay in the verification-documents bucket: SQL
+-- can't delete Storage files, so remove them in the dashboard if needed.
+--
+-- The file paths follow the submit form's folder layout (0009):
+-- <landlord id>/<submission id>/<file>. SQL can't upload files either, so
+-- supabase/seed-storage.mjs uploads the sample images in
+-- supabase/seed-storage/ to these paths (npm run db:seed runs it after
+-- this file).
+do $$
+declare
+  -- Fixed id, so a re-run updates this row instead of adding another.
+  -- The DB tests use it too (src/__tests__/db-helpers.ts).
+  submission_id constant uuid := 'b1b2c3d4-0000-4000-8000-000000000001';
+  landlord1_id uuid;
+  folder text;
+begin
+  select id into landlord1_id
+  from auth.users
+  where email = 'landlord1@abangers.test';
+
+  folder := landlord1_id::text || '/' || submission_id::text || '/';
+
+  delete from public.landlord_verifications as lv
+  using auth.users as u
+  where lv.landlord_id = u.id
+    and u.email in ('landlord1@abangers.test', 'landlord2@abangers.test')
+    and lv.id <> submission_id;
+
+  insert into public.landlord_verifications (
+    id, landlord_id, id_type, id_front_path, id_back_path, selfie_path,
+    status, rejection_reason, consent_given_at, submitted_at, reviewed_at
+  ) values (
+    submission_id, landlord1_id, 'national_id',
+    folder || 'id-front.jpg', folder || 'id-back.jpg', folder || 'selfie.jpg',
+    'approved', null, now(), now(), now()
+  )
+  on conflict (id) do update
+    set landlord_id      = excluded.landlord_id,
+        id_type          = excluded.id_type,
+        id_front_path    = excluded.id_front_path,
+        id_back_path     = excluded.id_back_path,
+        selfie_path      = excluded.selfie_path,
+        status           = excluded.status,
+        rejection_reason = excluded.rejection_reason,
+        consent_given_at = excluded.consent_given_at,
+        submitted_at     = excluded.submitted_at,
+        reviewed_at      = excluded.reviewed_at;
+end $$;
+
+
+-- ── 4. Listings ─────────────────────────────────────────────────────
 -- Each listing has a fixed id, so re-running updates it in place
 -- instead of inserting a copy. The landlord is looked up by email
 -- (landlord ids differ between databases).

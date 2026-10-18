@@ -8,6 +8,11 @@
  *   into another landlord's folder or outside a folder.
  * - Renters and anonymous visitors can't upload at all.
  * - Only JPEG, PNG and WebP files are accepted, up to 5 MB.
+ * - A landlord can list and download their own files and make signed
+ *   links to them; other landlords, renters and anonymous visitors can't
+ *   (#206).
+ * - Nobody can replace, remove or move a file once it's uploaded, not
+ *   even its owner, and uploading over one gives "409" (#206).
  *
  * SAFE ON SHARED DATA: nothing here is ever saved. For a file upload,
  * Supabase Storage checks, in this order:
@@ -32,22 +37,29 @@
  * it (landlords have no delete policy, on purpose) — the failing test
  * names the file to delete in the Supabase dashboard.
  *
- * Reading, replacing and deleting need real files in the bucket, which
- * the app could never remove again, so those cases come with
- * landlord1's seed files in #206.
+ * READING, REPLACING AND REMOVING need real files, so those cases use
+ * landlord1's sample files: the files of the seed data's approved
+ * submission (supabase/seed.sql, #206), which supabase/seed-storage.mjs
+ * uploads as part of `npm run db:seed`. If they're missing, run it.
+ * Nothing changes there either: a replace sends the bytes the file
+ * already has, and if a remove or a move ever got through, the test puts
+ * the file back.
  *
  * Run with: npm run test:db   (needs .env.local, the seed data, and
  * migration 0009 pushed to the shared project)
  */
 
+import { readFile } from "node:fs/promises";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   LANDLORD_A_EMAIL,
+  LANDLORD_A_SUBMISSION_ID,
   LANDLORD_B_EMAIL,
   RENTER_EMAIL,
   newClient,
   signedInAs,
+  type SeedUser,
 } from "./db-helpers";
 
 const BUCKET = "verification-documents";
@@ -166,5 +178,188 @@ describe("verification-documents storage policies", () => {
       new Blob(["rls test"], { type }),
     );
     expectRefused(status, "415", path);
+  });
+});
+
+/** Whether `path` is in the bucket, as far as `client` can see. */
+async function isInBucket(client: SupabaseClient, path: string) {
+  const slash = path.lastIndexOf("/");
+  const { data, error } = await client.storage
+    .from(BUCKET)
+    .list(path.slice(0, slash));
+  if (error) throw error;
+  return data.some((file) => file.name === path.slice(slash + 1));
+}
+
+// #206: reading, replacing and removing, with landlord1's sample files.
+describe("verification-documents: reading and keeping files", () => {
+  let landlordA: SeedUser;
+  let landlordB: SeedUser;
+  let renter: SeedUser;
+  /** The seed submission's folder: "<landlord1 id>/<submission id>". */
+  let folder: string;
+  /** The ID front's path in the bucket. */
+  let frontPath: string;
+  /** What should be there: the sample image seed-storage.mjs uploaded. */
+  let frontBytes: Uint8Array<ArrayBuffer>;
+
+  /** The same image as a file to upload: the bytes that are already there. */
+  const sameFrontFile = () => new Blob([frontBytes], { type: "image/jpeg" });
+
+  beforeAll(async () => {
+    landlordA = await signedInAs(LANDLORD_A_EMAIL);
+    landlordB = await signedInAs(LANDLORD_B_EMAIL);
+    renter = await signedInAs(RENTER_EMAIL);
+
+    // The seed submission says where its files are (supabase/seed.sql).
+    const { data: submission, error } = await landlordA.client
+      .from("landlord_verifications")
+      .select("id_front_path")
+      .eq("id", LANDLORD_A_SUBMISSION_ID)
+      .maybeSingle();
+    if (error) throw error;
+    if (!submission) {
+      throw new Error(
+        "landlord1 has no seed verification. Run: npm run db:seed",
+      );
+    }
+    frontPath = submission.id_front_path;
+    folder = frontPath.slice(0, frontPath.lastIndexOf("/"));
+
+    // Copied into a plain Uint8Array, which `new Blob([...])` accepts (a
+    // Node Buffer doesn't type-check there).
+    frontBytes = new Uint8Array(
+      await readFile(
+        new URL("../../supabase/seed-storage/id-front.jpg", import.meta.url),
+      ),
+    );
+
+    if (!(await isInBucket(landlordA.client, frontPath))) {
+      throw new Error(
+        `${frontPath} isn't in the ${BUCKET} bucket. Run: npm run db:seed`,
+      );
+    }
+  });
+
+  it("a landlord can list, download and get a signed link for their own files", async () => {
+    const { data: files, error: listError } = await landlordA.client.storage
+      .from(BUCKET)
+      .list(folder);
+    expect(listError).toBeNull();
+    expect(files?.map((file) => file.name).sort()).toEqual([
+      "id-back.jpg",
+      "id-front.jpg",
+      "selfie.jpg",
+    ]);
+
+    const { data: blob, error: downloadError } = await landlordA.client.storage
+      .from(BUCKET)
+      .download(frontPath);
+    expect(downloadError).toBeNull();
+    const downloaded = Buffer.from(await blob!.arrayBuffer());
+    expect(
+      downloaded.equals(frontBytes),
+      "the download should be supabase/seed-storage/id-front.jpg",
+    ).toBe(true);
+
+    // A short-lived signed link: how the app will show a private file.
+    const { data: signed, error: signError } = await landlordA.client.storage
+      .from(BUCKET)
+      .createSignedUrl(frontPath, 60);
+    expect(signError).toBeNull();
+    const response = await fetch(signed!.signedUrl);
+    expect(response.status).toBe(200);
+  });
+
+  it.each([
+    ["another landlord", () => landlordB.client],
+    ["a renter", () => renter.client],
+    ["an anonymous visitor", () => newClient()],
+  ])(
+    "%s cannot list, download or get a signed link for them",
+    async (_who, clientOf) => {
+      const client = clientOf();
+
+      // RLS hides the files: the folder looks empty, and the file gets the
+      // same "404" as a path with nothing there, so they can't even tell
+      // that it exists.
+      const { data: files, error: listError } = await client.storage
+        .from(BUCKET)
+        .list(folder);
+      expect(listError).toBeNull();
+      expect(files).toEqual([]);
+
+      const { error: downloadError } = await client.storage
+        .from(BUCKET)
+        .download(frontPath);
+      expect(downloadError?.statusCode).toBe("404");
+
+      const { error: signError } = await client.storage
+        .from(BUCKET)
+        .createSignedUrl(frontPath, 60);
+      expect(signError?.statusCode).toBe("404");
+    },
+  );
+
+  it("a landlord cannot replace their own files (upsert or update)", async () => {
+    // Both need an update policy, which this bucket doesn't have ("403").
+    // They send the bytes the file already has, so even if a replace got
+    // through, nothing would change.
+    const { error: upsertError } = await landlordA.client.storage
+      .from(BUCKET)
+      .upload(frontPath, sameFrontFile(), { upsert: true });
+    expect(upsertError?.statusCode).toBe("403");
+
+    const { error: updateError } = await landlordA.client.storage
+      .from(BUCKET)
+      .update(frontPath, sameFrontFile());
+    expect(updateError?.statusCode).toBe("403");
+  });
+
+  it('uploading to a path that already has a file gives "409"', async () => {
+    const { error } = await landlordA.client.storage
+      .from(BUCKET)
+      .upload(frontPath, sameFrontFile());
+    expect(error?.statusCode).toBe("409");
+  });
+
+  it("a landlord cannot remove their own files", async () => {
+    try {
+      // No delete policy: Storage finds nothing it's allowed to delete, so
+      // it removes nothing and returns an empty list (not an error).
+      const { data, error } = await landlordA.client.storage
+        .from(BUCKET)
+        .remove([frontPath]);
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
+      expect(await isInBucket(landlordA.client, frontPath)).toBe(true);
+    } finally {
+      // If it was ever removed, upload it again so shared data is
+      // unchanged.
+      if (!(await isInBucket(landlordA.client, frontPath))) {
+        await landlordA.client.storage
+          .from(BUCKET)
+          .upload(frontPath, sameFrontFile());
+      }
+    }
+  });
+
+  it("a landlord cannot move their own files", async () => {
+    const movedPath = `${folder}/moved-by-rls-test.jpg`;
+    try {
+      // A move renames the file, which needs an update policy: Storage
+      // finds no file it's allowed to change ("404").
+      const { error } = await landlordA.client.storage
+        .from(BUCKET)
+        .move(frontPath, movedPath);
+      expect(error?.statusCode).toBe("404");
+      expect(await isInBucket(landlordA.client, frontPath)).toBe(true);
+      expect(await isInBucket(landlordA.client, movedPath)).toBe(false);
+    } finally {
+      // If it was ever moved, move it back.
+      if (await isInBucket(landlordA.client, movedPath)) {
+        await landlordA.client.storage.from(BUCKET).move(movedPath, frontPath);
+      }
+    }
   });
 });
