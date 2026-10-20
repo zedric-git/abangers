@@ -8,18 +8,22 @@ import { z } from "zod";
  *   it first (src/lib/auth/can-create-listings.ts)
  *
  * The listings insert policy in
- * supabase/migrations/0011_readable_listings_insert_policy.sql
+ * supabase/migrations/0012_require_ph_mobile_number_for_new_listings.sql
  * checks the same three rules in SQL. Change both together: if this schema
  * and the policy disagree, landlords get errors the app can't explain.
  */
 export const landlordProfileSchema = z
   .object({
     full_name: z.string().min(1, "Full name is required"),
+    // A PH mobile number in the form it's saved: 09, then 9 more digits
+    // (09171234567). The profile forms show it as +63 and the 10 digits
+    // after it, which start with 9 (+63 917 123 4567), and save "0" + those
+    // 10 digits (src/lib/ph-mobile-number.ts, #225).
     contact_number: z
       .string()
       .regex(
-        /^\d{11}$/,
-        "Contact number must be exactly 11 digits (e.g. 09171234567)",
+        /^09\d{9}$/,
+        "Enter your mobile number: +63 and then 10 digits starting with 9 (e.g. +63 917 123 4567)",
       ),
     facebook_url: z.string().optional(),
     instagram_url: z.string().optional(),

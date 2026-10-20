@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { User, Phone, Share2, Loader2, Save, CheckCircle2 } from "lucide-react";
+import PhMobileNumberInput from "@/components/PhMobileNumberInput";
+import {
+  toPhMobileDigits,
+  toStoredPhMobileNumber,
+} from "@/lib/ph-mobile-number";
 import { createClient } from "@/lib/supabase/client";
 import { profileSetupSchema } from "@/lib/validations/profile";
 
@@ -12,6 +17,7 @@ export default function LandlordProfileForm() {
   const [userId, setUserId] = useState<string | null>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  // The 10 digits after +63, as the field shows them ("9171234567").
   const [contactNumber, setContactNumber] = useState("");
   const [facebookUrl, setFacebookUrl] = useState("");
   const [instagramUrl, setInstagramUrl] = useState("");
@@ -44,9 +50,11 @@ export default function LandlordProfileForm() {
               profile.full_name || user.user_metadata?.full_name || "",
             );
             setContactNumber(
-              profile.contact_number ||
-                user.user_metadata?.contact_number ||
-                "",
+              toPhMobileDigits(
+                profile.contact_number ||
+                  user.user_metadata?.contact_number ||
+                  "",
+              ),
             );
             setFacebookUrl(
               profile.facebook_url || user.user_metadata?.facebook_url || "",
@@ -58,7 +66,9 @@ export default function LandlordProfileForm() {
           } else {
             setFullName(user.user_metadata?.full_name || "");
             if (user.user_metadata?.contact_number)
-              setContactNumber(user.user_metadata.contact_number);
+              setContactNumber(
+                toPhMobileDigits(user.user_metadata.contact_number),
+              );
             if (user.user_metadata?.facebook_url)
               setFacebookUrl(user.user_metadata.facebook_url);
             if (user.user_metadata?.instagram_url)
@@ -81,11 +91,14 @@ export default function LandlordProfileForm() {
     setError(null);
     setSuccess(null);
 
+    // What's saved (and validated) is "0" + the 10 digits: 09171234567.
+    const storedContactNumber = toStoredPhMobileNumber(contactNumber);
+
     // Validate with Zod
     const validation = profileSetupSchema.safeParse({
       full_name: fullName,
       email: email,
-      contact_number: contactNumber.trim(),
+      contact_number: storedContactNumber,
       facebook_url: facebookUrl.trim() || undefined,
       instagram_url: instagramUrl.trim() || undefined,
       x_url: xUrl.trim() || undefined,
@@ -108,7 +121,7 @@ export default function LandlordProfileForm() {
 
     try {
       const profileData = {
-        contact_number: contactNumber.trim(),
+        contact_number: storedContactNumber,
         email: email,
         facebook_url: facebookUrl.trim() || null,
         instagram_url: instagramUrl.trim() || null,
@@ -221,25 +234,24 @@ export default function LandlordProfileForm() {
 
         {/* Contact Details */}
         <div className="space-y-4">
-          <h2 className="flex items-center gap-2 text-base font-bold text-zinc-900 dark:text-zinc-100">
+          <h2
+            id="contact-number-heading"
+            className="flex items-center gap-2 text-base font-bold text-zinc-900 dark:text-zinc-100"
+          >
             <Phone className="h-5 w-5 text-purple-600" />
             Contact Number <span className="text-red-500">*</span>
           </h2>
 
           <div className="max-w-md">
-            <input
-              type="tel"
-              required
-              maxLength={11}
-              placeholder="09171234567"
+            <PhMobileNumberInput
+              id="contact-number"
+              aria-labelledby="contact-number-heading"
+              aria-describedby="contact-number-hint"
               value={contactNumber}
-              onChange={(e) =>
-                setContactNumber(e.target.value.replace(/\D/g, ""))
-              }
-              className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-100/70 px-4 text-sm font-medium text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-zinc-100 focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:focus:border-purple-500"
+              onChange={setContactNumber}
             />
-            <p className="mt-1 text-xs text-zinc-400">
-              Must be exactly 11 digits (Philippine mobile format).
+            <p id="contact-number-hint" className="mt-1 text-xs text-zinc-400">
+              10 digits after +63, starting with 9 (e.g. 917 123 4567).
             </p>
           </div>
         </div>

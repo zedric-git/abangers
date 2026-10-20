@@ -114,9 +114,10 @@ end $$;
 
 -- ── 2. Landlord profiles: complete ──────────────────────────────────
 -- What a landlord fills in on the Profile page. A complete profile is a
--- name, an 11-digit contact number and at least one social media link
--- (landlordProfileSchema in src/lib/validations/profile.ts), and the
--- listings insert policy (0011) checks it. The numbers are the ones in
+-- name, a PH mobile number (saved as 09 + 9 digits; the form shows
+-- +63 917...) and at least one social media link (landlordProfileSchema
+-- in src/lib/validations/profile.ts), and the listings insert policy
+-- (0012) checks it. The numbers are the ones in
 -- their listings below; the links are made up. landlord1 has only a
 -- Facebook link and landlord2 only an Instagram one, so the policy's
 -- "any of the three links" is tested both ways. email and

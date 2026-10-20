@@ -110,13 +110,17 @@ https://github.com/users/zedric-git/projects/3
   (the profile form upserts it on every save).
   Only a verified landlord with a complete profile can create a listing
   (editing existing ones doesn't need it): the listings insert policy
-  (`0010`, now defined in `0011`) enforces it, and `createListingAction`
+  (`0010`, now defined in `0012`) enforces it, and `createListingAction`
   checks first with `src/lib/auth/can-create-listings.ts` to say which
   step is missing.
   "Complete" is `landlordProfileSchema` in `src/lib/validations/profile.ts`
-  (a name, an 11-digit contact number, one social link), not the
+  (a name, a PH mobile number, one social link), not the
   `profile_completed` flag, which landlords can set themselves — change
   the schema and the policy together.
+  The profile forms show the number as a fixed +63 and the 10 digits
+  after it (`src/components/PhMobileNumberInput.tsx`), but save it as
+  `09` + 9 digits (`09171234567`), which is what the schema and the
+  policy check; `src/lib/ph-mobile-number.ts` converts between the two.
 - **Storage errors arrive as HTTP 400 — read `error.statusCode`, not
   `error.status`.** Supabase Storage answers every refused request with
   status 400 and puts the real code in the response body, which

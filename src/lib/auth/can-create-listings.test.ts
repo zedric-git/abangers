@@ -33,6 +33,12 @@ describe("isProfileComplete", () => {
       false,
     );
   });
+
+  it("needs a PH mobile number, not just any 11 digits (#225)", () => {
+    expect(
+      isProfileComplete({ ...completeLandlord, contact_number: "08171234567" }),
+    ).toBe(false);
+  });
 });
 
 describe("decideCanCreateListings", () => {
