@@ -105,6 +105,12 @@ https://github.com/users/zedric-git/projects/3
   (`<landlord id>/<submission id>/<file>`): landlords can upload to and
   read only their own folder, and can't replace or delete a file, so a
   resubmission always uploads to a new folder.
+  Submit with `submitVerification` (`src/lib/auth/submit-verification.ts`,
+  #204): it checks the form (`verificationSubmissionSchema`) and that the
+  landlord isn't already Pending or Verified, uploads the photos straight
+  from the browser, and only then saves the row. Never save the row
+  before the photos (a pending row can't be fixed or withdrawn), and
+  don't send the photos through a server action: Next caps those at 1 MB.
   Once a landlord is verified, a trigger rejects any change to
   `profiles.full_name` with `42501`; saving the same name back is fine
   (the profile form upserts it on every save).

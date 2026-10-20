@@ -14,6 +14,9 @@
  * - With landlord1's approved submission (#206): they can read it, can't
  *   change or withdraw it, and can't submit another one while it's
  *   approved (23505). Other landlords and renters can't read it.
+ * - The app's submit logic (#204, src/lib/auth/submit-verification.ts):
+ *   its check before uploading agrees with the seed data, and Storage
+ *   refusing an upload reaches the landlord as "not allowed".
  *
  * SEED DATA (supabase/seed.sql, #206): landlord1 (A) has one approved
  * submission (LANDLORD_A_SUBMISSION_ID) and landlord2 (B) has none. If a
@@ -37,7 +40,12 @@
 
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  VERIFICATION_BUCKET,
+  checkCanSubmitVerification,
+  submitVerification,
+} from "@/lib/auth/submit-verification";
 import {
   LANDLORD_A_EMAIL,
   LANDLORD_A_SUBMISSION_ID,
@@ -45,6 +53,7 @@ import {
   RENTER_EMAIL,
   newClient,
   signedInAs,
+  type SeedUser,
 } from "./db-helpers";
 
 /**
@@ -251,5 +260,89 @@ describe("landlord_verifications RLS", () => {
 
     const writeError = await submit(anon, submissionFor(landlordB.userId));
     expect(writeError?.code).toBe("42501");
+  });
+});
+
+// #204: the submit logic the Verify account page uses. Nothing is saved
+// here either: the checks only read, and the one submit is refused at its
+// first upload.
+describe("submitting from the app (submit-verification.ts, #204)", () => {
+  let landlordA: SeedUser;
+  let landlordB: SeedUser;
+
+  beforeAll(async () => {
+    landlordA = await signedInAs(LANDLORD_A_EMAIL);
+    landlordB = await signedInAs(LANDLORD_B_EMAIL);
+  });
+
+  it("lets landlord2 submit: a landlord with no submissions", async () => {
+    const result = await checkCanSubmitVerification(
+      landlordB.client,
+      landlordB.userId,
+    );
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("stops landlord1 before uploading anything: they're already verified", async () => {
+    const result = await checkCanSubmitVerification(
+      landlordA.client,
+      landlordA.userId,
+    );
+    expect(result).toMatchObject({ ok: false, reason: "already_verified" });
+  });
+
+  it("stops a renter before uploading anything", async () => {
+    const renter = await signedInAs(RENTER_EMAIL);
+    const result = await checkCanSubmitVerification(
+      renter.client,
+      renter.userId,
+    );
+    expect(result).toMatchObject({ ok: false, reason: "not_landlord" });
+  });
+
+  it('reports Storage refusing an upload ("403") as not allowed', async () => {
+    // The app always passes the signed-in landlord's own id. Here landlord2
+    // passes landlord1's id instead: RLS hides landlord1's submissions from
+    // landlord2, so the check lets it through, and then Storage refuses
+    // the first upload, because it's not landlord2's folder. This checks
+    // that the app reads Storage's real error code (error.statusCode, not
+    // error.status, #213). The upload is refused, so the row is never
+    // sent and nothing is saved.
+    const foldersOfLandlordA = async () => {
+      const { data, error } = await landlordA.client.storage
+        .from(VERIFICATION_BUCKET)
+        .list(landlordA.userId);
+      if (error) throw error;
+      return data.map((entry) => entry.name).sort();
+    };
+    const before = await foldersOfLandlordA();
+    const photo = (name: string) =>
+      new File(["rls test"], name, { type: "image/jpeg" });
+
+    // submitVerification logs the refusal; keep the test output clean.
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    try {
+      const result = await submitVerification(
+        landlordB.client,
+        landlordA.userId,
+        {
+          // A passport: only 2 photos, in case a broken policy let them in.
+          id_type: "passport",
+          id_front: photo("id-front.jpg"),
+          selfie: photo("selfie.jpg"),
+          consent: true,
+        },
+      );
+      expect(result).toMatchObject({ ok: false, reason: "not_allowed" });
+    } finally {
+      consoleError.mockRestore();
+    }
+
+    expect(
+      await foldersOfLandlordA(),
+      `If there's a new folder, delete it in the Supabase dashboard (Storage → ${VERIFICATION_BUCKET} → ${landlordA.userId}).`,
+    ).toEqual(before);
   });
 });
