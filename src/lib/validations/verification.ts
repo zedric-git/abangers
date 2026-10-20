@@ -117,25 +117,42 @@ export const verificationSubmissionSchema = z
       .boolean({ message: CONSENT_MESSAGE })
       .refine((value) => value, CONSENT_MESSAGE),
   })
-  .superRefine((data, ctx) => {
-    if (needsBackPhoto(data.id_type) && !data.id_back) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["id_back"],
-        message: "Add a photo of the back of your ID",
-      });
-    }
-    // Refused rather than ignored: a back photo with "Passport" chosen
-    // usually means the wrong ID type was picked.
-    if (!needsBackPhoto(data.id_type) && data.id_back) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["id_back"],
-        message:
-          "A passport only needs its photo page. Remove the back photo, or choose another type of ID.",
-      });
-    }
-  });
+  .superRefine(
+    (data, ctx) => {
+      if (needsBackPhoto(data.id_type) && !data.id_back) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["id_back"],
+          message: "Add a photo of the back of your ID",
+        });
+      }
+      // Refused rather than ignored: a back photo with "Passport" chosen
+      // usually means the wrong ID type was picked.
+      if (!needsBackPhoto(data.id_type) && data.id_back) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["id_back"],
+          message:
+            "A passport only needs its photo page. Remove the back photo, or choose another type of ID.",
+        });
+      }
+    },
+    {
+      // When this rule runs. By default Zod skips it while any other
+      // field has a problem, so on an empty Verify account form (#203)
+      // "Add a photo of the back of your ID" only showed on the second
+      // try. Running it with the other rules shows every missing photo at
+      // once. It's skipped only when the back photo has a problem of its
+      // own (e.g. it's over 5 MB), or the values aren't an object at all.
+      // Other fields may be missing when it runs: with no ID type chosen,
+      // needsBackPhoto() says a back photo is needed, which matches the
+      // form (it only hides the back photo for a passport).
+      when: (payload) =>
+        typeof payload.value === "object" &&
+        payload.value !== null &&
+        !payload.issues.some((issue) => issue.path?.[0] === "id_back"),
+    },
+  );
 
 export type VerificationSubmissionInput = z.infer<
   typeof verificationSubmissionSchema

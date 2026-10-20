@@ -108,6 +108,56 @@ describe("verificationSubmissionSchema", () => {
     );
   });
 
+  // The Verify account form (#203) shows every problem at once, so the
+  // back-photo rule has to run even while other fields are missing.
+  it("lists every missing field of an empty form, the back photo included", () => {
+    const result = verificationSubmissionSchema.safeParse({ consent: false });
+    expect(result.error?.issues.map((issue) => issue.path[0]).sort()).toEqual([
+      "consent",
+      "id_back",
+      "id_front",
+      "id_type",
+      "selfie",
+    ]);
+    expect(messagesOf({ consent: false })).toContain(
+      "Add a photo of the back of your ID",
+    );
+  });
+
+  it("doesn't ask an empty passport form for a back photo", () => {
+    const result = verificationSubmissionSchema.safeParse({
+      id_type: "passport",
+      consent: false,
+    });
+    expect(result.error?.issues.map((issue) => issue.path[0]).sort()).toEqual([
+      "consent",
+      "id_front",
+      "selfie",
+    ]);
+  });
+
+  it("refuses a passport's back photo even while other fields are missing", () => {
+    expect(
+      messagesOf({ id_type: "passport", id_back: photo(), consent: false }),
+    ).toContain(
+      "A passport only needs its photo page. Remove the back photo, or choose another type of ID.",
+    );
+  });
+
+  it("says only once what's wrong with a back photo", () => {
+    const result = verificationSubmissionSchema.safeParse({
+      id_type: "drivers_license",
+      id_back: "not a photo",
+      consent: false,
+    });
+    const backIssues = result.error?.issues.filter(
+      (issue) => issue.path[0] === "id_back",
+    );
+    expect(backIssues?.map((issue) => issue.message)).toEqual([
+      "Add a photo of the back of your ID",
+    ]);
+  });
+
   it("refuses an ID type the database doesn't know", () => {
     expect(messagesOf({ ...valid, id_type: "library_card" })).toEqual([
       "Choose the type of ID you're uploading",
