@@ -46,7 +46,7 @@ export async function createListingAction(
 
     // 2. Only landlords with a complete profile and an approved
     //    verification can post (S1-15.3). The database enforces this too
-    //    (listings insert policy, migration 0011), but it only answers
+    //    (listings insert policy, migration 0012), but it only answers
     //    "permission denied"; checking first tells the landlord which step
     //    is missing.
     const permission = await checkCanCreateListings(supabase, user.id);

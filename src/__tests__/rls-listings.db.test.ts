@@ -3,7 +3,8 @@
  * shared Supabase project, signed in as the seed landlords.
  *
  * Checks the policies in supabase/migrations/0001_init.sql, 0007 and 0010
- * (0011 rewrote 0010's insert policy with readable escapes, same rule):
+ * (0011 rewrote 0010's insert policy with readable escapes, same rule;
+ * 0012 made its contact number a PH mobile number, 09 + 9 digits):
  * - Landlord A cannot update, delete, or insert-as Landlord B's listings.
  * - Anonymous visitors can read listings but not write them.
  * - A renter cannot create a listing, even under their own id (#173).
@@ -13,7 +14,8 @@
  *   (#201, 0010), and createListingAction's own check agrees:
  *   - A (verified, complete profile) gets past the insert policy;
  *   - A without a contact number, or without any social link (even with
- *     profile_completed = true), is turned away (#206);
+ *     profile_completed = true), is turned away (#206), and so is A with
+ *     11 digits that aren't a PH mobile number (#225, 0012);
  *   - B (complete profile, not verified) is turned away, but can still
  *     edit their existing listings.
  *
@@ -24,9 +26,9 @@
  * SAFE ON SHARED DATA: every write here is either blocked by RLS (so
  * nothing changes) or writes a listing's current title back to itself.
  * The #201 inserts also use monthly_rent 0, which a CHECK always refuses,
- * so they can never be saved (see neverSavedListing below). The #206
- * profile tests blank A's contact number or social links for a moment
- * and put the old values back in a `finally`.
+ * so they can never be saved (see neverSavedListing below). The #206 and
+ * #225 profile tests change A's contact number or social links for a
+ * moment and put the old values back in a `finally`.
  * If RLS is ever broken and a write gets through, or a run is stopped in
  * the middle of a profile test, run `npm run db:seed` to restore the seed
  * accounts and listings.
@@ -286,6 +288,39 @@ describe("listings insert rule: complete profile + approved verification", () =>
         .update({ contact_number: null })
         .eq("id", landlordA.userId);
       expect(blankError).toBeNull();
+
+      const { error } = await landlordA.client
+        .from("listings")
+        .insert(neverSavedListing(landlordA.userId));
+      expect(error?.code).toBe("42501");
+    } finally {
+      // Put the real number back so shared data is unchanged.
+      await landlordA.client
+        .from("profiles")
+        .update({ contact_number: before!.contact_number })
+        .eq("id", landlordA.userId);
+    }
+  });
+
+  it("a verified landlord whose number isn't a PH mobile number cannot create a listing", async () => {
+    const { data: before, error: readError } = await landlordA.client
+      .from("profiles")
+      .select("contact_number")
+      .eq("id", landlordA.userId)
+      .single();
+    expect(readError).toBeNull();
+
+    try {
+      // 11 digits, which 0010 / 0011 accepted, but no 9 after the 0: since
+      // 0012 the number has to be 09 + 9 digits (#225).
+      const { error: changeError } = await landlordA.client
+        .from("profiles")
+        .update({ contact_number: "08175550101" })
+        .eq("id", landlordA.userId);
+      expect(changeError).toBeNull();
+
+      // The app's check turns them away too.
+      expect(isProfileComplete(await listingProfileOf(landlordA))).toBe(false);
 
       const { error } = await landlordA.client
         .from("listings")

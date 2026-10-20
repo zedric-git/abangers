@@ -7,7 +7,7 @@ import { landlordProfileSchema } from "@/lib/validations/profile";
  * #201), and if not, what to tell them. Used by createListingAction.
  *
  * The database enforces this rule: the listings insert policy in
- * supabase/migrations/0011_readable_listings_insert_policy.sql.
+ * supabase/migrations/0012_require_ph_mobile_number_for_new_listings.sql.
  * The app checks the same rule first, because RLS only answers "42501"
  * whatever is missing, while this tells the landlord which step to do.
  * A user can create listings when:
@@ -45,7 +45,7 @@ export type CanCreateListingsResult =
 const MESSAGES: Record<CannotCreateListingsReason, string> = {
   not_landlord: "Only landlord accounts can create listings.",
   profile_incomplete:
-    "Complete your profile before posting a listing: add your 11-digit contact number and at least one social media link on your Profile page.",
+    "Complete your profile before posting a listing: add your mobile number and at least one social media link on your Profile page.",
   verification_pending:
     "Your account verification is still being reviewed. You can post listings once it's approved.",
   verification_rejected:

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { landlordProfileSchema, profileSetupSchema } from "./profile";
 
 // landlordProfileSchema is checked again in SQL by the listings insert
-// policy (supabase/migrations/0011_readable_listings_insert_policy.sql).
+// policy (supabase/migrations/0012_require_ph_mobile_number_for_new_listings.sql).
 // These are the cases the two have to agree on: if a rule changes here,
 // the policy needs a new migration too.
 
@@ -25,16 +25,32 @@ describe("landlordProfileSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  // A PH mobile number, saved as 09 + 9 digits (#225).
+  it.each(["09171234567", "09051234567", "09998887777"])(
+    "accepts the mobile number %j",
+    (number) => {
+      const result = landlordProfileSchema.safeParse({
+        ...complete,
+        contact_number: number,
+      });
+      expect(result.success).toBe(true);
+    },
+  );
+
   it.each([
     "",
     "0917123456", // 10 digits
     "091712345678", // 12 digits
+    "08171234567", // 11 digits, but no 9 after the 0: not a mobile number
+    "01234567890",
+    "9171234567", // the 10 digits the form shows, without the 0
     "0917-123-4567",
     "0917123456a",
     " 09171234567",
     "+639171234567",
+    "639171234567",
     "０９１７１２３４５６７", // full-width digits
-  ])("rejects the contact number %j (must be exactly 11 digits)", (number) => {
+  ])("rejects the contact number %j (must be 09 + 9 digits)", (number) => {
     const result = landlordProfileSchema.safeParse({
       ...complete,
       contact_number: number,

@@ -3,6 +3,11 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Home, Phone, Share2, Loader2, CheckCircle2 } from "lucide-react";
+import PhMobileNumberInput from "@/components/PhMobileNumberInput";
+import {
+  toPhMobileDigits,
+  toStoredPhMobileNumber,
+} from "@/lib/ph-mobile-number";
 import { createClient } from "@/lib/supabase/client";
 import { profileSetupSchema } from "@/lib/validations/profile";
 
@@ -14,6 +19,7 @@ export default function ProfileSetupModal() {
   const [userId, setUserId] = useState<string | null>(null);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  // The 10 digits after +63, as the field shows them ("9171234567").
   const [contactNumber, setContactNumber] = useState("");
   const [facebookUrl, setFacebookUrl] = useState("");
   const [instagramUrl, setInstagramUrl] = useState("");
@@ -45,7 +51,7 @@ export default function ProfileSetupModal() {
               profile.full_name || user.user_metadata?.full_name || "",
             );
             if (profile.contact_number)
-              setContactNumber(profile.contact_number);
+              setContactNumber(toPhMobileDigits(profile.contact_number));
             if (profile.facebook_url) setFacebookUrl(profile.facebook_url);
             if (profile.instagram_url) setInstagramUrl(profile.instagram_url);
             if (profile.x_url) setXUrl(profile.x_url);
@@ -67,11 +73,14 @@ export default function ProfileSetupModal() {
     e.preventDefault();
     setError(null);
 
+    // What's saved (and validated) is "0" + the 10 digits: 09171234567.
+    const storedContactNumber = toStoredPhMobileNumber(contactNumber);
+
     // Validate with Zod
     const validation = profileSetupSchema.safeParse({
       full_name: fullName,
       email: email,
-      contact_number: contactNumber.trim(),
+      contact_number: storedContactNumber,
       facebook_url: facebookUrl.trim() || undefined,
       instagram_url: instagramUrl.trim() || undefined,
       x_url: xUrl.trim() || undefined,
@@ -94,7 +103,7 @@ export default function ProfileSetupModal() {
 
     try {
       const profileData = {
-        contact_number: contactNumber.trim(),
+        contact_number: storedContactNumber,
         email: email,
         facebook_url: facebookUrl.trim() || null,
         instagram_url: instagramUrl.trim() || null,
@@ -119,7 +128,7 @@ export default function ProfileSetupModal() {
           await supabase
             .from("profiles")
             .update({
-              contact_number: contactNumber.trim(),
+              contact_number: storedContactNumber,
               email: email,
               facebook_url: facebookUrl.trim() || null,
               instagram_url: instagramUrl.trim() || null,
@@ -131,7 +140,7 @@ export default function ProfileSetupModal() {
             id: userId,
             role: "landlord",
             full_name: fullName,
-            contact_number: contactNumber.trim(),
+            contact_number: storedContactNumber,
             email: email,
             facebook_url: facebookUrl.trim() || null,
             instagram_url: instagramUrl.trim() || null,
@@ -225,23 +234,22 @@ export default function ProfileSetupModal() {
 
             {/* Required Phone Number */}
             <div className="space-y-1.5">
-              <label className="flex items-center gap-1.5 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+              <label
+                htmlFor="contact-number"
+                className="flex items-center gap-1.5 text-sm font-semibold text-zinc-800 dark:text-zinc-200"
+              >
                 <Phone className="h-4 w-4 text-purple-600" />
                 Contact Number <span className="text-red-500">*</span>
               </label>
-              <input
-                type="tel"
-                required
-                maxLength={11}
-                placeholder="09171234567"
+              <PhMobileNumberInput
+                id="contact-number"
+                aria-describedby="contact-number-hint"
                 value={contactNumber}
-                onChange={(e) =>
-                  setContactNumber(e.target.value.replace(/\D/g, ""))
-                }
-                className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-100/70 px-4 text-sm font-medium text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-zinc-100 focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-800"
+                onChange={setContactNumber}
+                className="h-12"
               />
-              <p className="text-xs text-zinc-400">
-                Must be exactly 11 digits (Philippine mobile format).
+              <p id="contact-number-hint" className="text-xs text-zinc-400">
+                10 digits after +63, starting with 9 (e.g. 917 123 4567).
               </p>
             </div>
 
