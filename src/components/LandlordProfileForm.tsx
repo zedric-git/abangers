@@ -1,7 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Phone, Share2, Loader2, Save, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
+import {
+  User,
+  Phone,
+  Share2,
+  Loader2,
+  Save,
+  CheckCircle2,
+  ShieldCheck,
+} from "lucide-react";
 import PhMobileNumberInput from "@/components/PhMobileNumberInput";
 import {
   toPhMobileDigits,
@@ -9,6 +18,7 @@ import {
 } from "@/lib/ph-mobile-number";
 import { createClient } from "@/lib/supabase/client";
 import { profileSetupSchema } from "@/lib/validations/profile";
+import { VERIFY_ACCOUNT_PATH } from "@/lib/verify-account";
 
 export default function LandlordProfileForm() {
   const supabase = createClient();
@@ -168,14 +178,26 @@ export default function LandlordProfileForm() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-extrabold text-zinc-950 dark:text-zinc-50">
-          Landlord Profile
-        </h1>
-        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-          Manage your personal details, contact number, and social media
-          verification accounts.
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-extrabold text-zinc-950 dark:text-zinc-50">
+            Landlord Profile
+          </h1>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Manage your personal details, contact number, and social media
+            verification accounts.
+          </p>
+        </div>
+
+        {/* The Verify account page (#203). It shows Pending or Verified
+            itself; #205 adds the status here. */}
+        <Link
+          href={VERIFY_ACCOUNT_PATH}
+          className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-purple-600 px-5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-purple-700"
+        >
+          <ShieldCheck className="h-4 w-4" />
+          Verify account
+        </Link>
       </div>
 
       {/* Alerts */}
