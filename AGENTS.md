@@ -111,6 +111,11 @@ https://github.com/users/zedric-git/projects/3
   from the browser, and only then saves the row. Never save the row
   before the photos (a pending row can't be fixed or withdrawn), and
   don't send the photos through a server action: Next caps those at 1 MB.
+  The selfie comes from `SelfieCamera` (`src/components/SelfieCamera.tsx`,
+  #202): the live front camera only, with no file picker, so an old
+  photo can't be uploaded. `compressImage` (`src/lib/compress-image.ts`)
+  makes it a JPEG of at most 1 MB before it's handed over as a `File`;
+  compress the ID photos with it too.
   Once a landlord is verified, a trigger rejects any change to
   `profiles.full_name` with `42501`; saving the same name back is fine
   (the profile form upserts it on every save).
@@ -134,6 +139,17 @@ https://github.com/users/zedric-git/projects/3
   allowed (RLS), `"409"` the file already exists, `"413"` too big,
   `"415"` wrong file type (#213). `0009`'s header comment says
   `error.status`; it's already applied, so it can't be fixed there.
+- **The camera only works on https or localhost.** Browsers give the
+  camera (`SelfieCamera`) and `crypto.randomUUID()` (`submitVerification`)
+  only to secure pages, and `http://localhost` counts as one. A phone
+  opening `http://<your PC's IP>:3000` doesn't: the dev server blocks
+  its scripts unless `allowedDevOrigins` lists that address, and even
+  then the selfie step says "This browser can't open the camera". To
+  test on an Android phone, turn on USB debugging (Developer options),
+  plug it into your PC, open `chrome://inspect/#devices` in Chrome on
+  the PC, and add a port forwarding rule from `3000` to
+  `localhost:3000`. Then open `http://localhost:3000` in Chrome on the
+  phone. An iPhone needs real https.
 - **`/dashboard/*` is guarded in the proxy, and logout must be a hard
   navigation.** `updateSession` in `src/lib/supabase/middleware.ts`
   sends signed-out users to the home page (`/`) and keeps each role on its own
