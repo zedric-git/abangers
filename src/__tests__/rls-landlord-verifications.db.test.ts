@@ -17,6 +17,9 @@
  * - The app's submit logic (#204, src/lib/auth/submit-verification.ts):
  *   its check before uploading agrees with the seed data, and Storage
  *   refusing an upload reaches the landlord as "not allowed".
+ * - Where a landlord stands, as the dashboard shows it (#205,
+ *   src/lib/auth/landlord-status.ts): it agrees with the seed data. These
+ *   only read.
  *
  * SEED DATA (supabase/seed.sql, #206): landlord1 (A) has one approved
  * submission (LANDLORD_A_SUBMISSION_ID) and landlord2 (B) has none. If a
@@ -41,6 +44,10 @@
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  loadLandlordStatus,
+  type LandlordStatus,
+} from "@/lib/auth/landlord-status";
 import {
   VERIFICATION_BUCKET,
   checkCanSubmitVerification,
@@ -344,5 +351,42 @@ describe("submitting from the app (submit-verification.ts, #204)", () => {
       await foldersOfLandlordA(),
       `If there's a new folder, delete it in the Supabase dashboard (Storage → ${VERIFICATION_BUCKET} → ${landlordA.userId}).`,
     ).toEqual(before);
+  });
+});
+
+// #205: where a landlord stands, as the dashboard shows it (the banner,
+// the Profile badge, the lock on Add New Listing and the read-only name).
+// Only reads: nothing is saved.
+describe("where a landlord stands (landlord-status.ts, #205)", () => {
+  let landlordA: SeedUser;
+  let landlordB: SeedUser;
+
+  beforeAll(async () => {
+    landlordA = await signedInAs(LANDLORD_A_EMAIL);
+    landlordB = await signedInAs(LANDLORD_B_EMAIL);
+  });
+
+  it("landlord1 is verified, with a complete profile, so they can post", async () => {
+    expect(
+      await loadLandlordStatus(landlordA.client, landlordA.userId),
+    ).toEqual({
+      verification: "verified",
+      rejectionReason: null,
+      profileComplete: true,
+      canCreateListings: true,
+      fullName: "Maria Santos",
+    } satisfies LandlordStatus);
+  });
+
+  it("landlord2 has a complete profile but isn't verified, so they can't post yet", async () => {
+    expect(
+      await loadLandlordStatus(landlordB.client, landlordB.userId),
+    ).toEqual({
+      verification: "not_verified",
+      rejectionReason: null,
+      profileComplete: true,
+      canCreateListings: false,
+      fullName: "Jun Dela Cruz",
+    } satisfies LandlordStatus);
   });
 });

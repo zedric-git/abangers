@@ -95,6 +95,17 @@ function cannotCreate(
 }
 
 /**
+ * The message for a reason, for a page that shows one without running
+ * the check itself, e.g. the new-listing page when it couldn't read the
+ * landlord's status (#205).
+ */
+export function cannotCreateListingsMessage(
+  reason: CannotCreateListingsReason,
+): string {
+  return MESSAGES[reason];
+}
+
+/**
  * True when a saved profile passes landlordProfileSchema. The database
  * returns null for empty columns; the schema expects a string, or
  * undefined for the optional social links.

@@ -3,9 +3,14 @@ import { redirect } from "next/navigation";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import VerificationStatusCard from "@/components/VerificationStatusCard";
 import VerifyAccountForm from "@/components/VerifyAccountForm";
+import { loadLandlordStatus } from "@/lib/auth/landlord-status";
 import { checkCanSubmitVerification } from "@/lib/auth/submit-verification";
 import { createClient } from "@/lib/supabase/server";
-import { PROFILE_PATH, verifyPageView } from "@/lib/verify-account";
+import {
+  PROFILE_PATH,
+  VERIFY_ACCOUNT_INTRO,
+  verifyPageView,
+} from "@/lib/verify-account";
 
 /**
  * The Verify account page (S1-15.5, #203), under Profile: a landlord sends
@@ -16,6 +21,7 @@ import { PROFILE_PATH, verifyPageView } from "@/lib/verify-account";
  * only when the landlord may send a verification: they never have, or
  * every one was rejected. Otherwise it says why not: it's being reviewed,
  * they're already verified, ... (verifyPageView, src/lib/verify-account.ts).
+ * After a rejection, the admin's reason shows above the form (#205).
  */
 export default async function VerifyAccountPage() {
   const supabase = await createClient();
@@ -30,18 +36,15 @@ export default async function VerifyAccountPage() {
     redirect("/");
   }
 
-  const [check, profile] = await Promise.all([
+  const [check, status] = await Promise.all([
     checkCanSubmitVerification(supabase, user.id),
-    supabase
-      .from("profiles")
-      .select("full_name")
-      .eq("id", user.id)
-      .maybeSingle(),
+    // The profile's name and the last rejection's reason (#205). Only for
+    // the form's hints, which leave them out if they can't be read.
+    loadLandlordStatus(supabase, user.id),
   ]);
   const view = verifyPageView(check);
-  // Only for the hint under the ID type, which leaves the name out if
-  // it can't be read.
-  const profileName = profile.data?.full_name?.trim() || null;
+  const profileName = status?.fullName ?? null;
+  const rejectionReason = status?.rejectionReason ?? null;
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -63,15 +66,18 @@ export default async function VerifyAccountPage() {
               Verify your account
             </h1>
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              Send photos of a valid government ID and a selfie. An admin checks
-              them, and once they&apos;re approved you can post listings.
+              {VERIFY_ACCOUNT_INTRO}
             </p>
           </div>
         </div>
       </div>
 
       {view.show === "form" ? (
-        <VerifyAccountForm landlordId={user.id} profileName={profileName} />
+        <VerifyAccountForm
+          landlordId={user.id}
+          profileName={profileName}
+          rejectionReason={rejectionReason}
+        />
       ) : (
         <VerificationStatusCard status={view.status} />
       )}

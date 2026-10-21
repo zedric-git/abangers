@@ -9,9 +9,17 @@ import {
   Loader2,
   Save,
   CheckCircle2,
+  Lock,
   ShieldCheck,
 } from "lucide-react";
 import PhMobileNumberInput from "@/components/PhMobileNumberInput";
+import VerificationBadge from "@/components/VerificationBadge";
+import VerificationBanner from "@/components/VerificationBanner";
+import type { LandlordStatus } from "@/lib/auth/landlord-status";
+import {
+  nameFieldView,
+  profileSaveErrorMessage,
+} from "@/lib/landlord-status-view";
 import {
   toPhMobileDigits,
   toStoredPhMobileNumber,
@@ -20,8 +28,21 @@ import { createClient } from "@/lib/supabase/client";
 import { profileSetupSchema } from "@/lib/validations/profile";
 import { VERIFY_ACCOUNT_PATH } from "@/lib/verify-account";
 
-export default function LandlordProfileForm() {
+interface LandlordProfileFormProps {
+  /**
+   * Where the landlord stands, read by the page on the server (#205): the
+   * badge, the banner, and whether the name is locked. null if it
+   * couldn't be read.
+   */
+  status: LandlordStatus | null;
+}
+
+export default function LandlordProfileForm({
+  status,
+}: LandlordProfileFormProps) {
   const supabase = createClient();
+  // Read-only once verified: 0008's trigger refuses a new name then.
+  const nameField = nameFieldView(status);
 
   const [loadingUser, setLoadingUser] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -153,7 +174,12 @@ export default function LandlordProfileForm() {
       });
 
       if (updateError) {
-        console.warn("Profiles update warning:", updateError);
+        // Don't say it was saved when it wasn't. E.g. 0008's name lock,
+        // when this page was opened before the landlord was verified and
+        // the name was changed since (#205).
+        console.error("Profile save error:", updateError);
+        setError(profileSaveErrorMessage(updateError));
+        return;
       }
 
       setSuccess("Profile updated successfully!");
@@ -189,16 +215,25 @@ export default function LandlordProfileForm() {
           </p>
         </div>
 
-        {/* The Verify account page (#203). It shows Pending or Verified
-            itself; #205 adds the status here. */}
-        <Link
-          href={VERIFY_ACCOUNT_PATH}
-          className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-purple-600 px-5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-purple-700"
-        >
-          <ShieldCheck className="h-4 w-4" />
-          Verify account
-        </Link>
+        {/* The verification badge (#205). The banner below has the
+            button to the Verify account page (#203). If the status
+            couldn't be read, link there instead, so there's always a way
+            in: that page checks for itself. */}
+        {status ? (
+          <VerificationBadge verification={status.verification} />
+        ) : (
+          <Link
+            href={VERIFY_ACCOUNT_PATH}
+            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-purple-600 px-5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-purple-700"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Verify account
+          </Link>
+        )}
       </div>
+
+      {/* Not verified / Pending / Rejected with the reason; nothing once verified */}
+      <VerificationBanner status={status} />
 
       {/* Alerts */}
       {error && (
@@ -227,15 +262,35 @@ export default function LandlordProfileForm() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-zinc-600 dark:text-zinc-400">
+              <label
+                htmlFor="full-name"
+                className="mb-1.5 block text-xs font-semibold text-zinc-600 dark:text-zinc-400"
+              >
                 Full Name
               </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-100/70 px-4 text-sm font-medium text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-zinc-100 focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:focus:border-purple-500"
-              />
+              <div className="relative">
+                {/* Read-only, not disabled, once verified: it can still be
+                    focused, and its note below is read out with it. */}
+                <input
+                  id="full-name"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  readOnly={nameField.locked}
+                  aria-describedby="full-name-hint"
+                  className={
+                    nameField.locked
+                      ? "h-11 w-full cursor-not-allowed rounded-xl border border-zinc-200 bg-zinc-100 pr-10 pl-4 text-sm font-medium text-zinc-500 focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400"
+                      : "h-11 w-full rounded-xl border border-zinc-200 bg-zinc-100/70 px-4 text-sm font-medium text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-zinc-100 focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:focus:border-purple-500"
+                  }
+                />
+                {nameField.locked && (
+                  <Lock className="pointer-events-none absolute top-1/2 right-3.5 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                )}
+              </div>
+              <p id="full-name-hint" className="mt-1 text-xs text-zinc-400">
+                {nameField.hint}
+              </p>
             </div>
 
             <div>
