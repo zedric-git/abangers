@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Building2, Search, Plus, ChevronDown } from "lucide-react";
+import { Building2, Search, ChevronDown } from "lucide-react";
 import { Listing } from "@/types/listing";
+import AddListingButton from "@/components/AddListingButton";
 import LandlordListingCard from "@/components/LandlordListingCard";
 
 interface LandlordListingsViewProps {
   initialListings: Listing[];
+  /** The landlord can't post yet, so "Create First Listing" shows a lock (#205). */
+  addListingLocked: boolean;
 }
 
 export default function LandlordListingsView({
   initialListings,
+  addListingLocked,
 }: LandlordListingsViewProps) {
   const [filter, setFilter] = useState("all");
 
@@ -96,13 +99,11 @@ export default function LandlordListingsView({
             to reach renters.
           </p>
           <div className="mt-5">
-            <Link
-              href="/dashboard/landlord/listings/new"
+            <AddListingButton
+              locked={addListingLocked}
+              label="Create First Listing"
               className="inline-flex h-10 items-center gap-2 rounded-xl bg-purple-700 px-4 text-xs font-semibold text-white transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:hover:bg-purple-700"
-            >
-              <Plus className="h-4 w-4" />
-              Create First Listing
-            </Link>
+            />
           </div>
         </div>
       )}

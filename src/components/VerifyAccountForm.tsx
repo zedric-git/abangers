@@ -47,6 +47,12 @@ interface VerifyAccountFormProps {
    * if it's empty or couldn't be read.
    */
   profileName: string | null;
+  /**
+   * Why the admin rejected their last verification, shown above the form
+   * so they can fix it (#205). null if it wasn't rejected (or couldn't be
+   * read).
+   */
+  rejectionReason: string | null;
 }
 
 type Step = "form" | "review";
@@ -98,6 +104,7 @@ const PRIMARY_BUTTON =
 export default function VerifyAccountForm({
   landlordId,
   profileName,
+  rejectionReason,
 }: VerifyAccountFormProps) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("form");
@@ -375,6 +382,23 @@ export default function VerifyAccountForm({
           noValidate
           className="space-y-6"
         >
+          {/* After a rejection: the admin's reason, so they can fix it (#205) */}
+          {rejectionReason && (
+            <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-4 sm:p-5 dark:border-rose-900/50 dark:bg-rose-950/40">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+              <div className="min-w-0 text-xs text-rose-800 dark:text-rose-300">
+                <p className="text-sm font-bold text-rose-950 dark:text-rose-100">
+                  Your last verification was rejected
+                </p>
+                <p className="mt-1 wrap-break-word">
+                  <span className="font-semibold">Reason:</span>{" "}
+                  {rejectionReason}
+                </p>
+                <p className="mt-1">Fix this before you send a new one.</p>
+              </div>
+            </div>
+          )}
+
           {/* 1. The type of ID */}
           <section aria-labelledby={STEP_HEADING_IDS.form} className={CARD}>
             <h2 id={STEP_HEADING_IDS.form} tabIndex={-1} className={CARD_TITLE}>

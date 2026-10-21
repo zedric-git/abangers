@@ -124,6 +124,12 @@ https://github.com/users/zedric-git/projects/3
   (`0010`, now defined in `0012`) enforces it, and `createListingAction`
   checks first with `src/lib/auth/can-create-listings.ts` to say which
   step is missing.
+  The new-listing page checks the same thing on the server and shows a
+  checklist of the missing steps instead of the form (#205): link to it
+  with `AddListingButton`, which shows a lock until then, and read where
+  a landlord stands (for the dashboard's banner, the Profile badge and
+  the read-only name) with `loadLandlordStatus` in
+  `src/lib/auth/landlord-status.ts`.
   "Complete" is `landlordProfileSchema` in `src/lib/validations/profile.ts`
   (a name, a PH mobile number, one social link), not the
   `profile_completed` flag, which landlords can set themselves — change

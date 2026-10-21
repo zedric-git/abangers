@@ -47,11 +47,19 @@ export type AfterSubmitView =
   | { show: "error"; message: string };
 
 /**
+ * The page's introduction, under its title. The dashboard's banner says
+ * the same to a landlord who isn't verified yet (#205).
+ */
+export const VERIFY_ACCOUNT_INTRO =
+  "Send photos of a valid government ID and a selfie. An admin checks them, and once they're approved you can post listings.";
+
+/**
  * Sent and waiting for the admin (#207). The same card whether the page
  * loads like this or the landlord has just sent it, so nothing jumps when
- * the page reloads from the server after Submit.
+ * the page reloads from the server after Submit. The dashboard's banner
+ * and checklist use the same words (#205).
  */
-const BEING_REVIEWED: VerificationStatusView = {
+export const BEING_REVIEWED: VerificationStatusView = {
   tone: "pending",
   title: "Your verification is being reviewed",
   message:

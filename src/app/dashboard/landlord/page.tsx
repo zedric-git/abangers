@@ -1,7 +1,13 @@
-import Link from "next/link";
-import { Plus, Building2, Eye, MessageSquare } from "lucide-react";
+import { Building2, Eye, MessageSquare } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import AddListingButton from "@/components/AddListingButton";
 import LandlordListingsView from "@/components/LandlordListingsView";
+import VerificationBanner from "@/components/VerificationBanner";
+import {
+  loadLandlordStatus,
+  type LandlordStatus,
+} from "@/lib/auth/landlord-status";
+import { isAddListingLocked } from "@/lib/landlord-status-view";
 import { Listing } from "@/types/listing";
 
 export default async function LandlordDashboardPage() {
@@ -12,18 +18,26 @@ export default async function LandlordDashboardPage() {
   } = await supabase.auth.getUser();
 
   let listings: Listing[] = [];
+  // Where the landlord stands (#205): the banner, and the lock on Add New
+  // Listing. null if it couldn't be read.
+  let status: LandlordStatus | null = null;
 
   if (user) {
-    const { data: rawListings } = await supabase
-      .from("listings")
-      .select("*")
-      .eq("landlord_id", user.id)
-      .order("created_at", { ascending: false });
+    const [listingsResult, landlordStatus] = await Promise.all([
+      supabase
+        .from("listings")
+        .select("*")
+        .eq("landlord_id", user.id)
+        .order("created_at", { ascending: false }),
+      loadLandlordStatus(supabase, user.id),
+    ]);
 
-    listings = rawListings ?? [];
+    listings = listingsResult.data ?? [];
+    status = landlordStatus;
   }
 
   const activeCount = listings.length;
+  const addListingLocked = isAddListingLocked(status);
 
   return (
     <div className="w-full space-y-8">
@@ -39,14 +53,14 @@ export default async function LandlordDashboardPage() {
           </p>
         </div>
 
-        <Link
-          href="/dashboard/landlord/listings/new"
+        <AddListingButton
+          locked={addListingLocked}
           className="inline-flex h-11 items-center gap-2 rounded-xl bg-purple-600 px-5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-purple-700"
-        >
-          <Plus className="h-4 w-4" />
-          Add New Listing
-        </Link>
+        />
       </div>
+
+      {/* Not verified / Pending / Rejected (#205); nothing once verified */}
+      <VerificationBanner status={status} />
 
       {/* Quick Overview Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -105,7 +119,10 @@ export default async function LandlordDashboardPage() {
       </div>
 
       {/* Posted Listings Section */}
-      <LandlordListingsView initialListings={listings} />
+      <LandlordListingsView
+        initialListings={listings}
+        addListingLocked={addListingLocked}
+      />
     </div>
   );
 }

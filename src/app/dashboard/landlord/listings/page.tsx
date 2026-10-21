@@ -1,8 +1,11 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Plus, Building2, CheckCircle2, XCircle } from "lucide-react";
+import { Building2, CheckCircle2, XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import AddListingButton from "@/components/AddListingButton";
 import LandlordListingCard from "@/components/LandlordListingCard";
+import VerificationBanner from "@/components/VerificationBanner";
+import { loadLandlordStatus } from "@/lib/auth/landlord-status";
+import { isAddListingLocked } from "@/lib/landlord-status-view";
 import { Listing } from "@/types/listing";
 
 export default async function LandlordListingsPage() {
@@ -17,18 +20,24 @@ export default async function LandlordListingsPage() {
     redirect("/");
   }
 
-  // Fetch listings created by this landlord (RLS + explicit landlord_id query)
-  const { data: rawListings, error } = await supabase
-    .from("listings")
-    .select("*")
-    .eq("landlord_id", user.id)
-    .order("created_at", { ascending: false });
+  // Fetch listings created by this landlord (RLS + explicit landlord_id
+  // query), and where the landlord stands (#205): the banner, and the lock
+  // on Add New Listing. status is null if it couldn't be read.
+  const [{ data: rawListings, error }, status] = await Promise.all([
+    supabase
+      .from("listings")
+      .select("*")
+      .eq("landlord_id", user.id)
+      .order("created_at", { ascending: false }),
+    loadLandlordStatus(supabase, user.id),
+  ]);
 
   if (error) {
     console.error("Error fetching landlord listings:", error);
   }
 
   const listings: Listing[] = rawListings ?? [];
+  const addListingLocked = isAddListingLocked(status);
 
   // Compute status summary counts
   const totalListings = listings.length;
@@ -56,14 +65,14 @@ export default async function LandlordListingsPage() {
           </p>
         </div>
 
-        <Link
-          href="/dashboard/landlord/listings/new"
+        <AddListingButton
+          locked={addListingLocked}
           className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-purple-700 px-5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:hover:bg-purple-700"
-        >
-          <Plus className="h-4 w-4" />
-          Add New Listing
-        </Link>
+        />
       </div>
+
+      {/* Not verified / Pending / Rejected (#205); nothing once verified */}
+      <VerificationBanner status={status} />
 
       {/* Quick Summary Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -131,13 +140,11 @@ export default async function LandlordListingsPage() {
             inquiries.
           </p>
           <div className="mt-6">
-            <Link
-              href="/dashboard/landlord/listings/new"
+            <AddListingButton
+              locked={addListingLocked}
+              label="Post Your First Listing"
               className="inline-flex h-11 items-center gap-2 rounded-xl bg-purple-700 px-5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:hover:bg-purple-700"
-            >
-              <Plus className="h-4 w-4" />
-              Post Your First Listing
-            </Link>
+            />
           </div>
         </div>
       )}

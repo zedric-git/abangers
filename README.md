@@ -186,7 +186,8 @@ src/
   components/map/          Leaflet/OpenStreetMap maps (client-only)
   components/              shared components (listing form, cards, modals, ...)
   lib/auth/                login routing, sign-up, who can post listings,
-                           and submitting a landlord verification
+                           submitting a landlord verification, and where
+                           a landlord stands (the dashboard's status)
   lib/supabase/            Supabase clients (browser, server) + session refresh
   lib/validations/         Zod schemas — single source of truth for data rules
   types/                   database.ts (generated — don't edit) + derived types
