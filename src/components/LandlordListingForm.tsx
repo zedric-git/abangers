@@ -431,6 +431,17 @@ export default function LandlordListingForm({
                         }
                       }
                     }}
+                    onClear={() => {
+                      // "Remove pin" (#241): back to no location, the way a
+                      // new listing starts (see defaultValues), so Preview
+                      // asks for a pin again. Street Address and City stay
+                      // as they are. The cast is because the form's types
+                      // say latitude/longitude are always numbers (that's
+                      // what listingSchema needs to publish); listingSchema
+                      // reports the missing pin.
+                      setValue("latitude", undefined as unknown as number);
+                      setValue("longitude", undefined as unknown as number);
+                    }}
                   />
                   {(errors.latitude || errors.longitude) && (
                     <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-rose-600 dark:text-rose-400">

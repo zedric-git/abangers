@@ -14,7 +14,7 @@ import {
   Search,
   MapPin,
   Loader2,
-  RotateCcw,
+  MapPinOff,
   AlertCircle,
   Sparkles,
 } from "lucide-react";
@@ -69,8 +69,16 @@ interface LocationPickerProps {
     lng: number,
     addressDetails?: LocationAddressDetails,
   ) => void;
+  /** "Remove pin": the landlord took the pin off, so there's no location now. */
+  onClear: () => void;
   defaultCenter?: [number, number];
 }
+
+// How long the pin has to stay put before its address is looked up (#241).
+// A run of quick clicks or drags then sends one request, for the last
+// spot, which keeps us inside Nominatim's usage policy of about one
+// request a second (AGENTS.md, "Maps and location").
+const ADDRESS_LOOKUP_DELAY_MS = 1000;
 
 // Reverse geocode lat/lng to get street, barangay, and city
 async function fetchReverseGeocode(
@@ -136,12 +144,34 @@ async function fetchReverseGeocode(
   }
 }
 
-// Sub-component to sync map view when external position or search changes
-function MapRecenter({ center }: { center: [number, number] }) {
+// Flies the map to the pin when the pin moves: placed with a click,
+// dragged, or a search result picked. `pin` is null when there's no pin.
+//
+// It only flies when the two numbers change (#241). It used to depend on
+// the array itself, which is a new one on every render, so typing in the
+// search box or any change to the form flew the map back to the pin and
+// undid the landlord's panning and zooming.
+//
+// The first pin isn't flown to: MapContainer already opens there (zoom 16
+// on a saved pin, or the zoom-13 overview when there's none). Comparing
+// with the last pin, rather than skipping the effect's first run, also
+// works in React's Strict Mode, which runs effects twice in development.
+// Removing the pin leaves the view where it is.
+function MapRecenter({ pin }: { pin: [number, number] | null }) {
   const map = useMap();
+  const lat = pin?.[0];
+  const lng = pin?.[1];
+  const lastPin = useRef({ lat, lng });
+
   useEffect(() => {
-    map.flyTo(center, Math.max(map.getZoom(), 15), { duration: 1.2 });
-  }, [center, map]);
+    const last = lastPin.current;
+    if (lat === last.lat && lng === last.lng) return;
+    lastPin.current = { lat, lng };
+
+    if (lat === undefined || lng === undefined) return;
+    map.flyTo([lat, lng], Math.max(map.getZoom(), 15), { duration: 1.2 });
+  }, [lat, lng, map]);
+
   return null;
 }
 
@@ -163,6 +193,7 @@ export default function LocationPicker({
   latitude,
   longitude,
   onChange,
+  onClear,
   defaultCenter = [10.3157, 123.8854], // Cebu City default fallback
 }: LocationPickerProps) {
   const hasValue = latitude != null && longitude != null;
@@ -182,26 +213,71 @@ export default function LocationPicker({
 
   const customIcon = useMemo(() => createCustomIcon(), []);
 
-  // Update pin position and reverse geocode address details
+  // Counts pin moves (and removals), so only the newest one's address
+  // lookup counts (#241). Without this, if the landlord moved the pin
+  // twice and the first lookup answered last, its answer moved the pin,
+  // Street Address and City back to the first spot. Same idea as
+  // IdPhotoPicker's picksRef.
+  const pinMovesRef = useRef(0);
+  // The address lookup waiting for the pin to stay put, if any.
+  const lookupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Forgets any address lookup for the pin so far: a waiting one is never
+  // sent, and one already on its way is ignored when it answers.
+  const cancelAddressLookup = useCallback(() => {
+    pinMovesRef.current += 1;
+    if (lookupTimerRef.current !== null) {
+      clearTimeout(lookupTimerRef.current);
+      lookupTimerRef.current = null;
+    }
+  }, []);
+
+  // When the map goes away (e.g. the landlord leaves the page), don't
+  // send a lookup for a pin nobody is looking at any more.
+  useEffect(() => cancelAddressLookup, [cancelAddressLookup]);
+
+  // Moves the pin straight away, then fills in the address fields once the
+  // pin has stayed put for ADDRESS_LOOKUP_DELAY_MS.
   const updateLocationWithReverseGeocode = useCallback(
-    async (lat: number, lng: number) => {
+    (lat: number, lng: number) => {
       onChange(lat, lng);
+      cancelAddressLookup();
+      const move = pinMovesRef.current;
       setIsGeocoding(true);
       setDetectedAddressInfo(null);
 
-      const details = await fetchReverseGeocode(lat, lng);
-      setIsGeocoding(false);
+      lookupTimerRef.current = setTimeout(async () => {
+        lookupTimerRef.current = null;
+        const details = await fetchReverseGeocode(lat, lng);
+        // The pin moved again, or was removed, while this was on its way:
+        // that newer move's lookup (if any) is the one that counts.
+        if (move !== pinMovesRef.current) return;
 
-      if (details) {
-        onChange(lat, lng, details);
-        const parts = [details.address, details.city].filter(Boolean);
-        if (parts.length > 0) {
-          setDetectedAddressInfo(parts.join(", "));
+        setIsGeocoding(false);
+        if (details) {
+          onChange(lat, lng, details);
+          const parts = [details.address, details.city].filter(Boolean);
+          if (parts.length > 0) {
+            setDetectedAddressInfo(parts.join(", "));
+          }
         }
-      }
+      }, ADDRESS_LOOKUP_DELAY_MS);
     },
-    [onChange],
+    [onChange, cancelAddressLookup],
   );
+
+  // "Remove pin" (#241). It used to be "Reset to default", which pinned
+  // central Cebu City and filled in that spot's address over the one the
+  // landlord typed: a location they never chose, which still counted as
+  // pinned. Now it takes the pin off and leaves Street Address and City
+  // alone, and the form asks for a pin again before publishing.
+  const removePin = () => {
+    // Also drops a lookup still waiting or on its way for the old pin.
+    cancelAddressLookup();
+    setIsGeocoding(false);
+    setDetectedAddressInfo(null);
+    onClear();
+  };
 
   // Handle marker drag end
   const handleDragEnd = useCallback(() => {
@@ -341,7 +417,7 @@ export default function LocationPicker({
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          <MapRecenter center={currentPos} />
+          <MapRecenter pin={hasValue ? [latitude, longitude] : null} />
           <MapClickHandler onSelect={updateLocationWithReverseGeocode} />
 
           {hasValue && (
@@ -386,16 +462,11 @@ export default function LocationPicker({
           {hasValue && (
             <button
               type="button"
-              onClick={() =>
-                updateLocationWithReverseGeocode(
-                  defaultCenter[0],
-                  defaultCenter[1],
-                )
-              }
+              onClick={removePin}
               className="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-600 transition-colors hover:text-purple-700 dark:text-zinc-400 dark:hover:text-purple-400"
             >
-              <RotateCcw className="h-3 w-3" />
-              Reset to default
+              <MapPinOff className="h-3 w-3" />
+              Remove pin
             </button>
           )}
         </div>
