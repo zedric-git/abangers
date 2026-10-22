@@ -29,7 +29,8 @@ export async function createClient() {
             );
           } catch {
             // setAll called from a Server Component — safe to ignore
-            // because middleware.ts refreshes the session on every request.
+            // because src/proxy.ts refreshes the session on every request
+            // (updateSession in src/lib/supabase/middleware.ts).
           }
         },
       },
