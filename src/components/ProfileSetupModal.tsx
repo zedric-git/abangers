@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Home, Phone, Share2, Loader2, CheckCircle2 } from "lucide-react";
 import PhMobileNumberInput from "@/components/PhMobileNumberInput";
+import { profileSaveErrorMessage } from "@/lib/landlord-status-view";
 import {
   toPhMobileDigits,
   toStoredPhMobileNumber,
@@ -102,56 +103,32 @@ export default function ProfileSetupModal() {
     setSubmitting(true);
 
     try {
-      const profileData = {
-        contact_number: storedContactNumber,
+      // Everything goes to the landlord's profiles row, in one call: it's
+      // what every check reads (landlordProfileSchema, the listings insert
+      // policy, loadLandlordStatus). The upsert creates the row if it's
+      // missing, the same call LandlordProfileForm makes.
+      const { error: saveError } = await supabase.from("profiles").upsert({
+        id: userId,
+        role: "landlord",
+        full_name: fullName,
         email: email,
+        contact_number: storedContactNumber,
         facebook_url: facebookUrl.trim() || null,
         instagram_url: instagramUrl.trim() || null,
         x_url: xUrl.trim() || null,
         profile_completed: true,
-      };
-
-      // 1. Always update Supabase Auth user metadata (guaranteed to succeed)
-      await supabase.auth.updateUser({
-        data: profileData,
       });
 
-      // 2. Best-effort update to public.profiles table
-      try {
-        const { data: existingProfile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("id", userId)
-          .maybeSingle();
-
-        if (existingProfile) {
-          await supabase
-            .from("profiles")
-            .update({
-              contact_number: storedContactNumber,
-              email: email,
-              facebook_url: facebookUrl.trim() || null,
-              instagram_url: instagramUrl.trim() || null,
-              x_url: xUrl.trim() || null,
-            })
-            .eq("id", userId);
-        } else {
-          await supabase.from("profiles").insert({
-            id: userId,
-            role: "landlord",
-            full_name: fullName,
-            contact_number: storedContactNumber,
-            email: email,
-            facebook_url: facebookUrl.trim() || null,
-            instagram_url: instagramUrl.trim() || null,
-            x_url: xUrl.trim() || null,
-          });
-        }
-      } catch (dbErr) {
-        console.warn("Database schema sync warning:", dbErr);
+      if (saveError) {
+        // supabase-js returns errors instead of throwing them. Don't say it
+        // was saved when it wasn't: stay on the form with the message (#233).
+        // E.g. 0007's role trigger for a renter, 0008's name lock, or no
+        // connection.
+        console.error("Profile setup save error:", saveError);
+        setError(profileSaveErrorMessage(saveError));
+        return;
       }
 
-      // 3. Always redirect to Landlord Dashboard upon completion
       router.push("/dashboard/landlord");
     } catch (err) {
       const message =

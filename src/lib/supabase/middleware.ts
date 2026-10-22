@@ -2,15 +2,18 @@ import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
 import type { Database } from "@/types/database";
 import { resolvePostLoginPath } from "@/lib/auth/post-login";
+import { guardRedirect, isGuardedPath } from "@/lib/auth/route-guard";
 
 /**
  * Refreshes the Supabase auth session cookie on every request.
  * Without this, sessions silently expire mid-use — a user could
  * get logged out while filling in the add-listing form.
  *
- * It also guards `/dashboard/*` (see `guardDashboard` below): signed-out
- * users go to the home page, and signed-in users can only open their own role's
- * dashboard. Pages can still do their own checks on top of this.
+ * It also guards `/dashboard/*` and `/profile-setup` (see
+ * src/lib/auth/route-guard.ts): signed-out users go to the home page,
+ * signed-in users can only open their own role's dashboard, and only
+ * landlords can open profile setup. Pages can still do their own checks
+ * on top of this.
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -42,8 +45,17 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) {
-    const redirectTo = await guardDashboard(supabase, user, pathname);
+  if (isGuardedPath(pathname)) {
+    // Where this user belongs, decided by the same code as after login
+    // (#170), so the two can't drift apart. Only looked up for a
+    // signed-in user: a signed-out one goes home either way.
+    let ownPath: string | null = null;
+    if (user) {
+      const result = await resolvePostLoginPath(supabase, user);
+      ownPath = result.ok ? result.path : null;
+    }
+
+    const redirectTo = guardRedirect(pathname, user !== null, ownPath);
     if (redirectTo) {
       const redirectResponse = NextResponse.redirect(
         new URL(redirectTo, request.url),
@@ -58,37 +70,4 @@ export async function updateSession(request: NextRequest) {
   }
 
   return supabaseResponse;
-}
-
-/**
- * Decides whether a `/dashboard/*` request is allowed.
- * Returns the path to redirect to, or null to let the request through.
- *
- * The role check reuses `resolvePostLoginPath` so "which dashboard does
- * this user belong on" is decided in one place (same as after login).
- */
-async function guardDashboard(
-  supabase: ReturnType<typeof createServerClient<Database>>,
-  user: Awaited<ReturnType<typeof supabase.auth.getUser>>["data"]["user"],
-  pathname: string,
-): Promise<string | null> {
-  // Signed out (e.g. after logging out and pressing Back) → home page,
-  // where they can log in again from the modal.
-  if (!user) {
-    return "/";
-  }
-
-  const result = await resolvePostLoginPath(supabase, user);
-  if (!result.ok) {
-    // No usable role — send them home; logging in from the modal shows
-    // the explanation.
-    return "/";
-  }
-
-  // result.path is the user's own dashboard (or /profile-setup for a
-  // landlord whose profile row had to be recreated).
-  if (pathname === result.path || pathname.startsWith(result.path + "/")) {
-    return null;
-  }
-  return result.path;
 }
