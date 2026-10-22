@@ -95,9 +95,11 @@ export default function LandlordListingForm({
       title: initialValues?.title || "",
       address: initialValues?.address || "",
       city: initialValues?.city || "",
-      monthly_rent: initialValues?.monthly_rent || 3000,
-      total_rooms: initialValues?.total_rooms || 1,
-      available_rooms: initialValues?.available_rooms || 1,
+      // `??`, not `||`: a saved 0 (e.g. no rooms left) must stay 0. Only a
+      // value that isn't there at all (a new listing) gets the default.
+      monthly_rent: initialValues?.monthly_rent ?? 3000,
+      total_rooms: initialValues?.total_rooms ?? 1,
+      available_rooms: initialValues?.available_rooms ?? 1,
       property_type: initialValues?.property_type || "Boarding House",
       occupancy_type: initialValues?.occupancy_type || "Bedspace",
       allowed_gender: initialValues?.allowed_gender || "Any / Co-ed",
@@ -520,7 +522,13 @@ export default function LandlordListingForm({
                   </label>
                   <input
                     type="number"
-                    {...register("total_rooms")}
+                    {...register("total_rooms", {
+                      // "Available rooms can't be more than total rooms"
+                      // sits under Available Rooms, so re-check that field
+                      // too when this one changes, or the message would
+                      // stay after the landlord raises the total (#231).
+                      deps: "available_rooms",
+                    })}
                     placeholder="1"
                     className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
                   />

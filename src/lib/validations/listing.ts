@@ -2,12 +2,26 @@ import { z } from "zod";
 import type { Listing } from "@/types/listing";
 
 /**
- * Validation rules for a single listing. Used by:
- * - the add/edit listing form (client-side, via React Hook Form's zodResolver)
- * - the server action / route handler that saves it (server-side re-check)
- * One schema, two enforcement points — never trust client-only validation.
+ * The only values the listings.availability_status CHECK constraint
+ * (0001_init.sql) accepts. The listing schema, parseAvailabilityStatus
+ * and updateListingStatusAction all use this one list.
  */
-export const listingSchema = z.object({
+export const AVAILABILITY_STATUSES = [
+  "available",
+  "almost_full",
+  "fully_occupied",
+] as const;
+
+export const availabilityStatusSchema = z.enum(AVAILABILITY_STATUSES);
+
+export type AvailabilityStatus = z.infer<typeof availabilityStatusSchema>;
+
+/**
+ * Each listing field's own rules. listingSchema below adds the rules
+ * that compare fields. Zod 4 can't .extend, .pick or .omit a schema
+ * after .refine, so build any variant from this one.
+ */
+const listingFieldsSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   address: z.string().min(5, "Address is required"),
   city: z.string().min(2, "City is required"),
@@ -52,10 +66,35 @@ export const listingSchema = z.object({
     .min(-180, "Invalid longitude")
     .max(180, "Invalid longitude"),
   contact_info: z.string().min(3, "How should renters reach you?"),
-  availability_status: z
-    .enum(["available", "almost_full", "fully_occupied"])
-    .default("available"),
+  availability_status: availabilityStatusSchema.default("available"),
 });
+
+// Just the two room numbers, to tell whether both are valid on their own.
+const roomCountsSchema = listingFieldsSchema.pick({
+  total_rooms: true,
+  available_rooms: true,
+});
+
+/**
+ * Validation rules for a single listing. Used by:
+ * - the add/edit listing form (client-side, via React Hook Form's zodResolver)
+ * - the server action / route handler that saves it (server-side re-check)
+ * One schema, two enforcement points — never trust client-only validation.
+ */
+export const listingSchema = listingFieldsSchema.refine(
+  // A place can't have more rooms free than it has rooms (#231).
+  (listing) => listing.available_rooms <= listing.total_rooms,
+  {
+    message: "Available rooms can't be more than total rooms",
+    // Shown under Available Rooms in the form.
+    path: ["available_rooms"],
+    // By default Zod skips this check while another field is still
+    // invalid (e.g. the map pin isn't set yet), so the landlord would only
+    // see it after fixing everything else. Run it whenever both room
+    // numbers are valid, so it shows up together with the other errors.
+    when: (payload) => roomCountsSchema.safeParse(payload.value).success,
+  },
+);
 
 export type ListingInput = z.infer<typeof listingSchema>;
 
@@ -66,8 +105,8 @@ export type ListingInput = z.infer<typeof listingSchema>;
  */
 export function parseAvailabilityStatus(
   value: string | null | undefined,
-): ListingInput["availability_status"] {
-  const result = listingSchema.shape.availability_status.safeParse(value);
+): AvailabilityStatus {
+  const result = availabilityStatusSchema.safeParse(value);
   return result.success ? result.data : "available";
 }
 
