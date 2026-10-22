@@ -6,6 +6,10 @@ import LandlordListingCard from "@/components/LandlordListingCard";
 import VerificationBanner from "@/components/VerificationBanner";
 import { loadLandlordStatus } from "@/lib/auth/landlord-status";
 import { isAddListingLocked } from "@/lib/landlord-status-view";
+import {
+  countListingsByStatus,
+  listingStatusView,
+} from "@/lib/listing-status-view";
 import { Listing } from "@/types/listing";
 
 export default async function LandlordListingsPage() {
@@ -39,17 +43,12 @@ export default async function LandlordListingsPage() {
   const listings: Listing[] = rawListings ?? [];
   const addListingLocked = isAddListingLocked(status);
 
-  // Compute status summary counts
+  // Compute status summary counts, with the same labels as the status
+  // badges (#232). Almost Full listings count only in the total.
   const totalListings = listings.length;
-  const availableCount = listings.filter(
-    (item) => item.availability_status === "available",
-  ).length;
-  const occupiedCount = listings.filter(
-    (item) =>
-      item.availability_status === "fully_occupied" ||
-      item.availability_status === "unavailable" ||
-      item.availability_status === "occupied",
-  ).length;
+  const statusCounts = countListingsByStatus(listings);
+  const availableCount = statusCounts.available;
+  const occupiedCount = statusCounts.fully_occupied;
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -96,7 +95,7 @@ export default async function LandlordListingsPage() {
           </div>
           <div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Available
+              {listingStatusView("available").label}
             </p>
             <p className="text-xl font-extrabold text-zinc-900 dark:text-zinc-100">
               {availableCount}
@@ -110,7 +109,7 @@ export default async function LandlordListingsPage() {
           </div>
           <div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Fully Occupied
+              {listingStatusView("fully_occupied").label}
             </p>
             <p className="text-xl font-extrabold text-zinc-900 dark:text-zinc-100">
               {occupiedCount}
