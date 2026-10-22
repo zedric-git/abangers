@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import type { Database } from "@/types/database";
 
 /**
  * Supabase client for use in Server Components, Server Actions, and
@@ -13,7 +14,7 @@ import { cookies } from "next/headers";
 export async function createClient() {
   const cookieStore = await cookies();
 
-  return createServerClient(
+  return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -28,7 +29,8 @@ export async function createClient() {
             );
           } catch {
             // setAll called from a Server Component — safe to ignore
-            // because middleware.ts refreshes the session on every request.
+            // because src/proxy.ts refreshes the session on every request
+            // (updateSession in src/lib/supabase/middleware.ts).
           }
         },
       },

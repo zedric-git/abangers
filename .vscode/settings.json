@@ -1,0 +1,36 @@
+{
+  // Shared editor settings for this repo. Personal preferences (theme,
+  // font size, ...) belong in your user settings, not here.
+
+  // Format with Prettier on save, using the repo's .prettierrc.json —
+  // the same formatting the pre-commit hook and CI enforce.
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  // Apply ESLint auto-fixes on save (same as the pre-commit hook).
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  // Use the project's TypeScript version, not the one bundled with VS Code,
+  // so editor errors match `npm run check`.
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // Tailwind autocomplete inside cn(...) and cva(...) (used by shadcn/ui).
+  "tailwindCSS.classFunctions": ["cn", "cva"],
+  // Tailwind v4 uses @theme / @custom-variant, which the built-in CSS
+  // checker doesn't understand.
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
+
+  // Migration 0010 has raw U+2028 / U+2029 characters in a regex
+  // (#216). VS Code offers to remove these "unusual line terminators",
+  // but that would edit an applied migration, so don't prompt in SQL
+  // files. Other files keep the prompt: in TS/JS, a U+2028 can end a
+  // `//` comment and turn the rest of the line into code.
+  "[sql]": {
+    "editor.unusualLineTerminators": "off"
+  }
+}

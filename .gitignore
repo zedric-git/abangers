@@ -40,3 +40,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Personal Claude Code settings (shared ones live in .claude/settings.json)
+.claude/settings.local.json
+
+# Claude Code worktrees (full repo copies with their own .next/). Prettier
+# reads this file, not .git/info/exclude, so they must be listed here.
+.claude/worktrees/
+
+# Supabase CLI cache, rewritten by the CLI itself (update check, service
+# versions). The three link files stay committed so every clone and
+# worktree is linked to the shared project without `npx supabase link`.
+supabase/.temp/*
+!supabase/.temp/project-ref
+!supabase/.temp/linked-project.json
+!supabase/.temp/pooler-url
