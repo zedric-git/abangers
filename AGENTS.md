@@ -105,6 +105,12 @@ https://github.com/users/zedric-git/projects/3
   (`<landlord id>/<submission id>/<file>`): landlords can upload to and
   read only their own folder, and can't replace or delete a file, so a
   resubmission always uploads to a new folder.
+  Admins review the submissions (S2-11, #207; `0014`): an admin can read
+  every submission and every file in the bucket, and can change a
+  pending submission to approved or rejected, recording themselves in
+  `reviewed_by`. Only the four review columns can change, a reviewed
+  submission can't be changed again from the app, and nobody can delete
+  one.
   Submit with `submitVerification` (`src/lib/auth/submit-verification.ts`,
   #204): it checks the form (`verificationSubmissionSchema`) and that the
   landlord isn't already Pending or Verified, uploads the photos straight
@@ -288,7 +294,8 @@ In Claude Code, `/start-task` walks through all of this.
 'landlord')` (see `0007_enforce_roles_in_rls.sql`). Checking only
      `auth.uid() = owner_id` let renters create listings (#173).
      `profiles.role` can't be changed by app users once set (trigger in
-     the same migration).
+     the same migration), and app users can only create a renter's or a
+     landlord's profile (`0014`), so nobody can make themselves an admin.
    - Add a `*.db.test.ts` case for each policy (see
      `src/__tests__/rls-listings.db.test.ts` and `db-helpers.ts`).
 2. **One Zod schema per data entity, used on both client and server.**
@@ -397,18 +404,22 @@ next sprint instead of forcing the merge.
   pattern for any new seed data — no plain `INSERT`s that duplicate on
   a second run. Seed credentials are dev-only; the shared password is in
   the file header.
-- **Seed landlords: landlord1 is verified, landlord2 isn't** (#206).
-  Both have a complete profile; landlord1 also has an approved
-  verification with sample ID photos, so only landlord1 can create
-  listings. The DB tests rely on both, so try the verification flow on
-  landlord2, then re-run `npm run db:seed`: it deletes every other
-  verification the two seed landlords have. Each landlord has three seed
-  listings that fill in everything the listing form requires, so they
-  open in Edit and pass Preview as they are (#243). SQL can't upload
-  files, so `npm run db:seed` runs `supabase/seed-storage.mjs` after
-  `seed.sql`. It signs in as landlord1 and then landlord2 with the anon
-  key (needs `.env.local`), uploads landlord1's sample ID photos and
-  each landlord's sample listing photo (to
+- **Seed landlords: landlord1 is verified, landlord2 isn't, landlord3
+  is waiting for review** (#206, #255). All three have a complete
+  profile; landlord1 also has an approved verification with sample ID
+  photos, so only landlord1 can create listings. landlord3 has a pending
+  verification (a passport, with sample photos) for the admin to review:
+  log in as `admin@abangers.test`, the seed's admin. The DB tests rely on
+  all three, so try the verification flow on landlord2 and the review on
+  landlord3, then re-run `npm run db:seed`: it deletes every other
+  verification the seed landlords have and puts landlord3's back to
+  pending. landlord1 and landlord2 each have three seed listings that
+  fill in everything the listing form requires, so they open in Edit and
+  pass Preview as they are (#243). SQL can't upload files, so
+  `npm run db:seed` runs `supabase/seed-storage.mjs` after `seed.sql`. It
+  signs in as the seed landlords with the anon key (needs `.env.local`),
+  uploads landlord1's and landlord3's sample ID photos and landlord1's
+  and landlord2's sample listing photo (to
   `<landlord id>/seed/listing-sample.jpg`), and sets that photo as the
   photo and cover of their seed listings. It skips files that are
   already there. Running the seed resets the seed listings for everyone,
@@ -416,6 +427,10 @@ next sprint instead of forcing the merge.
   `supabase/seed-storage/`, never a real ID or photo.
 - Supabase Auth only stores email/password. App fields (role, name)
   live in `public.profiles`, one row per `auth.users` row, same `id`.
+  The roles are renter, landlord and admin. Nobody can become an admin
+  from the app (`0014`): make one with SQL in the dashboard, for an
+  account that has signed up
+  (`update public.profiles set role = 'admin' where id = '<user id>';`).
 
 ## Maps and location (OpenStreetMap)
 
@@ -492,9 +507,9 @@ entry in the PR that closes it.
 - `npx supabase db push` — apply pending migrations to the linked project
   (run `npx supabase link --project-ref <ref>` once first)
 - `npm run db:seed` — load test accounts + sample listings from
-  `supabase/seed.sql` into the linked project, then upload landlord1's
-  sample verification files (`supabase/seed-storage.mjs`, needs
-  `.env.local`); safe to re-run
+  `supabase/seed.sql` into the linked project, then upload the seed
+  verifications' and listings' sample files (`supabase/seed-storage.mjs`,
+  needs `.env.local`); safe to re-run
 
 ## Agent guardrails (Claude Code)
 

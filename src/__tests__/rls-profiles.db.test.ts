@@ -13,15 +13,22 @@
  *   same name (the profile form saves it on every save).
  * - A landlord who isn't verified can still change their name.
  *
+ * And the admin role in 0014_admin_role_and_verification_review.sql
+ * (#255): nobody can make themselves an admin, whether by changing their
+ * role (0007's trigger) or by creating their profile as one (the insert
+ * policy), while creating a renter's or landlord's profile still works.
+ *
  * SEED DATA (supabase/seed.sql, #206): landlord1 is verified and landlord2
  * isn't. If a test says otherwise, run `npm run db:seed`.
  *
  * SAFE ON SHARED DATA: blocked writes change nothing; allowed writes put
  * the current values back (the name-lock tests restore the name in a
  * `finally`: landlord2's rename, and landlord1's if the lock is ever
- * broken). If the role lock is ever broken, the renter test switches the
+ * broken). If the role lock is ever broken, the renter tests switch the
  * role straight back, and `npm run db:seed` restores every seed account
- * anyway.
+ * anyway. Creating a profile is only tried for the renter, who already
+ * has one, so it can never be saved: it's refused by RLS (42501) or, if
+ * RLS allows it, by the existing row (23505).
  *
  * Run with: npm run test:db   (needs .env.local and the seed data loaded)
  */
@@ -61,6 +68,46 @@ describe("profiles role lock", () => {
       .eq("id", renter.userId)
       .single();
     expect(after?.role).toBe("renter");
+  });
+
+  it("a renter cannot make themselves an admin (#255)", async () => {
+    const renter = await signedInAs(RENTER_EMAIL);
+
+    const { data, error } = await renter.client
+      .from("profiles")
+      .update({ role: "admin" })
+      .eq("id", renter.userId)
+      .select("role");
+
+    // If the lock is ever broken, undo the change immediately.
+    if (data?.[0]?.role === "admin") {
+      await renter.client
+        .from("profiles")
+        .update({ role: "renter" })
+        .eq("id", renter.userId);
+    }
+
+    expect(error?.code).toBe("42501");
+  });
+
+  it("nobody can create their profile as an admin, only as a renter or landlord (#255)", async () => {
+    // What sign-up does (signUpWithProfile), tried by the renter, whose
+    // profile already exists, so nothing can be saved either way.
+    const renter = await signedInAs(RENTER_EMAIL);
+    const createProfileAs = async (role: string) => {
+      const { error } = await renter.client
+        .from("profiles")
+        .insert({ id: renter.userId, role, full_name: "Role test" });
+      return error;
+    };
+
+    // As an admin: refused by the insert policy (0014).
+    expect((await createProfileAs("admin"))?.code).toBe("42501");
+
+    // As a renter or landlord: RLS lets it through, and only the existing
+    // row stops it (23505), so sign-up still works.
+    expect((await createProfileAs("renter"))?.code).toBe("23505");
+    expect((await createProfileAs("landlord"))?.code).toBe("23505");
   });
 
   it("a landlord can still save their profile with the same role (LandlordProfileForm's upsert)", async () => {

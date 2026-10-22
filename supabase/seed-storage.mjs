@@ -2,10 +2,12 @@
 //
 // Uploads the files supabase/seed.sql points to but can't upload itself
 // (SQL can only write Storage's database rows, not the files):
-//   1. the sample ID photos and selfie of landlord1's approved
-//      verification (seed.sql, section 3) to the private
-//      verification-documents bucket (0009);
-//   2. a sample listing photo for each seed landlord, to the public
+//   1. the sample ID photos and selfies of the seed verifications
+//      (seed.sql, section 3) to the private verification-documents bucket
+//      (0009): landlord1's approved one, and landlord3's pending one for
+//      the admin dashboard to review (S2-11, #207);
+//   2. a sample listing photo for each seed landlord with listings
+//      (landlord1 and landlord2; landlord3 has none), to the public
 //      listing-photos bucket (0013), and sets it as the photo and cover
 //      photo of that landlord's seed listings (seed.sql, section 4). The
 //      listing form requires both, so without it no seed listing could be
@@ -40,12 +42,14 @@ import { createClient } from "@supabase/supabase-js";
 const VERIFICATION_BUCKET = "verification-documents";
 const LISTING_PHOTOS_BUCKET = "listing-photos";
 
-// landlord1's seed submission: the fixed id in seed.sql, section 3.
-const SUBMISSION_ID = "b1b2c3d4-0000-4000-8000-000000000001";
+// The seed submissions: the fixed ids in seed.sql, section 3.
+const LANDLORD1_SUBMISSION_ID = "b1b2c3d4-0000-4000-8000-000000000001";
+const LANDLORD3_SUBMISSION_ID = "b1b2c3d4-0000-4000-8000-000000000002";
 
 // Dev-only seed credentials, already public in supabase/seed.sql.
 const LANDLORD1_EMAIL = "landlord1@abangers.test";
 const LANDLORD2_EMAIL = "landlord2@abangers.test";
+const LANDLORD3_EMAIL = "landlord3@abangers.test";
 const PASSWORD = "Abangers123!";
 
 // Each seed landlord's listings: the fixed ids in seed.sql, section 4.
@@ -134,36 +138,44 @@ async function uploadSample(supabase, bucket, path, fileName) {
   }
 }
 
-// ── 1. landlord1's verification files ────────────────────────────────
+// ── 1. The seed verifications' files ─────────────────────────────────
+// Each landlord uploads their own files: a landlord can only upload into
+// their own folder (0009).
 const landlord1 = await signInAs(LANDLORD1_EMAIL);
+const landlord3 = await signInAs(LANDLORD3_EMAIL);
 
-// Read the paths from the row itself (landlords can read their own
-// submissions), so they always match what seed.sql wrote.
-const { data: submission, error: readError } = await landlord1.supabase
-  .from("landlord_verifications")
-  .select("id_front_path, id_back_path, selfie_path")
-  .eq("id", SUBMISSION_ID)
-  .maybeSingle();
-if (readError) {
-  fail(`couldn't read landlord1's seed verification (${readError.message}).`);
-}
-if (!submission) {
-  fail(
-    `landlord1 has no seed verification (${SUBMISSION_ID}). Load seed.sql first: npm run db:seed`,
-  );
-}
+for (const [email, { supabase }, submissionId] of [
+  [LANDLORD1_EMAIL, landlord1, LANDLORD1_SUBMISSION_ID],
+  [LANDLORD3_EMAIL, landlord3, LANDLORD3_SUBMISSION_ID],
+]) {
+  // Read the paths from the row itself (landlords can read their own
+  // submissions), so they always match what seed.sql wrote.
+  const { data: submission, error: readError } = await supabase
+    .from("landlord_verifications")
+    .select("id_front_path, id_back_path, selfie_path")
+    .eq("id", submissionId)
+    .maybeSingle();
+  if (readError) {
+    fail(`couldn't read ${email}'s seed verification (${readError.message}).`);
+  }
+  if (!submission) {
+    fail(
+      `${email} has no seed verification (${submissionId}). Load seed.sql first: npm run db:seed`,
+    );
+  }
 
-const verificationPaths = [
-  submission.id_front_path,
-  submission.id_back_path, // null for a passport, which has no back
-  submission.selfie_path,
-].filter(Boolean);
+  const verificationPaths = [
+    submission.id_front_path,
+    submission.id_back_path, // null for a passport, which has no back
+    submission.selfie_path,
+  ].filter(Boolean);
 
-for (const path of verificationPaths) {
-  // The sample image has the same name as the file at the end of the
-  // path, e.g. ".../id-front.jpg" → supabase/seed-storage/id-front.jpg.
-  const fileName = path.split("/").pop();
-  await uploadSample(landlord1.supabase, VERIFICATION_BUCKET, path, fileName);
+  for (const path of verificationPaths) {
+    // The sample image has the same name as the file at the end of the
+    // path, e.g. ".../id-front.jpg" → supabase/seed-storage/id-front.jpg.
+    const fileName = path.split("/").pop();
+    await uploadSample(supabase, VERIFICATION_BUCKET, path, fileName);
+  }
 }
 
 // ── 2. Each seed landlord's listing photo ────────────────────────────
