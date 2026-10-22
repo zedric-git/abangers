@@ -4,6 +4,11 @@ import { useState } from "react";
 import Image from "next/image";
 import { X, Star, Loader2, ImagePlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  LISTING_PHOTO_ACCEPT,
+  listingPhotoProblem,
+  listingPhotoUploadErrorMessage,
+} from "@/lib/listing-photo";
 
 interface ImageUploaderProps {
   images: string[];
@@ -19,7 +24,9 @@ export default function ImageUploader({
   error,
 }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  // One line per photo that wasn't added, e.g.
+  // "beach.heic: photos must be JPEG, PNG or WebP" (#234).
+  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
 
   const supabase = createClient();
 
@@ -28,9 +35,10 @@ export default function ImageUploader({
     if (!files || files.length === 0) return;
 
     setUploading(true);
-    setUploadError(null);
+    setUploadErrors([]);
 
     const newImageUrls: string[] = [];
+    const failed: string[] = [];
 
     try {
       // Get current user for path prefix (or fallback to public)
@@ -39,8 +47,17 @@ export default function ImageUploader({
       } = await supabase.auth.getUser();
       const userFolder = user ? user.id : "public";
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      // Each file on its own: one that can't be used, or fails to upload,
+      // is listed in `failed` and the rest still go up (#234).
+      for (const file of Array.from(files)) {
+        // Same size and type limits as the bucket (src/lib/listing-photo.ts),
+        // checked first so a bad file isn't uploaded at all.
+        const problem = listingPhotoProblem(file);
+        if (problem) {
+          failed.push(`${file.name}: ${problem}`);
+          continue;
+        }
+
         const fileExt = file.name.split(".").pop();
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`;
         const filePath = `${userFolder}/${fileName}`;
@@ -53,7 +70,12 @@ export default function ImageUploader({
           });
 
         if (uploadErr) {
-          throw uploadErr;
+          console.error(`Upload error (${file.name}):`, uploadErr);
+          // Storage's own code is in statusCode, not status (AGENTS.md, #213).
+          failed.push(
+            `${file.name}: ${listingPhotoUploadErrorMessage(uploadErr.statusCode)}`,
+          );
+          continue;
         }
 
         const { data: publicUrlData } = supabase.storage
@@ -64,18 +86,21 @@ export default function ImageUploader({
           newImageUrls.push(publicUrlData.publicUrl);
         }
       }
-
-      const updatedImages = [...images, ...newImageUrls];
-      // If no cover image was selected previously, set the first image as cover
-      const updatedCover = coverImage || updatedImages[0] || "";
-
-      onImagesChange(updatedImages, updatedCover);
     } catch (err) {
+      // Not a refused upload (those are returned, not thrown) but something
+      // unexpected, e.g. the network dropped while signing in.
       console.error("Upload error:", err);
-      const msg =
-        err instanceof Error ? err.message : "Failed to upload photo(s).";
-      setUploadError(msg);
+      failed.push("Something went wrong while uploading. Try again.");
     } finally {
+      // Keep every photo that did upload, even if a later one failed.
+      if (newImageUrls.length > 0) {
+        const updatedImages = [...images, ...newImageUrls];
+        // If no cover image was selected previously, set the first image as cover
+        const updatedCover = coverImage || updatedImages[0] || "";
+
+        onImagesChange(updatedImages, updatedCover);
+      }
+      setUploadErrors(failed);
       setUploading(false);
       // Reset input value so same files can be re-selected if needed
       e.target.value = "";
@@ -156,7 +181,7 @@ export default function ImageUploader({
             id="photo-upload-input"
             type="file"
             multiple
-            accept="image/*"
+            accept={LISTING_PHOTO_ACCEPT}
             disabled={uploading}
             onChange={handleFileChange}
             className="sr-only"
@@ -164,11 +189,23 @@ export default function ImageUploader({
         </label>
       </div>
 
-      {/* Upload Error Alert */}
-      {uploadError && (
-        <p className="text-xs font-medium text-red-600 dark:text-red-400">
-          {uploadError}
-        </p>
+      {/* Upload Error Alert: which photos weren't added, and why */}
+      {uploadErrors.length > 0 && (
+        <div
+          role="alert"
+          className="text-xs font-medium text-red-600 dark:text-red-400"
+        >
+          <p>
+            {uploadErrors.length === 1
+              ? "This photo wasn't added:"
+              : "These photos weren't added:"}
+          </p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {uploadErrors.map((message, idx) => (
+              <li key={`${message}-${idx}`}>{message}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {/* Validation Error */}
