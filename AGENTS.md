@@ -170,7 +170,13 @@ https://github.com/users/zedric-git/projects/3
   happen in `src/components/LandlordAuthModal.tsx`, opened from the home
   page. The old `/login` and `/signup` URLs redirect to `/` (see
   `redirects()` in `next.config.ts`) so they never show a 404 — if you
-  remove or rename any other page, add a redirect the same way. Anything
+  remove or rename any other page, add a redirect the same way. Nobody
+  should ever see a 404 page (#244): any other URL the app doesn't have
+  goes home through `src/app/not-found.tsx`, and a page whose record
+  isn't there (deleted, someone else's, a bad id) redirects to its list
+  with a note instead of calling `notFound()` — see the listing pages
+  and `lookupListing` in `src/lib/listing-lookup.ts`, which also keeps
+  a failed query from being shown as "not found". Anything
   that needs a signed-out user to log in should send them to `/`. The
   logic lives in shared helpers — validation (`loginSchema` /
   `signUpSchema` in `src/lib/validations/auth.ts`), sign-up

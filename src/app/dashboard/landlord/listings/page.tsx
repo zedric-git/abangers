@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Building2, CheckCircle2, XCircle } from "lucide-react";
+import { Building2, CheckCircle2, Info, XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import AddListingButton from "@/components/AddListingButton";
 import LandlordListingsView from "@/components/LandlordListingsView";
@@ -7,12 +7,27 @@ import VerificationBanner from "@/components/VerificationBanner";
 import { loadLandlordStatus } from "@/lib/auth/landlord-status";
 import { isAddListingLocked } from "@/lib/landlord-status-view";
 import {
+  MISSING_LISTING_NOTE,
+  MISSING_LISTING_NOTICE,
+} from "@/lib/listing-lookup";
+import {
   countListingsByStatus,
   listingStatusView,
 } from "@/lib/listing-status-view";
 import { Listing } from "@/types/listing";
 
-export default async function LandlordListingsPage() {
+export default async function LandlordListingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  // A listing's View or Edit page sends the landlord here with
+  // ?notice=listing-not-found when the listing isn't there (#244). The
+  // parameter only picks the note; its text is fixed below, so nothing
+  // from the URL is shown on the page.
+  const { notice } = await searchParams;
+  const showMissingListingNote = notice === MISSING_LISTING_NOTICE;
+
   const supabase = await createClient();
 
   // Get current logged in user
@@ -72,6 +87,17 @@ export default async function LandlordListingsPage() {
           className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-purple-700 px-5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:hover:bg-purple-700"
         />
       </div>
+
+      {/* Why the landlord was sent here from a listing's View or Edit */}
+      {showMissingListingNote && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-2xl border border-zinc-200 bg-white p-4 text-sm text-zinc-700 shadow-2xs dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+        >
+          <Info className="mt-0.5 h-5 w-5 shrink-0 text-purple-700 dark:text-purple-400" />
+          <p>{MISSING_LISTING_NOTE}</p>
+        </div>
+      )}
 
       {/* Not verified / Pending / Rejected (#205); nothing once verified */}
       <VerificationBanner status={status} />
