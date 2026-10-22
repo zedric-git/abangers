@@ -389,10 +389,17 @@ next sprint instead of forcing the merge.
   verification with sample ID photos, so only landlord1 can create
   listings. The DB tests rely on both, so try the verification flow on
   landlord2, then re-run `npm run db:seed`: it deletes every other
-  verification the two seed landlords have. SQL can't upload files, so
-  `npm run db:seed` runs `supabase/seed-storage.mjs` after `seed.sql`.
-  It signs in as landlord1 with the anon key (needs `.env.local`) and
-  skips files that are already there. Put only placeholder images in
+  verification the two seed landlords have. Each landlord has three seed
+  listings that fill in everything the listing form requires, so they
+  open in Edit and pass Preview as they are (#243). SQL can't upload
+  files, so `npm run db:seed` runs `supabase/seed-storage.mjs` after
+  `seed.sql`. It signs in as landlord1 and then landlord2 with the anon
+  key (needs `.env.local`), uploads landlord1's sample ID photos and
+  each landlord's sample listing photo (to
+  `<landlord id>/seed/listing-sample.jpg`), and sets that photo as the
+  photo and cover of their seed listings. It skips files that are
+  already there. Running the seed resets the seed listings for everyone,
+  photos included. Put only placeholder images in
   `supabase/seed-storage/`, never a real ID or photo.
 - Supabase Auth only stores email/password. App fields (role, name)
   live in `public.profiles`, one row per `auth.users` row, same `id`.

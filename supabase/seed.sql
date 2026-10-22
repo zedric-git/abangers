@@ -7,7 +7,8 @@
 -- HOW TO RUN
 --   npm run db:seed              (runs this file against the linked project,
 --                                 then supabase/seed-storage.mjs, which
---                                 uploads landlord1's sample ID photos)
+--                                 uploads landlord1's sample ID photos
+--                                 and the seed listings' sample photo)
 --   npx supabase db reset --linked   (wipes the DB, re-runs migrations, then
 --                                     runs this file automatically; run
 --                                     npm run db:seed afterwards for the
@@ -204,32 +205,51 @@ end $$;
 -- Each listing has a fixed id, so re-running updates it in place
 -- instead of inserting a copy. The landlord is looked up by email
 -- (landlord ids differ between databases).
+--
+-- Every listing fills in what the listing form requires (listingSchema
+-- in src/lib/validations/listing.ts), so each one can be opened in Edit
+-- and saved as it is (#243):
+--   - total_rooms is never below available_rooms (the column default is
+--     1, which made four of these listings invalid, #231);
+--   - city, property_type, occupancy_type and allowed_gender use the
+--     form's own option lists (PROPERTY_TYPES, OCCUPANCY_TYPES and
+--     GENDER_POLICIES in src/components/LandlordListingForm.tsx), so Edit
+--     shows the right choice instead of the form's default.
+-- The photos (images, cover_image) aren't set here: SQL can't upload the
+-- file, and it doesn't know the project's URL. supabase/seed-storage.mjs
+-- uploads a sample photo and sets them (npm run db:seed runs it after
+-- this file).
 insert into public.listings (
-  id, landlord_id, title, monthly_rent, available_rooms, amenities,
+  id, landlord_id, title, monthly_rent, available_rooms, total_rooms,
+  city, property_type, occupancy_type, allowed_gender, amenities,
   house_rules, address, latitude, longitude, contact_info, availability_status
 )
 select
-  v.id::uuid, u.id, v.title, v.monthly_rent, v.available_rooms, v.amenities,
+  v.id::uuid, u.id, v.title, v.monthly_rent, v.available_rooms, v.total_rooms,
+  v.city, v.property_type, v.occupancy_type, v.allowed_gender, v.amenities,
   v.house_rules, v.address, v.latitude, v.longitude, v.contact_info, v.availability_status
 from (
   values
     -- Maria Santos (landlord1)
     ('a1b2c3d4-0000-4000-8000-000000000001', 'landlord1@abangers.test',
-     'Santos Boarding House near USC Talamban', 3500, 4,
+     'Santos Boarding House near USC Talamban', 3500, 4, 6,
+     'Cebu City', 'Boarding House', 'Bedspace', 'Any / Co-ed',
      array['WiFi', 'Shared kitchen', 'Laundry area', 'Study area'],
      'Curfew 10 PM. No visitors of the opposite sex in rooms. Keep common areas clean.',
      'Nasipit Rd, Talamban, Cebu City', 10.3530, 123.9125,
      'Maria Santos — 0917 555 0101', 'available'),
 
     ('a1b2c3d4-0000-4000-8000-000000000002', 'landlord1@abangers.test',
-     'Air-conditioned Bedspace in Lahug (near UP Cebu)', 4500, 1,
+     'Air-conditioned Bedspace in Lahug (near UP Cebu)', 4500, 1, 4,
+     'Cebu City', 'Boarding House', 'Bedspace', 'Any / Co-ed',
      array['WiFi', 'Air conditioning', 'Private CR', 'Water included'],
      'No smoking. No pets. Quiet hours from 10 PM to 6 AM.',
      'Gorordo Ave, Lahug, Cebu City', 10.3229, 123.8990,
      'Maria Santos — 0917 555 0101', 'almost_full'),
 
     ('a1b2c3d4-0000-4000-8000-000000000003', 'landlord1@abangers.test',
-     'IT Park Studio Rooms for Working Professionals', 7000, 0,
+     'IT Park Studio Rooms for Working Professionals', 7000, 0, 5,
+     'Cebu City', 'Apartment', 'Studio', 'Any / Co-ed',
      array['WiFi', 'Air conditioning', 'Private CR', 'Kitchenette', '24/7 security'],
      'No curfew. No loud parties. Electricity billed separately per sub-meter.',
      'Salinas Dr, Apas, Cebu City', 10.3302, 123.9060,
@@ -237,27 +257,31 @@ from (
 
     -- Jun Dela Cruz (landlord2)
     ('a1b2c3d4-0000-4000-8000-000000000004', 'landlord2@abangers.test',
-     'Dela Cruz Dorm — walking distance to UC Main', 2800, 6,
+     'Dela Cruz Dorm — walking distance to UC Main', 2800, 6, 10,
+     'Cebu City', 'Dormitory', 'Shared Room', 'Any / Co-ed',
      array['WiFi', 'Shared CR', 'Water included', 'Electricity included'],
      'Curfew 11 PM. Cooking allowed in the shared kitchen only.',
      'Sanciangko St, Cebu City', 10.2978, 123.8978,
      'Jun Dela Cruz — 0928 555 0202', 'available'),
 
     ('a1b2c3d4-0000-4000-8000-000000000005', 'landlord2@abangers.test',
-     'Female-only Boarding House near CIT-U', 3200, 2,
+     'Female-only Boarding House near CIT-U', 3200, 2, 8,
+     'Cebu City', 'Boarding House', 'Shared Room', 'Female Only',
      array['WiFi', 'Shared kitchen', 'Laundry area', 'CCTV'],
      'Female tenants only. Curfew 9 PM. Visitors allowed in the lobby until 8 PM.',
      'N. Bacalso Ave, Labangon, Cebu City', 10.2950, 123.8815,
      'Jun Dela Cruz — 0928 555 0202', 'almost_full'),
 
     ('a1b2c3d4-0000-4000-8000-000000000006', 'landlord2@abangers.test',
-     'Budget Rooms near USJ-R Main', 2500, 3,
+     'Budget Rooms near USJ-R Main', 2500, 3, 5,
+     'Cebu City', 'Boarding House', 'Single Room', 'Any / Co-ed',
      array['Shared CR', 'Water included', 'Study area'],
      'Curfew 10 PM. One-month advance and one-month deposit required.',
      'P. Del Rosario St, Cebu City', 10.2936, 123.8997,
      'Jun Dela Cruz — 0928 555 0202', 'available')
 ) as v (
-  id, landlord_email, title, monthly_rent, available_rooms, amenities,
+  id, landlord_email, title, monthly_rent, available_rooms, total_rooms,
+  city, property_type, occupancy_type, allowed_gender, amenities,
   house_rules, address, latitude, longitude, contact_info, availability_status
 )
 join auth.users u on u.email = v.landlord_email
@@ -266,6 +290,11 @@ on conflict (id) do update
       title               = excluded.title,
       monthly_rent        = excluded.monthly_rent,
       available_rooms     = excluded.available_rooms,
+      total_rooms         = excluded.total_rooms,
+      city                = excluded.city,
+      property_type       = excluded.property_type,
+      occupancy_type      = excluded.occupancy_type,
+      allowed_gender      = excluded.allowed_gender,
       amenities           = excluded.amenities,
       house_rules         = excluded.house_rules,
       address             = excluded.address,
