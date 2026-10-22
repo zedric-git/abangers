@@ -1,13 +1,25 @@
-"use client";
-
-import { useState } from "react";
-import Link from "next/link";
 import { Home } from "lucide-react";
-import LandlordAuthModal from "@/components/LandlordAuthModal";
+import HomeActions from "@/components/HomeActions";
+import { resolvePostLoginPath } from "@/lib/auth/post-login";
+import { createClient } from "@/lib/supabase/server";
 
-export default function HomePage() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"login" | "signup">("signup");
+export default async function HomePage() {
+  // A signed-in user gets a button to their own dashboard instead of
+  // sign-up and Login (#245). Where they belong is decided by the same
+  // helper as login and the proxy's dashboard guard (#170), so the three
+  // can't disagree. Reading the session (cookies) makes this page render
+  // on every request instead of once at build time.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // null: signed out, or no usable role. They get the signed-out buttons.
+  let dashboardPath: string | null = null;
+  if (user) {
+    const result = await resolvePostLoginPath(supabase, user);
+    if (result.ok) dashboardPath = result.path;
+  }
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center bg-zinc-50 px-4 font-sans dark:bg-black">
@@ -26,51 +38,9 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* Call to Actions */}
-        <div className="flex w-full flex-col gap-4">
-          <Link
-            href="/listings"
-            className="flex h-12 w-full items-center justify-center rounded-lg bg-purple-600 px-6 font-medium text-white transition-colors hover:bg-purple-700 active:bg-purple-800"
-          >
-            {"I'm looking for a place to rent"}
-          </Link>
-
-          <button
-            onClick={() => {
-              setModalMode("signup");
-              setIsModalOpen(true);
-            }}
-            className="flex h-12 w-full cursor-pointer items-center justify-center rounded-lg border border-zinc-200 bg-white px-6 font-medium text-zinc-900 transition-colors hover:bg-zinc-50 active:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800/80 dark:active:bg-zinc-800"
-          >
-            I want to post my rental property
-          </button>
-
-          <div className="pt-2">
-            <button
-              onClick={() => {
-                setModalMode("login");
-                setIsModalOpen(true);
-              }}
-              className="cursor-pointer text-sm font-semibold text-indigo-600 transition-colors hover:text-indigo-500 hover:underline dark:text-indigo-400 dark:hover:text-indigo-300"
-            >
-              Login
-            </button>
-          </div>
-        </div>
+        {/* Call to Actions (and the login / sign-up popup) */}
+        <HomeActions dashboardPath={dashboardPath} />
       </main>
-
-      {/*
-        Landlord Auth Modal — only mounted while open, so each open starts
-        fresh on `modalMode` (e.g. "post my rental property" always shows
-        sign-up, even if the user switched to login last time).
-      */}
-      {isModalOpen && (
-        <LandlordAuthModal
-          isOpen
-          onClose={() => setIsModalOpen(false)}
-          initialMode={modalMode}
-        />
-      )}
     </div>
   );
 }

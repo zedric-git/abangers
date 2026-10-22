@@ -50,7 +50,10 @@ export default function LandlordLayout({
     // bg-background (not bg-white/dark:bg-black + transition-colors): it
     // fades via the single shared --background transition in globals.css,
     // so it always matches the sidebar's active tab exactly.
-    <div className="bg-background flex h-dvh h-screen flex-col overflow-hidden font-sans md:flex-row">
+    // h-dvh (not h-screen): on a phone 100vh is the height with the
+    // browser's address bar hidden, so the bottom of the dashboard would
+    // sit under the bar while it shows (#245).
+    <div className="bg-background flex h-dvh flex-col overflow-hidden font-sans md:flex-row">
       {/* Sidebar (Desktop docked + Mobile drawer & trigger) */}
       <DashboardSidebar
         items={landlordNavItems}
