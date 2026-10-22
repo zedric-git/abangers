@@ -16,6 +16,7 @@ import {
   Star,
 } from "lucide-react";
 import { ListingInput } from "@/lib/validations/listing";
+import { listingStatusView } from "@/lib/listing-status-view";
 import { ReadOnlyMap } from "@/components/map";
 
 interface ListingDetailViewProps {
@@ -32,6 +33,8 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
 
   const imagesList = listing.images || [];
   const activeCover = listing.cover_image || imagesList[0] || "";
+  // Same label and colour as the landlord's listing cards (#232).
+  const statusView = listingStatusView(listing.availability_status);
 
   return (
     <div className="space-y-8 text-zinc-900 dark:text-zinc-100">
@@ -61,12 +64,10 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
               <Star className="h-3.5 w-3.5 fill-current text-yellow-300" />
               Cover Photo
             </span>
-            <span className="inline-flex items-center rounded-full bg-emerald-600/90 px-3.5 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur-md">
-              {listing.availability_status === "available"
-                ? "Available Now"
-                : listing.availability_status === "almost_full"
-                  ? "Almost Full"
-                  : "Fully Occupied"}
+            <span
+              className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-bold shadow-lg ${statusView.badgeClassName}`}
+            >
+              {statusView.label}
             </span>
           </div>
         </div>

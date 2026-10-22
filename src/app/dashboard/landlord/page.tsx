@@ -8,6 +8,7 @@ import {
   type LandlordStatus,
 } from "@/lib/auth/landlord-status";
 import { isAddListingLocked } from "@/lib/landlord-status-view";
+import { countListingsByTab } from "@/lib/filter-landlord-listings";
 import { Listing } from "@/types/listing";
 
 export default async function LandlordDashboardPage() {
@@ -18,6 +19,9 @@ export default async function LandlordDashboardPage() {
   } = await supabase.auth.getUser();
 
   let listings: Listing[] = [];
+  // The listings couldn't be read: the list says so instead of showing the
+  // "No listings created yet" empty state (#232).
+  let listingsLoadError = false;
   // Where the landlord stands (#205): the banner, and the lock on Add New
   // Listing. null if it couldn't be read.
   let status: LandlordStatus | null = null;
@@ -32,11 +36,17 @@ export default async function LandlordDashboardPage() {
       loadLandlordStatus(supabase, user.id),
     ]);
 
+    if (listingsResult.error) {
+      console.error("Error fetching landlord listings:", listingsResult.error);
+      listingsLoadError = true;
+    }
     listings = listingsResult.data ?? [];
     status = landlordStatus;
   }
 
-  const activeCount = listings.length;
+  // Available and Almost Full listings: the same number as the list's
+  // Active tab (#232).
+  const activeCount = countListingsByTab(listings).active;
   const addListingLocked = isAddListingLocked(status);
 
   return (
@@ -122,6 +132,7 @@ export default async function LandlordDashboardPage() {
       <LandlordListingsView
         initialListings={listings}
         addListingLocked={addListingLocked}
+        loadError={listingsLoadError}
       />
     </div>
   );

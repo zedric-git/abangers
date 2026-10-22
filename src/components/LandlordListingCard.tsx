@@ -4,15 +4,24 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  MapPin,
-  Building,
-  Eye,
-  MoreVertical,
-  MessageSquare,
-} from "lucide-react";
+import { MapPin, Building, MoreVertical, Trash2 } from "lucide-react";
 import { Listing } from "@/types/listing";
 import DeleteListingModal from "@/components/DeleteListingModal";
+import ListingStatusToggle from "@/components/ListingStatusToggle";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+// "Oct 20, 2026", always in Philippine time. A fixed date (not "2 days
+// ago") in a fixed time zone renders the same on the server and in the
+// browser, so React doesn't see a hydration mismatch.
+const UPDATED_DATE_FORMAT = new Intl.DateTimeFormat("en-PH", {
+  dateStyle: "medium",
+  timeZone: "Asia/Manila",
+});
 
 interface LandlordListingCardProps {
   listing: Listing;
@@ -26,10 +35,7 @@ export default function LandlordListingCard({
   const coverPhoto = listing.cover_image || listing.images?.[0] || "";
 
   const displayPrice = listing.monthly_rent;
-
-  const isAvailable =
-    listing.availability_status === "available" ||
-    listing.availability_status === "active";
+  const updatedDate = UPDATED_DATE_FORMAT.format(new Date(listing.updated_at));
 
   return (
     <div className="flex w-full flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center dark:border-zinc-800 dark:bg-[#18181b]">
@@ -84,7 +90,9 @@ export default function LandlordListingCard({
             <div className="flex shrink-0 items-center">
               <span
                 className={`text-sm font-bold ${
-                  listing.available_rooms > 0 ? "text-white" : "text-red-500"
+                  listing.available_rooms > 0
+                    ? "text-zinc-900 dark:text-white"
+                    : "text-red-500"
                 }`}
               >
                 {listing.available_rooms} rooms available
@@ -93,30 +101,20 @@ export default function LandlordListingCard({
           </div>
         </div>
 
-        {/* Column 3: Status & Stats */}
-        <div className="flex shrink-0 flex-col justify-center gap-1 md:w-[130px]">
-          <div>
-            {isAvailable ? (
-              <span className="inline-flex items-center justify-center rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-bold tracking-wider text-emerald-500 uppercase dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-400">
-                Active
-              </span>
-            ) : (
-              <span className="inline-flex items-center justify-center rounded-md border border-rose-500/30 bg-rose-500/10 px-2 py-0.5 text-xs font-bold tracking-wider text-rose-500 uppercase dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-400">
-                Fully Occupied
-              </span>
-            )}
-          </div>
+        {/* Column 3: Status & Last Updated */}
+        <div className="flex shrink-0 flex-col justify-center gap-1 md:w-[170px]">
+          {/* Keyed on the saved status, so the badge starts over from it
+              whenever the page re-reads the listing (#232). */}
+          <ListingStatusToggle
+            key={listing.availability_status}
+            listingId={listing.id}
+            listingTitle={listing.title}
+            currentStatus={listing.availability_status}
+            availableRooms={listing.available_rooms}
+          />
           <span className="mt-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            Updated 2 days ago
+            Updated {updatedDate}
           </span>
-          <div className="flex items-center gap-3 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            <span className="flex items-center gap-1.5">
-              <Eye className="h-3.5 w-3.5" /> 84
-            </span>
-            <span className="flex items-center gap-1.5">
-              <MessageSquare className="h-3.5 w-3.5" /> 6
-            </span>
-          </div>
         </div>
 
         {/* Column 4: Actions */}
@@ -133,14 +131,30 @@ export default function LandlordListingCard({
           >
             Edit
           </Link>
-          <button
-            type="button"
-            onClick={() => setIsDeleteOpen(true)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-rose-600 dark:border-zinc-700 dark:bg-[#1f1f22] dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-rose-500"
-            title="Options"
-          >
-            <MoreVertical className="h-4 w-4" />
-          </button>
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                aria-label={`More actions for ${listing.title}`}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 data-[state=open]:bg-zinc-50 dark:border-zinc-700 dark:bg-[#1f1f22] dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:data-[state=open]:bg-zinc-800"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              className="w-44 rounded-xl border-zinc-200 bg-white p-1.5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => setIsDeleteOpen(true)}
+                className="cursor-pointer rounded-lg text-sm font-semibold text-rose-600 focus:bg-rose-50 focus:text-rose-700 dark:text-rose-400 dark:focus:bg-rose-950/60 dark:focus:text-rose-300"
+              >
+                <Trash2 className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                Delete listing
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
