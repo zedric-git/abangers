@@ -18,12 +18,18 @@ interface LandlordListingsViewProps {
   addListingLocked: boolean;
   /** The listings couldn't be read, so say that instead of "No listings created yet". */
   loadError?: boolean;
+  /**
+   * Show the "My Posted Listings" heading. The My Posted Listings page
+   * turns it off, since its page title already says it (#239).
+   */
+  showHeading?: boolean;
 }
 
 export default function LandlordListingsView({
   initialListings,
   addListingLocked,
   loadError = false,
+  showHeading = true,
 }: LandlordListingsViewProps) {
   // The toolbar (#232): the tab and the search filter the listings the
   // page already loaded (see filter-landlord-listings.ts).
@@ -43,11 +49,13 @@ export default function LandlordListingsView({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-          My Posted Listings
-        </h2>
-      </div>
+      {showHeading && (
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+            My Posted Listings
+          </h2>
+        </div>
+      )}
 
       {loadError ? (
         <div
