@@ -25,8 +25,9 @@ Changes from the plan:
 
 **Only if this PR changes the database** (delete this section otherwise):
 
-- [ ] New migration file (next number) — no edits to existing migrations
+<!-- Don't `db push` or run `db:types` yourself: CI's `database` job tests the migration here and commits the regenerated src/types/database.ts to this branch (pull before pushing again), and after merge CI applies it to the shared database and comments on this PR. -->
+
+- [ ] New migration file (next number on `dev`) — no edits to existing migrations
 - [ ] New tables/migrations include RLS policies **and** grants (with a role check if only renters or landlords should do it)
-- [ ] Pushed with `npx supabase db push`, then ran `npm run db:types` and committed `src/types/database.ts`
-- [ ] Added/updated a `*.db.test.ts` case and `npm run test:db` passes
+- [ ] Added/updated a `*.db.test.ts` case for each policy, and CI's `database` job passes (every migration, the seed and the DB tests, on a throwaway Supabase)
 - [ ] If this changes a rule, convention, file path, or known gap, I updated `AGENTS.md`

@@ -62,14 +62,14 @@ https://github.com/users/zedric-git/projects/3
   number prefix, not the full filename.** Two files with the same number
   means the second is silently treated as already applied (this
   happened once — see #172, fixed by `0005`). Number new migrations
-  from the highest number + 1, and never run migration SQL by hand in
-  the Supabase dashboard: that's how `0003`/`0004` drifted from what's
-  recorded. Before any `db push`, run
-  `npx supabase migration list --linked` and
-  `npx supabase db push --dry-run` and check only your new file is
-  pending. `scripts/check-migrations.mjs` (part of `npm run check` and
-  CI) fails on duplicate numbers and on any edit, rename, or delete of
-  a migration that's already on the base branch.
+  from the highest number on `dev` + 1, and never run migration SQL by
+  hand in the Supabase dashboard: that's how `0003`/`0004` drifted from
+  what's recorded. `scripts/check-migrations.mjs` (part of
+  `npm run check` and CI) fails on duplicate numbers and on any edit,
+  rename, or delete of a migration that's already on the base branch.
+  After merge, CI's `apply-database` job checks the shared database
+  first and stops, changing nothing, if it has a migration `dev`
+  doesn't (see "Database (Supabase)").
 - **Only three files in `supabase/.temp/` are committed, on purpose.**
   `project-ref`, `linked-project.json` and `pooler-url` are what
   `npx supabase link` saves for the shared project, so every clone and
@@ -79,15 +79,33 @@ https://github.com/users/zedric-git/projects/3
   whole folder — every new worktree would then need
   `npx supabase link` first. If `git status` ever shows `project-ref`
   as changed, someone linked a different project: don't commit it.
+  CI's `apply-database` job reads `project-ref` and `pooler-url` too,
+  to reach the shared project.
+- **`supabase/config.toml` is only for CI's throwaway Supabase.** The
+  `database` job in `.github/workflows/ci.yml` runs `npx supabase start`
+  (Docker), which needs it. It doesn't configure the shared project;
+  the Supabase dashboard does. Never run `supabase config push`: it
+  would copy CI's settings (local URLs, raised rate limits, services
+  turned off) over the shared project's. `.claude/settings.json` blocks
+  it. Keep `[db] major_version` the same as the shared project's
+  Postgres (17).
 - **CI builds with placeholder Supabase env vars.** The `Build` step in
   `.github/workflows/ci.yml` has no real keys, which works because no
   page fetches data at build time. If a build fails there with a
   Supabase/network error, make that page dynamic — don't add real keys
   to CI.
 - **The database schema is the source of truth for types.**
-  `src/types/database.ts` is generated from the shared project with
-  `npm run db:types` — never edit it by hand; re-run the script after
-  any migration is pushed. All three Supabase clients in
+  `src/types/database.ts` is generated from the migrations — never edit
+  it by hand, and you don't need to regenerate it either. On every PR,
+  CI's `database` job regenerates it with `npm run db:types`
+  (`scripts/db-types.mjs`, which needs the throwaway Supabase that job
+  starts, so it doesn't run on our own machines). When the file
+  changed, the `database-types` job commits it to the PR's branch as
+  the types bot, and CI runs again on that commit: run `git pull`
+  before you push again (#258). `gen types --local` leaves out the
+  `__InternalSupabase` block (the shared project's PostgREST version,
+  which supabase-js types queries against), so the script keeps the
+  committed one. All three Supabase clients in
   `src/lib/supabase/` are typed with it, so a query on a column that
   doesn't exist is a type error. Don't write table types by hand —
   derive them (e.g. `Listing` in `src/types/listing.ts` is the
@@ -313,8 +331,11 @@ In Claude Code, `/start-task` walks through all of this.
    - `supabase/seed.sql` — dev test accounts + sample listings
    - `supabase/seed-storage.mjs` + `supabase/seed-storage/` — uploads
      the seed data's sample files (placeholder ID photos) to Storage
-   - `scripts/` — repo checks run by `npm run check` and CI (plain
-     Node `.mjs`, no dependencies), plus their unit tests
+   - `supabase/config.toml` — settings for CI's throwaway Supabase only
+   - `scripts/` — repo checks run by `npm run check` and CI, and the
+     scripts CI's database jobs run (`db-types.mjs`,
+     `report-database-apply.mjs`): plain Node `.mjs`, no dependencies,
+     plus their unit tests
    - `.vscode/` — shared editor settings + recommended extensions
      (the team uses VS Code; personal settings stay in your user
      settings)
@@ -335,8 +356,8 @@ Three-tier flow: `feature/*` → `dev` → `main`.
   merge here first. This is where we test and stabilize everything the
   sprint is supposed to ship. Nothing goes to `main` directly from a
   feature branch. **Protected for everyone, including admins:** changes
-  need a PR with a passing `checks` CI run (no approval required); no
-  direct pushes, force-pushes, or deleting the branch.
+  need a PR whose `checks` and `database` CI runs pass (no approval
+  required); no direct pushes, force-pushes, or deleting the branch.
 - **`main` branch** — protected, always reflects the last stable,
   exam-ready state. `dev` only merges into `main` once every feature for
   the sprint is done and `dev` itself is stable (build/lint/tests all
@@ -380,20 +401,68 @@ next sprint instead of forcing the merge.
 ## Database (Supabase)
 
 - **There is one shared, hosted Supabase project** for the whole team.
-  There's no local Supabase/Docker setup — the CLI is linked straight
-  to the shared project (`npx supabase link`). Anything you do to the
-  database affects everyone immediately.
+  There's no local Supabase/Docker setup on our own machines — the CLI
+  is linked straight to the shared project (`npx supabase link`).
+  Anything you do to the database affects everyone immediately. (CI
+  starts a throwaway Supabase of its own to test migrations, below.)
 - **Schema changes only go through new migration files** in
-  `supabase/migrations/` (next number in sequence), applied with
-  `npx supabase db push`. Never edit a migration that's already been
-  pushed — write a new one.
+  `supabase/migrations/` (next number in sequence). CI applies them to
+  the shared project after the PR merges (below): don't
+  `npx supabase db push` them yourself. Never edit a migration that's
+  already on `dev` — write a new one.
+- **CI tests a PR's migrations, then applies them after merge (#258).**
+  You write the migration and merge the PR; nobody runs `db push`,
+  `db:seed`, `db:types` or `test:db` by hand, or has to tell the team.
+  - On every PR, the `database` job starts a throwaway Supabase on the
+    CI machine (`npx supabase start`, settings in `supabase/config.toml`),
+    applies every migration to an empty database, runs the seed twice
+    (it must be safe to re-run) and every `*.db.test.ts` suite, and
+    checks the types (see "The database schema is the source of truth
+    for types").
+  - After a PR that changes `supabase/migrations/`, `seed.sql`,
+    `seed-storage.mjs` or `seed-storage/` merges into `dev`, the
+    `apply-database` job applies it to the shared project, one run at a
+    time and only once `checks` and `database` passed on that commit:
+    `db push --dry-run`, then `db push`, the seed and `test:db`. It
+    comments on the merged PR with what was applied, and @-mentions the
+    team, or with which step failed and what to do next.
+  - **When it fails**, read its comment. A failing migration applies
+    nothing (each one runs in a transaction), and `db push` stops there,
+    so a new migration can't jump ahead of it: the PM decides the fix,
+    usually correcting the rows the migration rejects, then "Re-run
+    failed jobs" on that run. Don't edit or delete the merged migration.
+    **Never run `supabase migration repair`**, which the CLI suggests
+    when the shared database has a migration `dev` doesn't: that's drift
+    to fix, not to hide.
+  - The repo variable `DB_AUTO_APPLY` turns the job on (`true`); any
+    other value stops it applying after merges. "Run workflow" on the
+    CI workflow, on `dev`, shows what's pending on the shared project
+    without changing it, or applies it with "apply" ticked.
+- **The shared project's credentials are in the `shared-db` environment**
+  (Settings → Environments), which only jobs on `dev` can use: a PR's
+  workflow, even from a fork, can never read them. The PM set it up
+  once:
+  1. **The environment:** deployment branch `dev` only (set that before
+     adding secrets), with the secrets `SUPABASE_DB_PASSWORD` (the
+     database password; the job connects with `--db-url`, built from
+     `supabase/.temp/pooler-url`, so it needs no personal access token)
+     and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+  2. **The types bot:** a GitHub App on the PM's account that can only
+     write this repo's contents. Its `DB_BOT_APP_ID` (a variable) and
+     `DB_BOT_PRIVATE_KEY` (a secret) are repo-level, because PR runs
+     need them. A commit pushed with the workflow's own token wouldn't
+     start CI, so the required checks would never run on it.
+  3. **Then:** `DB_AUTO_APPLY` set to `true`, and `database` required on
+     `dev` and `main` (Settings → Branches), next to `checks`.
 - **`npx supabase db reset --linked` wipes the shared database for the
   whole team** (all accounts and listings), then re-applies migrations
   and runs `supabase/seed.sql` (run `npm run db:seed` after it for the
   sample files). Never run it without asking the team first.
 - **`supabase/seed.sql` must stay idempotent** (safe to re-run with
-  `npm run db:seed`). Seed accounts are matched by email and seed
-  listings by fixed UUID, with `on conflict ... do update`. Follow that
+  `npm run db:seed`): CI runs it twice on every PR, and again on the
+  shared project after every database merge. Seed accounts are matched
+  by email and seed listings by fixed UUID, with
+  `on conflict ... do update`. Follow that
   pattern for any new seed data — no plain `INSERT`s that duplicate on
   a second run. Seed credentials are dev-only; the shared password is in
   the file header.
@@ -412,8 +481,9 @@ next sprint instead of forcing the merge.
   `<landlord id>/seed/listing-sample.jpg`), and sets that photo as the
   photo and cover of their seed listings. It skips files that are
   already there. Running the seed resets the seed listings for everyone,
-  photos included. Put only placeholder images in
-  `supabase/seed-storage/`, never a real ID or photo.
+  photos included, and CI runs it after every database merge. Put only
+  placeholder images in `supabase/seed-storage/`, never a real ID or
+  photo.
 - Supabase Auth only stores email/password. App fields (role, name)
   live in `public.profiles`, one row per `auth.users` row, same `id`.
 
@@ -467,9 +537,10 @@ entry in the PR that closes it.
 ## Commands
 
 - **`npm run check` — run this before saying a change is done.** It's
-  everything CI runs except the production build: `next typegen`,
-  `tsc --noEmit`, ESLint, Prettier check, the migration check, the
-  invisible-character check, and the unit tests.
+  everything CI's `checks` job runs except the production build:
+  `next typegen`, `tsc --noEmit`, ESLint, Prettier check, the migration
+  check, the invisible-character check, and the unit tests. (The
+  `database` job needs Docker, so only CI runs it.)
 - `npm run check:migrations` — just the migration check (unique numbers,
   no edits to migrations already on `origin/dev`; `git fetch` first)
 - `npm run check:invisible-chars` — just the invisible-character check
@@ -478,23 +549,27 @@ entry in the PR that closes it.
 - `npm run dev` — local dev server
 - `npm test` — unit tests (`*.test.ts`, Vitest). Put a test next to the
   file it tests; see `src/lib/validations/auth.test.ts` for the pattern.
-- `npm run test:db` — tests that run against the **shared** Supabase
-  project (`*.db.test.ts`), e.g. the listings RLS test. Needs
-  `.env.local` and the seed data. Not run in CI. Any new table's RLS
-  policies should get a test here; DB tests must leave shared data
-  unchanged.
+- `npm run test:db` — tests against a real Supabase (`*.db.test.ts`),
+  e.g. the listings RLS test. CI runs them on every PR (on its
+  throwaway Supabase) and on the shared project after every database
+  merge. Run by hand, they use `.env.local` and the seed data, so they
+  hit the **shared** project. Any new table's RLS policies should get a
+  test here; DB tests must leave shared data unchanged.
 - `npm run lint` — ESLint
 - `npm run format` — Prettier (auto-runs on commit via Husky)
 - `npm run format:check` — Prettier check only
-- `npm run db:types` — regenerate `src/types/database.ts` from the
-  shared project's schema
+- `npm run db:types` — regenerate `src/types/database.ts` from a local
+  Supabase. CI runs it on every PR; it needs Docker and
+  `npx supabase start`, so you don't run it yourself.
 - `npx shadcn add <component>` — add a new shadcn/ui component
-- `npx supabase db push` — apply pending migrations to the linked project
-  (run `npx supabase link --project-ref <ref>` once first)
+- `npx supabase db push` — don't: CI's `apply-database` job applies
+  merged migrations to the shared project. Only the PM runs it by hand,
+  e.g. while `DB_AUTO_APPLY` is off.
 - `npm run db:seed` — load test accounts + sample listings from
-  `supabase/seed.sql` into the linked project, then upload landlord1's
-  sample verification files (`supabase/seed-storage.mjs`, needs
-  `.env.local`); safe to re-run
+  `supabase/seed.sql` into the linked project, then upload the seed's
+  sample files (`supabase/seed-storage.mjs`, needs `.env.local`); safe
+  to re-run. CI already runs it after every database merge; run it
+  yourself only to reset seed data you changed while testing.
 
 ## Agent guardrails (Claude Code)
 
@@ -504,8 +579,9 @@ overrides go in the gitignored `.claude/settings.local.json`):
 - **Auto-approved:** read-only and routine commands (`npm run check`,
   `npm test`, `git status/diff/log`, `gh issue/pr view`,
   `npx supabase migration list`, `db push --dry-run`, ...).
-- **Always blocked:** `supabase db reset`, force-pushes, pushing
-  straight to `main`/`dev`, and `git commit --no-verify`.
+- **Always blocked:** `supabase db reset`, `supabase config push`,
+  force-pushes, pushing straight to `main`/`dev`, and
+  `git commit --no-verify`.
 - **Hook:** `.claude/hooks/protect-applied-migrations.mjs` blocks edits
   to any migration that's already on `origin/dev` (run `git fetch` to
   keep that current). New migration files are unaffected.
@@ -526,7 +602,8 @@ follow them too):
   the plan, cut a correctly named branch from the latest `dev`. (If it
   had to wait for approval, run it again once the plan is approved.)
 - `/new-migration <description>` — next migration number, RLS, grants,
-  role checks, a DB test, and the apply steps for the PR.
+  role checks and a DB test. CI tests it on the PR and applies it after
+  merge.
 - `/open-pr [issues]` — `npm run check`, push, open a PR into `dev`
   with `Closes #` lines (they close the issues when it merges) and a
   link to the approved plan.
