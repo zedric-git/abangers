@@ -165,7 +165,14 @@ https://github.com/users/zedric-git/projects/3
   `src/lib/auth/route-guard.ts`; guard a new page there. Logout uses
   `window.location.replace(...)`, not `router.push` — a client-side
   push leaves the dashboard in history and Next's client cache, so the
-  Back button would show it again after logging out.
+  Back button would show it again after logging out. Even so, pages
+  visited before the logout stay in the history, and Back can show the
+  browser's own copy of one without asking the server (it did in
+  `next dev`, #252). `SignedInOnly` (`src/components/SignedInOnly.tsx`)
+  sends a signed-out browser home from such a copy: the landlord layout
+  and `/profile-setup` render it, and any new page that shows a
+  signed-in user's data outside them (e.g. the renter dashboard's
+  layout) should too.
 - **There are no `/login` or `/signup` pages.** Login and sign-up both
   happen in `src/components/LandlordAuthModal.tsx`, opened from the home
   page. The old `/login` and `/signup` URLs redirect to `/` (see

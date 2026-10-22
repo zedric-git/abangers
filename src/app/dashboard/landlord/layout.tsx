@@ -2,6 +2,7 @@
 
 import { Building2, User, LogOut } from "lucide-react";
 import DashboardSidebar, { NavItem } from "@/components/DashboardSidebar";
+import SignedInOnly from "@/components/SignedInOnly";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LandlordLayout({
@@ -19,8 +20,10 @@ export default function LandlordLayout({
     } finally {
       // Not router.push: that keeps the dashboard in browser history and
       // in Next's client-side cache, so pressing Back would show it again
-      // without asking the server. A full replace drops the history entry
-      // and the cache, so any later visit hits the guard in the proxy.
+      // without asking the server. A full replace drops this page's history
+      // entry and Next's cache. Dashboard pages visited before it are still
+      // in the history, though, and Back can show the browser's own copy of
+      // one of them: <SignedInOnly /> below sends that copy home (#252).
       window.location.replace("/");
     }
   };
@@ -54,6 +57,9 @@ export default function LandlordLayout({
     // browser's address bar hidden, so the bottom of the dashboard would
     // sit under the bar while it shows (#245).
     <div className="bg-background flex h-dvh flex-col overflow-hidden font-sans md:flex-row">
+      {/* Signed out (e.g. Back after logging out) → home page (#252) */}
+      <SignedInOnly />
+
       {/* Sidebar (Desktop docked + Mobile drawer & trigger) */}
       <DashboardSidebar
         items={landlordNavItems}
