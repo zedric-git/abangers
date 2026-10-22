@@ -1,10 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import LandlordListingForm from "@/components/LandlordListingForm";
-import {
-  ListingInput,
-  parseAvailabilityStatus,
-} from "@/lib/validations/listing";
+import { listingRowToFormValues } from "@/lib/validations/listing";
 
 export default async function EditListingPage({
   params,
@@ -34,38 +31,14 @@ export default async function EditListingPage({
     notFound();
   }
 
-  const initialValues: Partial<ListingInput> = {
-    title: listing.title || "",
-    address: listing.address || "",
-    city: listing.city || "",
-    monthly_rent: listing.monthly_rent,
-    total_rooms: listing.total_rooms || 1,
-    available_rooms: listing.available_rooms || 1,
-    property_type: listing.property_type || "Boarding House",
-    occupancy_type: listing.occupancy_type || "Bedspace",
-    allowed_gender: listing.allowed_gender || "Any / Co-ed",
-    amenities: listing.amenities || [],
-    utilities: listing.utilities || [],
-    room_features: listing.room_features || [],
-    bathroom_features: listing.bathroom_features || [],
-    kitchen_features: listing.kitchen_features || [],
-    laundry_features: listing.laundry_features || [],
-    safety_features: listing.safety_features || [],
-    description: listing.description || "",
-    house_rules: listing.house_rules || "",
-    contact_info: listing.contact_info || "",
-    availability_status: parseAvailabilityStatus(listing.availability_status),
-    images: listing.images || [],
-    cover_image: listing.cover_image || "",
-    latitude: listing.latitude != null ? listing.latitude : undefined,
-    longitude: listing.longitude != null ? listing.longitude : undefined,
-  };
-
+  // listingRowToFormValues passes the saved values through as they are
+  // (null becomes undefined), so a listing with 0 available rooms opens
+  // with 0. The form fills in its own defaults for empty columns (#231).
   return (
     <LandlordListingForm
       listingId={id}
       isEditing={true}
-      initialValues={initialValues}
+      initialValues={listingRowToFormValues(listing)}
     />
   );
 }

@@ -1,7 +1,11 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { listingSchema, ListingInput } from "@/lib/validations/listing";
+import {
+  availabilityStatusSchema,
+  listingSchema,
+  ListingInput,
+} from "@/lib/validations/listing";
 import {
   CANNOT_CREATE_LISTINGS_MESSAGE,
   checkCanCreateListings,
@@ -18,6 +22,15 @@ export type ActionResult<T = unknown> =
       // listing form's error card can link there (#221).
       fixOnProfilePage?: boolean;
     };
+
+// Shown when an update, status change or delete matched no row: the
+// listing was deleted (e.g. in another tab) or belongs to someone else
+// (#231). RLS and the landlord_id filter make those look the same.
+const LISTING_NOT_FOUND_MESSAGE =
+  "This listing no longer exists, or it isn't yours. Go back to your listings and refresh the page.";
+
+// Shown if the schema somehow fails without a message of its own.
+const INVALID_LISTING_MESSAGE = "Please fill in all required fields correctly.";
 
 /**
  * Server action to create a new property listing (S1-05.4).
@@ -59,7 +72,17 @@ export async function createListingAction(
     }
 
     // 3. Validate input server-side with shared Zod schema
-    const validatedData = listingSchema.parse(rawInput);
+    //    safeParse, not parse: parse throws, and the catch below would
+    //    show Zod's raw JSON. The first issue's message is a sentence the
+    //    landlord can act on, as in the profile forms (#231).
+    const validation = listingSchema.safeParse(rawInput);
+    if (!validation.success) {
+      return {
+        success: false,
+        error: validation.error.issues[0]?.message || INVALID_LISTING_MESSAGE,
+      };
+    }
+    const validatedData = validation.data;
     if (validatedData.available_rooms <= 0) {
       validatedData.availability_status = "fully_occupied";
     }
@@ -134,7 +157,17 @@ export async function updateListingAction(
     }
 
     // 2. Validate input server-side
-    const validatedData = listingSchema.parse(rawInput);
+    //    safeParse, not parse: parse throws, and the catch below would
+    //    show Zod's raw JSON. The first issue's message is a sentence the
+    //    landlord can act on, as in the profile forms (#231).
+    const validation = listingSchema.safeParse(rawInput);
+    if (!validation.success) {
+      return {
+        success: false,
+        error: validation.error.issues[0]?.message || INVALID_LISTING_MESSAGE,
+      };
+    }
+    const validatedData = validation.data;
     if (validatedData.available_rooms <= 0) {
       validatedData.availability_status = "fully_occupied";
     }
@@ -148,7 +181,10 @@ export async function updateListingAction(
       .eq("id", id)
       .eq("landlord_id", user.id)
       .select("id")
-      .single();
+      // maybeSingle, not single: no row back means the listing is gone or
+      // isn't theirs, and single would turn that into PostgREST's raw
+      // "JSON object requested, multiple (or no) rows returned".
+      .maybeSingle();
 
     if (updateError) {
       console.error("Database update error:", updateError);
@@ -156,6 +192,10 @@ export async function updateListingAction(
         success: false,
         error: updateError.message || "Failed to update listing in database.",
       };
+    }
+
+    if (!data) {
+      return { success: false, error: LISTING_NOT_FOUND_MESSAGE };
     }
 
     return {
@@ -198,11 +238,14 @@ export async function deleteListingAction(
     }
 
     // 2. Delete listing from Supabase scoped to authenticated landlord_id
-    const { error: deleteError } = await supabase
+    //    .select("id") returns the deleted rows, so we can tell whether
+    //    anything was actually deleted.
+    const { data: deletedRows, error: deleteError } = await supabase
       .from("listings")
       .delete()
       .eq("id", id)
-      .eq("landlord_id", user.id);
+      .eq("landlord_id", user.id)
+      .select("id");
 
     if (deleteError) {
       console.error("Database delete error:", deleteError);
@@ -210,6 +253,12 @@ export async function deleteListingAction(
         success: false,
         error: deleteError.message || "Failed to delete listing from database.",
       };
+    }
+
+    // Nothing deleted: it was already gone, or it isn't theirs. Saying
+    // "deleted" here would be wrong (#231).
+    if (deletedRows.length === 0) {
+      return { success: false, error: LISTING_NOT_FOUND_MESSAGE };
     }
 
     return {
@@ -252,28 +301,29 @@ export async function updateListingStatusAction(
       };
     }
 
-    // 2. Validate allowed status values
-    const validStatuses = [
-      "available",
-      "almost_full",
-      "fully_occupied",
-      "unavailable",
-    ];
-    if (!validStatuses.includes(newStatus)) {
+    // 2. Validate the status against the same list as the listing schema
+    //    and the database's CHECK constraint. newStatus stays a plain
+    //    string: a server action can be called with anything, so this
+    //    runtime check is what actually keeps bad values out (#231).
+    const status = availabilityStatusSchema.safeParse(newStatus);
+    if (!status.success) {
       return {
         success: false,
-        error: "Invalid status value provided.",
+        error:
+          "That status isn't one we know. Choose Available, Almost Full or Fully Occupied.",
       };
     }
 
     // 3. Update status column in Supabase
     const { data, error: updateError } = await supabase
       .from("listings")
-      .update({ availability_status: newStatus })
+      .update({ availability_status: status.data })
       .eq("id", id)
       .eq("landlord_id", user.id)
       .select("id, availability_status")
-      .single();
+      // No row back means the listing is gone or isn't theirs (see
+      // updateListingAction).
+      .maybeSingle();
 
     if (updateError) {
       console.error("Status update error:", updateError);
@@ -281,6 +331,10 @@ export async function updateListingStatusAction(
         success: false,
         error: updateError.message || "Failed to update status in database.",
       };
+    }
+
+    if (!data) {
+      return { success: false, error: LISTING_NOT_FOUND_MESSAGE };
     }
 
     return {
