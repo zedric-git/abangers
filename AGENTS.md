@@ -156,10 +156,13 @@ https://github.com/users/zedric-git/projects/3
   the PC, and add a port forwarding rule from `3000` to
   `localhost:3000`. Then open `http://localhost:3000` in Chrome on the
   phone. An iPhone needs real https.
-- **`/dashboard/*` is guarded in the proxy, and logout must be a hard
-  navigation.** `updateSession` in `src/lib/supabase/middleware.ts`
-  sends signed-out users to the home page (`/`) and keeps each role on its own
-  dashboard (via `resolvePostLoginPath`). Logout uses
+- **`/dashboard/*` and `/profile-setup` are guarded in the proxy, and
+  logout must be a hard navigation.** `updateSession` in
+  `src/lib/supabase/middleware.ts` sends signed-out users to the home
+  page (`/`), keeps each role on its own dashboard (via
+  `resolvePostLoginPath`), and lets only landlords open `/profile-setup`
+  (#233). The decision is `guardRedirect` in
+  `src/lib/auth/route-guard.ts`; guard a new page there. Logout uses
   `window.location.replace(...)`, not `router.push` — a client-side
   push leaves the dashboard in history and Next's client cache, so the
   Back button would show it again after logging out.

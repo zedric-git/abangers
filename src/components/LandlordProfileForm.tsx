@@ -69,7 +69,10 @@ export default function LandlordProfileForm({
           setUserId(user.id);
           setEmail(user.email || "");
 
-          // Load profile from Supabase
+          // Load profile from Supabase. Older versions of the profile forms
+          // also saved these fields in auth user metadata, so it's still
+          // read as a fallback for rows that are missing them: nobody loses
+          // what they typed, and the next Save puts it in profiles (#233).
           const { data: profile } = await supabase
             .from("profiles")
             .select("*")
@@ -160,12 +163,10 @@ export default function LandlordProfileForm({
         profile_completed: true,
       };
 
-      // 1. Update Auth user metadata
-      await supabase.auth.updateUser({
-        data: profileData,
-      });
-
-      // 2. Update public.profiles table
+      // Saved only to the profiles row, which is what every check reads
+      // (landlordProfileSchema, the listings insert policy,
+      // loadLandlordStatus). Not to auth user metadata too: that was one
+      // more call that could fail half-way (#233).
       const { error: updateError } = await supabase.from("profiles").upsert({
         id: userId,
         role: "landlord",
