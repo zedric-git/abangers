@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { Building2, CheckCircle2, XCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import AddListingButton from "@/components/AddListingButton";
-import LandlordListingCard from "@/components/LandlordListingCard";
+import LandlordListingsView from "@/components/LandlordListingsView";
 import VerificationBanner from "@/components/VerificationBanner";
 import { loadLandlordStatus } from "@/lib/auth/landlord-status";
 import { isAddListingLocked } from "@/lib/landlord-status-view";
@@ -39,6 +39,9 @@ export default async function LandlordListingsPage() {
   if (error) {
     console.error("Error fetching landlord listings:", error);
   }
+  // The listings couldn't be read: the list says so instead of showing the
+  // empty state, as on the dashboard (#239).
+  const listingsLoadError = error !== null;
 
   const listings: Listing[] = rawListings ?? [];
   const addListingLocked = isAddListingLocked(status);
@@ -118,35 +121,16 @@ export default async function LandlordListingsPage() {
         </div>
       </div>
 
-      {/* Listings Grid / Empty State */}
-      {listings.length > 0 ? (
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {listings.map((listing) => (
-            <LandlordListingCard key={listing.id} listing={listing} />
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-12 text-center shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-purple-50 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400">
-            <Building2 className="h-8 w-8" />
-          </div>
-          <h3 className="mt-5 text-lg font-bold text-zinc-900 dark:text-zinc-100">
-            No properties posted yet
-          </h3>
-          <p className="mx-auto mt-2 max-w-md text-xs text-zinc-500 sm:text-sm dark:text-zinc-400">
-            You haven&apos;t published any boarding house or room rental
-            listings yet. Post your first property to start receiving renter
-            inquiries.
-          </p>
-          <div className="mt-6">
-            <AddListingButton
-              locked={addListingLocked}
-              label="Post Your First Listing"
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-purple-700 px-5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:hover:bg-purple-700"
-            />
-          </div>
-        </div>
-      )}
+      {/* The listings, shared with the dashboard (#239): one card per row
+          (the card is a wide row, so it can't sit in a grid), the tabs and
+          search, and the error and empty states. The page title above
+          already says "My Posted Listings", so the list leaves it out. */}
+      <LandlordListingsView
+        initialListings={listings}
+        addListingLocked={addListingLocked}
+        loadError={listingsLoadError}
+        showHeading={false}
+      />
     </div>
   );
 }
