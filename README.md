@@ -75,21 +75,26 @@ need to run migrations or the seed just to start developing. Only run
 log in). They all share one password — it's in the header comment of
 `supabase/seed.sql`.
 
-| Email                     | Name          | Role     | Listings | Verified |
-| ------------------------- | ------------- | -------- | -------- | -------- |
-| `landlord1@abangers.test` | Maria Santos  | landlord | 3        | yes      |
-| `landlord2@abangers.test` | Jun Dela Cruz | landlord | 3        | no       |
-| `renter1@abangers.test`   | Ana Reyes     | renter   | —        | —        |
-| `renter2@abangers.test`   | Paolo Garcia  | renter   | —        | —        |
+| Email                     | Name            | Role     | Listings | Verified           |
+| ------------------------- | --------------- | -------- | -------- | ------------------ |
+| `landlord1@abangers.test` | Maria Santos    | landlord | 3        | yes                |
+| `landlord2@abangers.test` | Jun Dela Cruz   | landlord | 3        | no                 |
+| `landlord3@abangers.test` | Rosa Villanueva | landlord | —        | waiting for review |
+| `renter1@abangers.test`   | Ana Reyes       | renter   | —        | —                  |
+| `renter2@abangers.test`   | Paolo Garcia    | renter   | —        | —                  |
+| `admin@abangers.test`     | Abangers Admin  | admin    | —        | —                  |
 
-Both landlords have a complete profile, but only a verified landlord can
-create listings, so use landlord1 for that. Try the verification flow on
-landlord2: the DB tests need landlord1 verified and landlord2 not.
+All three landlords have a complete profile, but only a verified
+landlord can create listings, so use landlord1 for that. Try the
+verification flow on landlord2, and review landlord3's verification as
+the admin: the DB tests need landlord1 verified, landlord2 not, and
+landlord3 waiting for review. Nobody can become an admin from the app;
+the admin account only comes from the seed (or SQL).
 
 If the seed data gets messed up, run `npm run db:seed` — it's safe to
 re-run and puts the seed accounts, listings and verifications back
-without touching anything else. It also uploads landlord1's sample ID
-photos, so it needs `.env.local`.
+without touching anything else. It also uploads the seed verifications'
+sample ID photos, so it needs `.env.local`.
 
 ## Everyday commands
 

@@ -14,6 +14,11 @@
  * - Nobody can replace, remove or move a file once it's uploaded, not
  *   even its owner, and uploading over one gives "409" (#206).
  *
+ * And the admin's read policy in 0014_admin_role_and_verification_review.sql
+ * (#255): the admin can list, download and make signed links to every
+ * landlord's files (landlord1's approved submission and landlord3's
+ * pending one), but can't upload or remove anything.
+ *
  * SAFE ON SHARED DATA: nothing here is ever saved. For a file upload,
  * Supabase Storage checks, in this order:
  *   1. the file type → "415" if it isn't JPEG, PNG or WebP
@@ -46,16 +51,19 @@
  * the file back.
  *
  * Run with: npm run test:db   (needs .env.local, the seed data, and
- * migration 0009 pushed to the shared project)
+ * migrations 0009 and 0014 pushed to the shared project)
  */
 
 import { readFile } from "node:fs/promises";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
+  ADMIN_EMAIL,
   LANDLORD_A_EMAIL,
   LANDLORD_A_SUBMISSION_ID,
   LANDLORD_B_EMAIL,
+  LANDLORD_C_EMAIL,
+  LANDLORD_C_SUBMISSION_ID,
   RENTER_EMAIL,
   newClient,
   signedInAs,
@@ -359,6 +367,117 @@ describe("verification-documents: reading and keeping files", () => {
       // If it was ever moved, move it back.
       if (await isInBucket(landlordA.client, movedPath)) {
         await landlordA.client.storage.from(BUCKET).move(movedPath, frontPath);
+      }
+    }
+  });
+});
+
+// #255 (0014): the admin opens every landlord's files, with the same
+// short-lived signed links the admin dashboard uses (#256), but can't
+// change anything. Nothing is saved: the upload is refused, and if the
+// remove ever got through, the test puts the file back.
+describe("verification-documents: the admin (0014, #255)", () => {
+  let admin: SeedUser;
+  let landlordC: SeedUser;
+  /** The files of landlord1's approved submission (front, back, selfie). */
+  let landlordAFiles: string[];
+  /** The files of landlord3's pending passport submission (photo page, selfie). */
+  let landlordCFiles: string[];
+
+  /** A seed submission's file paths, read from its row by its landlord. */
+  async function filesOf(landlord: SeedUser, submissionId: string) {
+    const { data, error } = await landlord.client
+      .from("landlord_verifications")
+      .select("id_front_path, id_back_path, selfie_path")
+      .eq("id", submissionId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) {
+      throw new Error(
+        `Submission ${submissionId} isn't in the seed data. Run: npm run db:seed`,
+      );
+    }
+    return [data.id_front_path, data.id_back_path, data.selfie_path].filter(
+      (path): path is string => typeof path === "string",
+    );
+  }
+
+  beforeAll(async () => {
+    const landlordA = await signedInAs(LANDLORD_A_EMAIL);
+    [admin, landlordC] = await Promise.all([
+      signedInAs(ADMIN_EMAIL),
+      signedInAs(LANDLORD_C_EMAIL),
+    ]);
+    landlordAFiles = await filesOf(landlordA, LANDLORD_A_SUBMISSION_ID);
+    landlordCFiles = await filesOf(landlordC, LANDLORD_C_SUBMISSION_ID);
+  });
+
+  it("an admin gets working signed links to every landlord's files", async () => {
+    // Both seed submissions: 3 files for landlord1's national ID, 2 for
+    // landlord3's passport. seed-storage.mjs uploaded them all.
+    const paths = [...landlordAFiles, ...landlordCFiles];
+    expect(paths).toHaveLength(5);
+
+    const { data, error } = await admin.client.storage
+      .from(BUCKET)
+      .createSignedUrls(paths, 60);
+    expect(error).toBeNull();
+    expect(data).toHaveLength(5);
+    for (const link of data ?? []) {
+      // Each link has its own error, e.g. for a file the admin can't read.
+      expect(link.error, `${link.path}: run npm run db:seed`).toBeNull();
+      const response = await fetch(link.signedUrl!);
+      expect(response.status, `${link.path}`).toBe(200);
+    }
+  });
+
+  it("an admin can list a landlord's submission folder", async () => {
+    const path = landlordCFiles[0];
+    const folder = path.slice(0, path.lastIndexOf("/"));
+    const { data, error } = await admin.client.storage
+      .from(BUCKET)
+      .list(folder);
+    expect(error).toBeNull();
+    expect(data?.map((file) => file.name).sort()).toEqual([
+      "id-front.jpg",
+      "selfie.jpg",
+    ]);
+  });
+
+  it("an admin cannot upload, even into a landlord's folder", async () => {
+    // Only landlords upload, and only into their own folder (0009).
+    const path = `${landlordC.userId}/rls-test/admin.jpg`;
+    const status = await uploadStatus(admin.client, path, tinyJpeg());
+    expectRefused(status, "403", path);
+  });
+
+  it("an admin cannot remove a landlord's files", async () => {
+    // landlord3's passport photo page.
+    const path = landlordCFiles[0];
+    try {
+      // No delete policy: Storage finds nothing it's allowed to delete, so
+      // it removes nothing and returns an empty list (not an error).
+      const { data, error } = await admin.client.storage
+        .from(BUCKET)
+        .remove([path]);
+      expect(error).toBeNull();
+      expect(data).toEqual([]);
+      expect(await isInBucket(admin.client, path)).toBe(true);
+    } finally {
+      // If it was ever removed, landlord3 uploads the same sample again,
+      // so shared data is unchanged.
+      if (!(await isInBucket(admin.client, path))) {
+        const sample = new Uint8Array(
+          await readFile(
+            new URL(
+              "../../supabase/seed-storage/id-front.jpg",
+              import.meta.url,
+            ),
+          ),
+        );
+        await landlordC.client.storage
+          .from(BUCKET)
+          .upload(path, new Blob([sample], { type: "image/jpeg" }));
       }
     }
   });
