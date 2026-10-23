@@ -9,15 +9,25 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 export const SEED_PASSWORD = "Abangers123!";
 export const LANDLORD_A_EMAIL = "landlord1@abangers.test";
 export const LANDLORD_B_EMAIL = "landlord2@abangers.test";
+export const LANDLORD_C_EMAIL = "landlord3@abangers.test";
 export const RENTER_EMAIL = "renter1@abangers.test";
+/** The seed admin (#255): the only admin, made by seed.sql (0014). */
+export const ADMIN_EMAIL = "admin@abangers.test";
 
 /**
  * landlord1's approved verification: the fixed id in supabase/seed.sql
- * (section 3, #206). Its files are in the verification-documents bucket,
- * uploaded by supabase/seed-storage.mjs (part of `npm run db:seed`).
- * landlord2 has no verification at all.
+ * (section 3, #206), approved by the seed admin. Its files are in the
+ * verification-documents bucket, uploaded by supabase/seed-storage.mjs
+ * (part of `npm run db:seed`). landlord2 has no verification at all.
  */
 export const LANDLORD_A_SUBMISSION_ID = "b1b2c3d4-0000-4000-8000-000000000001";
+
+/**
+ * landlord3's verification, waiting for review (#255): the other fixed id
+ * in supabase/seed.sql (section 3). A passport, so its files are only the
+ * photo page (id-front) and the selfie, also uploaded by seed-storage.mjs.
+ */
+export const LANDLORD_C_SUBMISSION_ID = "b1b2c3d4-0000-4000-8000-000000000002";
 
 /** A fresh client with its own session, so two users don't share one. */
 export function newClient(): SupabaseClient {

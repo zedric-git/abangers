@@ -6,8 +6,9 @@
  * Checks supabase/migrations/0008_create_landlord_verifications.sql:
  * - A landlord can submit a pending verification for themselves, but not
  *   for someone else, and not one that's already approved.
- * - Renters and anonymous visitors can't submit at all.
- * - Nobody can update (approve) or delete a submission from the app.
+ * - Renters and anonymous visitors can't submit at all, and neither can
+ *   the admin.
+ * - No landlord can update (approve) or delete a submission from the app.
  * - A landlord can't read another landlord's submissions.
  * - The CHECK rules: a back photo for every ID except a passport, and
  *   every file inside the landlord's own folder.
@@ -21,10 +22,21 @@
  *   src/lib/auth/landlord-status.ts): it agrees with the seed data. These
  *   only read.
  *
- * SEED DATA (supabase/seed.sql, #206): landlord1 (A) has one approved
- * submission (LANDLORD_A_SUBMISSION_ID) and landlord2 (B) has none. If a
- * test says otherwise, run `npm run db:seed`. The name lock that comes
- * with being verified is tested in rls-profiles.db.test.ts.
+ * And the admin review in 0014_admin_role_and_verification_review.sql
+ * (#255):
+ * - The admin reads every submission, and can change a pending one to
+ *   approved or rejected, with themselves as the reviewer and a time.
+ * - The admin can't change a submission that was already reviewed, any
+ *   column but the four review columns, or the status to anything else,
+ *   and can't delete one.
+ * - Landlords (even for their own), renters and anonymous visitors can't
+ *   review at all.
+ *
+ * SEED DATA (supabase/seed.sql, #206, #255): landlord1 (A) has one
+ * approved submission (LANDLORD_A_SUBMISSION_ID), landlord2 (B) has none,
+ * and landlord3 (C) has one waiting for review (LANDLORD_C_SUBMISSION_ID).
+ * If a test says otherwise, run `npm run db:seed`. The name lock that
+ * comes with being verified is tested in rls-profiles.db.test.ts.
  *
  * SAFE ON SHARED DATA: nothing here is ever saved. Each insert is either
  * blocked by RLS (42501), or gets past RLS and is then stopped by a CHECK
@@ -37,8 +49,14 @@
  * submissions) or delete the stray row in the Supabase dashboard (Table
  * Editor → landlord_verifications).
  *
+ * Reviews (updates) work the same way: one RLS should allow breaks 0008's
+ * rejection_reason_matches_status CHECK, so it stops there (23514), and
+ * one RLS should block carries a value that breaks the same CHECK, so
+ * even a broken policy couldn't save it. If landlord3's submission isn't
+ * pending any more anyway, `npm run db:seed` puts it back.
+ *
  * Run with: npm run test:db   (needs .env.local, the seed data, and
- * migration 0008 pushed to the shared project)
+ * migrations 0008 and 0014 pushed to the shared project)
  */
 
 import { randomUUID } from "node:crypto";
@@ -54,9 +72,12 @@ import {
   submitVerification,
 } from "@/lib/auth/submit-verification";
 import {
+  ADMIN_EMAIL,
   LANDLORD_A_EMAIL,
   LANDLORD_A_SUBMISSION_ID,
   LANDLORD_B_EMAIL,
+  LANDLORD_C_EMAIL,
+  LANDLORD_C_SUBMISSION_ID,
   RENTER_EMAIL,
   newClient,
   signedInAs,
@@ -184,13 +205,20 @@ describe("landlord_verifications RLS", () => {
   );
 
   it("a landlord cannot update (e.g. approve) or delete a submission", async () => {
-    // Landlords have no UPDATE or DELETE grant at all, so these are
-    // permission errors (42501), not silent 0-row results.
-    const { error: updateError } = await landlordB.client
+    // Since 0014, every signed-in user has an UPDATE grant on the four
+    // review columns (it's for the admin, #255: Postgres can't grant to
+    // admins only). The only update policy is the admin's, so a landlord's
+    // update matches no rows: no error, nothing changed. There's still no
+    // DELETE grant at all, so a delete is a permission error (42501).
+    // landlord3's real pending submission is tried in the admin tests
+    // below.
+    const { data: updated, error: updateError } = await landlordB.client
       .from("landlord_verifications")
       .update({ status: "approved" })
-      .eq("landlord_id", landlordB.userId);
-    expect(updateError?.code).toBe("42501");
+      .eq("landlord_id", landlordB.userId)
+      .select("id");
+    expect(updateError).toBeNull();
+    expect(updated).toEqual([]);
 
     const { error: deleteError } = await landlordB.client
       .from("landlord_verifications")
@@ -200,15 +228,17 @@ describe("landlord_verifications RLS", () => {
   });
 
   it("a verified landlord cannot change or withdraw their approved submission", async () => {
-    // The same permission errors, this time on a real row. The update
-    // writes the status it already has, so even if it got through,
-    // nothing would change. If the delete ever got through, run
-    // `npm run db:seed` to put the row back.
-    const { error: updateError } = await landlordA.client
+    // This time on a real row. The update writes the status it already
+    // has, so even if it got through, nothing would change; since 0014 it
+    // matches no rows (see the test above). If the delete ever got
+    // through, run `npm run db:seed` to put the row back.
+    const { data: updated, error: updateError } = await landlordA.client
       .from("landlord_verifications")
       .update({ status: "approved" })
-      .eq("id", LANDLORD_A_SUBMISSION_ID);
-    expect(updateError?.code).toBe("42501");
+      .eq("id", LANDLORD_A_SUBMISSION_ID)
+      .select("id");
+    expect(updateError).toBeNull();
+    expect(updated).toEqual([]);
 
     const { error: deleteError } = await landlordA.client
       .from("landlord_verifications")
@@ -270,6 +300,254 @@ describe("landlord_verifications RLS", () => {
   });
 });
 
+/**
+ * Tries to change submission `id` as `client`. Returns the error, and the
+ * rows the update changed (`.select("id")` returns them): RLS skips the
+ * rows a caller may not update, so "not allowed" is often no error and
+ * no rows, rather than 42501.
+ */
+async function update(
+  client: SupabaseClient,
+  id: string,
+  changes: Record<string, unknown>,
+) {
+  return client
+    .from("landlord_verifications")
+    .update(changes)
+    .eq("id", id)
+    .select("id");
+}
+
+/**
+ * A blank rejection reason. 0008's rejection_reason_matches_status CHECK
+ * refuses it, so a review carrying it can never be saved: it's how the
+ * tests below try a review without leaving one behind (see the note at
+ * the top).
+ */
+const BLANK_REASON = "   ";
+
+// #255 (0014): admins review submissions. Nothing is saved here either.
+describe("admins reviewing submissions (0014, #255)", () => {
+  let admin: SeedUser;
+  let landlordB: SeedUser;
+  let landlordC: SeedUser;
+
+  beforeAll(async () => {
+    [admin, landlordB, landlordC] = await Promise.all([
+      signedInAs(ADMIN_EMAIL),
+      signedInAs(LANDLORD_B_EMAIL),
+      signedInAs(LANDLORD_C_EMAIL),
+    ]);
+  });
+
+  /** What a review records besides the decision: when, and by whom. */
+  const reviewedNowBy = (user: SeedUser) => ({
+    reviewed_at: new Date().toISOString(),
+    reviewed_by: user.userId,
+  });
+
+  /** A submission's status, as the admin (who can read them all) sees it. */
+  async function statusOf(id: string) {
+    const { data, error } = await admin.client
+      .from("landlord_verifications")
+      .select("status")
+      .eq("id", id)
+      .single();
+    if (error) throw error;
+    return data.status;
+  }
+
+  it("an admin can read every submission", async () => {
+    // landlord1's approved one and landlord3's pending one (seed data).
+    const { data, error } = await admin.client
+      .from("landlord_verifications")
+      .select("id, status, reviewed_by")
+      .in("id", [LANDLORD_A_SUBMISSION_ID, LANDLORD_C_SUBMISSION_ID])
+      .order("id");
+    expect(error).toBeNull();
+    expect(data).toEqual([
+      {
+        id: LANDLORD_A_SUBMISSION_ID,
+        status: "approved",
+        reviewed_by: admin.userId,
+      },
+      { id: LANDLORD_C_SUBMISSION_ID, status: "pending", reviewed_by: null },
+    ]);
+  });
+
+  it("RLS lets an admin reject a pending submission", async () => {
+    // With a blank reason: RLS lets the rejection through, then 0008's
+    // CHECK stops it. 23514 (not 42501, and not "no rows") means RLS
+    // allowed it.
+    const { error } = await update(admin.client, LANDLORD_C_SUBMISSION_ID, {
+      status: "rejected",
+      rejection_reason: BLANK_REASON,
+      ...reviewedNowBy(admin),
+    });
+    expect(error?.code).toBe("23514");
+    expect(error?.message).toContain("rejection_reason_matches_status");
+  });
+
+  it("RLS lets an admin approve a pending submission", async () => {
+    // With a reason, which an approval can't have: the same CHECK stops it.
+    const { error } = await update(admin.client, LANDLORD_C_SUBMISSION_ID, {
+      status: "approved",
+      rejection_reason: "rls test",
+      ...reviewedNowBy(admin),
+    });
+    expect(error?.code).toBe("23514");
+    expect(error?.message).toContain("rejection_reason_matches_status");
+  });
+
+  it("an admin must record themselves as the reviewer, with a time", async () => {
+    // Each of these also has a blank reason, so even if the policy let
+    // one through, the CHECK would stop it (and this test would fail).
+    const someoneElse = await update(admin.client, LANDLORD_C_SUBMISSION_ID, {
+      status: "rejected",
+      rejection_reason: BLANK_REASON,
+      ...reviewedNowBy(landlordC),
+    });
+    expect(someoneElse.error?.code).toBe("42501");
+
+    const noTime = await update(admin.client, LANDLORD_C_SUBMISSION_ID, {
+      status: "rejected",
+      rejection_reason: BLANK_REASON,
+      reviewed_at: null,
+      reviewed_by: admin.userId,
+    });
+    expect(noTime.error?.code).toBe("42501");
+  });
+
+  it("an admin can only approve or reject", async () => {
+    // Pending again, with a reason (which the CHECK refuses for pending).
+    const { error } = await update(admin.client, LANDLORD_C_SUBMISSION_ID, {
+      status: "pending",
+      rejection_reason: "rls test",
+      ...reviewedNowBy(admin),
+    });
+    expect(error?.code).toBe("42501");
+  });
+
+  it("an admin cannot change a submission that was already reviewed", async () => {
+    // landlord1's is approved, and the update policy only matches pending
+    // submissions: nothing changes, and no row comes back. (That's how
+    // the app tells a second admin it was already reviewed.)
+    const { data, error } = await update(
+      admin.client,
+      LANDLORD_A_SUBMISSION_ID,
+      {
+        status: "rejected",
+        rejection_reason: BLANK_REASON,
+        ...reviewedNowBy(admin),
+      },
+    );
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+    expect(await statusOf(LANDLORD_A_SUBMISSION_ID)).toBe("approved");
+  });
+
+  it.each([
+    ["landlord_id", () => landlordB.userId],
+    ["id_type", () => "drivers_license"],
+    ["id_front_path", () => `${landlordC.userId}/rls-test/id-front.jpg`],
+    ["selfie_path", () => `${landlordC.userId}/rls-test/selfie.jpg`],
+    ["consent_given_at", () => new Date().toISOString()],
+    ["submitted_at", () => new Date().toISOString()],
+  ])(
+    "an admin cannot change %s, even on a pending submission",
+    async (column, value) => {
+      // Only the four review columns are granted (0014), so any other
+      // column is a permission error before RLS even looks at the row.
+      const { error } = await update(admin.client, LANDLORD_C_SUBMISSION_ID, {
+        [column]: value(),
+        status: "rejected",
+        rejection_reason: BLANK_REASON,
+        ...reviewedNowBy(admin),
+      });
+      expect(error?.code).toBe("42501");
+    },
+  );
+
+  it("an admin cannot delete a submission", async () => {
+    // No delete grant at all, so it's a permission error whatever the
+    // filter. The id matches no submission, so even a wrong grant
+    // couldn't delete anything here.
+    const { error } = await admin.client
+      .from("landlord_verifications")
+      .delete()
+      .eq("id", randomUUID());
+    expect(error?.code).toBe("42501");
+  });
+
+  it("an admin cannot submit a verification", async () => {
+    // Only landlords submit (0008, kept by 0014). The unknown ID type is
+    // there in case RLS ever let it through: the CHECK would stop it.
+    const error = await submit(admin.client, {
+      ...submissionFor(admin.userId),
+      id_type: "library_card",
+    });
+    expect(error?.code).toBe("42501");
+  });
+
+  it("a landlord cannot approve their own pending submission", async () => {
+    // The column grant lets the update run, but no update policy matches
+    // a landlord, so nothing changes and no error comes back.
+    const { data, error } = await update(
+      landlordC.client,
+      LANDLORD_C_SUBMISSION_ID,
+      {
+        status: "approved",
+        rejection_reason: "rls test",
+        ...reviewedNowBy(landlordC),
+      },
+    );
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+    expect(await statusOf(LANDLORD_C_SUBMISSION_ID)).toBe("pending");
+  });
+
+  it("a landlord cannot approve another landlord's submission", async () => {
+    const { data, error } = await update(
+      landlordB.client,
+      LANDLORD_C_SUBMISSION_ID,
+      {
+        status: "approved",
+        rejection_reason: "rls test",
+        ...reviewedNowBy(landlordB),
+      },
+    );
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+    expect(await statusOf(LANDLORD_C_SUBMISSION_ID)).toBe("pending");
+  });
+
+  it("a renter cannot approve a submission", async () => {
+    const renter = await signedInAs(RENTER_EMAIL);
+    const { data, error } = await update(
+      renter.client,
+      LANDLORD_C_SUBMISSION_ID,
+      {
+        status: "approved",
+        rejection_reason: "rls test",
+        ...reviewedNowBy(renter),
+      },
+    );
+    expect(error).toBeNull();
+    expect(data).toEqual([]);
+    expect(await statusOf(LANDLORD_C_SUBMISSION_ID)).toBe("pending");
+  });
+
+  it("anonymous visitors cannot review a submission", async () => {
+    // anon has no grants on this table at all (0008), so it's a
+    // permission error rather than an empty result.
+    const { error } = await update(newClient(), LANDLORD_C_SUBMISSION_ID, {
+      status: "approved",
+      rejection_reason: "rls test",
+    });
+    expect(error?.code).toBe("42501");
+  });
+});
+
 // #204: the submit logic the Verify account page uses. Nothing is saved
 // here either: the checks only read, and the one submit is refused at its
 // first upload.
@@ -296,6 +574,15 @@ describe("submitting from the app (submit-verification.ts, #204)", () => {
       landlordA.userId,
     );
     expect(result).toMatchObject({ ok: false, reason: "already_verified" });
+  });
+
+  it("stops landlord3 before uploading anything: theirs is being reviewed", async () => {
+    const landlordC = await signedInAs(LANDLORD_C_EMAIL);
+    const result = await checkCanSubmitVerification(
+      landlordC.client,
+      landlordC.userId,
+    );
+    expect(result).toMatchObject({ ok: false, reason: "already_pending" });
   });
 
   it("stops a renter before uploading anything", async () => {
@@ -387,6 +674,19 @@ describe("where a landlord stands (landlord-status.ts, #205)", () => {
       profileComplete: true,
       canCreateListings: false,
       fullName: "Jun Dela Cruz",
+    } satisfies LandlordStatus);
+  });
+
+  it("landlord3 has a complete profile and is waiting for review, so they can't post yet", async () => {
+    const landlordC = await signedInAs(LANDLORD_C_EMAIL);
+    expect(
+      await loadLandlordStatus(landlordC.client, landlordC.userId),
+    ).toEqual({
+      verification: "pending",
+      rejectionReason: null,
+      profileComplete: true,
+      canCreateListings: false,
+      fullName: "Rosa Villanueva",
     } satisfies LandlordStatus);
   });
 });
