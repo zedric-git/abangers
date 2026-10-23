@@ -571,7 +571,11 @@ entry in the PR that closes it.
   throwaway Supabase) and on the shared project after every database
   merge. Run by hand, they use `.env.local` and the seed data, so they
   hit the **shared** project. Any new table's RLS policies should get a
-  test here; DB tests must leave shared data unchanged.
+  test here; DB tests must leave shared data unchanged. They sign in as
+  the seed accounts about 45 times per run, so the shared project's
+  sign-in rate limit (dashboard → Authentication → Rate Limits,
+  "sign-ups and sign-ins" per 5 minutes) must allow that, or they fail
+  with "Request rate limit reached".
 - `npm run lint` — ESLint
 - `npm run format` — Prettier (auto-runs on commit via Husky)
 - `npm run format:check` — Prettier check only

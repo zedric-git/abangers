@@ -155,6 +155,19 @@ describe("buildReport", () => {
     expect(report).toContain("a renter cannot create a listing");
     expect(report).toContain(SUCCESS.team);
   });
+
+  it("blames Supabase's sign-in rate limit when that's what stopped the tests", () => {
+    const report = buildReport({
+      ...withOutcomes({ tests: "failure" }),
+      logs: {
+        ...SUCCESS.logs,
+        tests:
+          " FAIL  src/__tests__/rls-profiles.db.test.ts > profiles role lock\nError: Couldn't sign in as renter1@abangers.test (Request rate limit reached). Is the seed data loaded? Run: npm run db:seed",
+      },
+    });
+    expect(report).toContain("Authentication → Rate Limits");
+    expect(report).not.toContain("behaves differently");
+  });
 });
 
 describe("testFailures", () => {

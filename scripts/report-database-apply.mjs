@@ -190,6 +190,12 @@ export function buildReport({
   }
 
   if (outcomes.tests !== "success") {
+    // Supabase limits how often one address can sign in, and the DB tests
+    // sign in as the seed accounts dozens of times: with the shared
+    // project's limit too low, tests fail before they test anything.
+    const why = logs.tests.includes("Request rate limit reached")
+      ? `Supabase's sign-in rate limit stopped some of them before they ran ("Request rate limit reached"): the DB tests sign in as the seed accounts dozens of times. Raise "sign-ups and sign-ins" in the shared project's dashboard (Authentication → Rate Limits), then re-run this job. ${pm}`
+      : `They passed on CI's throwaway database, so the shared project behaves differently: its data, or a different Supabase version. Fix the test or the migration in a new PR. ${pm}`;
     return [
       "### ⚠️ Applied, but DB tests failed on the shared project",
       "",
@@ -197,7 +203,7 @@ export function buildReport({
       "",
       details("Failed tests", testFailures(logs.tests)),
       "",
-      `They passed on CI's throwaway database, so the shared project behaves differently: its data, or a different Supabase version. Fix the test or the migration in a new PR. ${pm}`,
+      why,
       "",
       changed,
     ].join("\n");
