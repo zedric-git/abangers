@@ -88,7 +88,9 @@ https://github.com/users/zedric-git/projects/3
   would copy CI's settings (local URLs, raised rate limits, services
   turned off) over the shared project's. `.claude/settings.json` blocks
   it. Keep `[db] major_version` the same as the shared project's
-  Postgres (17).
+  Postgres (17), and `[api] auto_expose_new_tables = false`: like the
+  shared project, new tables then get no grants by themselves, so CI
+  catches a migration that forgets its grants (rule 1).
 - **CI builds with placeholder Supabase env vars.** The `Build` step in
   `.github/workflows/ci.yml` has no real keys, which works because no
   page fetches data at build time. If a build fails there with a

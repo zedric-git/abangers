@@ -14,6 +14,15 @@
 # Names the local Docker containers (supabase_db_abangers, ...).
 project_id = "abangers"
 
+[api]
+# Like the shared project: a new table, sequence or function in `public`
+# gets no grants by itself, so each migration grants what its policies
+# allow (AGENTS.md, rule 1). Left unset, this CLI version (2.116) still
+# gives them the old automatic grants, so CI wouldn't notice a migration
+# that forgets one. Supabase plans to make this the only behaviour and
+# drop the setting; remove it then.
+auto_expose_new_tables = false
+
 [db]
 # Must be the shared project's Postgres major version (17.6 there).
 major_version = 17
