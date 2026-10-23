@@ -25,6 +25,13 @@ const TYPES_FILE = "src/types/database.ts";
 // On Windows, npx is a .cmd file, which only runs through a shell.
 const SHELL = process.platform === "win32";
 
+// Where the CLI may download the type generator's Docker image (pg-meta)
+// from: first its default, AWS's public registry, then Docker Hub. CI's
+// machines often hit AWS's download limit ("toomanyrequests: Data limit
+// exceeded"). `supabase start` falls back to Docker Hub by itself, but
+// `gen types` doesn't, so this script does it for it.
+const IMAGE_REGISTRIES = ["default", "docker.io"];
+
 /**
  * Puts the committed file's PostgREST version back into freshly generated
  * types that don't have an `__InternalSupabase` block. Returns `generated`
@@ -61,23 +68,45 @@ export function keepPostgrestVersion(generated, committed) {
   return generated.replace(start, (line) => `${line}${block}\n`);
 }
 
+/** Runs `supabase gen types` against the local database, or returns null. */
+function generateTypes() {
+  for (const registry of IMAGE_REGISTRIES) {
+    // SUPABASE_INTERNAL_IMAGE_REGISTRY is how the CLI picks the registry.
+    const env =
+      registry === "default"
+        ? process.env
+        : { ...process.env, SUPABASE_INTERNAL_IMAGE_REGISTRY: registry };
+    try {
+      return execFileSync(
+        "npx",
+        [
+          "supabase",
+          "gen",
+          "types",
+          "typescript",
+          "--local",
+          "--schema",
+          "public",
+        ],
+        {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "inherit"],
+          shell: SHELL,
+          env,
+        },
+      );
+    } catch {
+      console.error(
+        `db-types: generating the types failed (image registry: ${registry}).`,
+      );
+    }
+  }
+  return null;
+}
+
 function main() {
-  let generated;
-  try {
-    generated = execFileSync(
-      "npx",
-      [
-        "supabase",
-        "gen",
-        "types",
-        "typescript",
-        "--local",
-        "--schema",
-        "public",
-      ],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "inherit"], shell: SHELL },
-    );
-  } catch {
+  const generated = generateTypes();
+  if (generated === null) {
     console.error(
       "db-types: couldn't generate the types. This needs the local Supabase " +
         "that CI starts (Docker and `npx supabase start`). You don't need to " +
