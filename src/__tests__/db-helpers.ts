@@ -1,6 +1,8 @@
 /**
- * Shared helpers for the *.db.test.ts suites, which run against the REAL
- * shared Supabase project as the seed accounts from supabase/seed.sql.
+ * Shared helpers for the *.db.test.ts suites, which run against a real
+ * Supabase as the seed accounts from supabase/seed.sql: CI's throwaway one
+ * on every PR, and the SHARED project after a database merge or when you
+ * run them by hand (`npm run test:db` reads .env.local).
  */
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";

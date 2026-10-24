@@ -104,7 +104,11 @@ https://github.com/users/zedric-git/projects/3
   starts, so it doesn't run on our own machines). When the file
   changed, the `database-types` job commits it to the PR's branch as
   the types bot, and CI runs again on that commit: run `git pull`
-  before you push again (#258). `gen types --local` leaves out the
+  before you push again (#258). The bot can also commit to a PR that
+  doesn't touch the database: `dev` doesn't make PRs catch up before
+  merging, so when two database PRs merge close together, `dev`'s types
+  can end up out of date. CI on `dev` then warns, and the next PR into
+  `dev` gets the fixed file. `gen types --local` leaves out the
   `__InternalSupabase` block (the shared project's PostgREST version,
   which supabase-js types queries against), so the script keeps the
   committed one. All three Supabase clients in
@@ -434,7 +438,9 @@ next sprint instead of forcing the merge.
     time and only once `checks` and `database` passed on that commit:
     `db push --dry-run`, then `db push`, the seed and `test:db`. It
     comments on the merged PR with what was applied, and @-mentions the
-    team, or with which step failed and what to do next.
+    team, or with which step failed and what to do next. (Who it
+    mentions is the `TEAM` line in `.github/workflows/ci.yml`: update it
+    if the team changes.)
   - **When it fails**, read its comment. A failing migration applies
     nothing (each one runs in a transaction), and `db push` stops there,
     so a new migration can't jump ahead of it: the PM decides the fix,
@@ -456,11 +462,14 @@ next sprint instead of forcing the merge.
      database password; the job connects with `--db-url`, built from
      `supabase/.temp/pooler-url`, so it needs no personal access token)
      and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-  2. **The types bot:** a GitHub App on the PM's account that can only
+  2. **The types bot:** `abangers-types-bot`, a GitHub App on the PM's
+     account (Settings → Developer settings → GitHub Apps) that can only
      write this repo's contents. Its `DB_BOT_APP_ID` (a variable) and
      `DB_BOT_PRIVATE_KEY` (a secret) are repo-level, because PR runs
      need them. A commit pushed with the workflow's own token wouldn't
-     start CI, so the required checks would never run on it.
+     start CI, so the required checks would never run on it. To replace
+     the key, generate a new private key on the App's page, update
+     `DB_BOT_PRIVATE_KEY`, then delete the old key there.
   3. **Then:** `DB_AUTO_APPLY` set to `true`, and `database` required on
      `dev` and `main` (Settings → Branches), next to `checks`.
 - **`npx supabase db reset --linked` wipes the shared database for the

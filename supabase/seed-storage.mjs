@@ -16,7 +16,10 @@
 // HOW TO RUN: `npm run db:seed` runs this right after seed.sql. On its
 // own: `node supabase/seed-storage.mjs`. It needs NEXT_PUBLIC_SUPABASE_URL
 // and NEXT_PUBLIC_SUPABASE_ANON_KEY, from .env.local (read automatically,
-// like `next dev` does) or from the environment.
+// like `next dev` does) or from the environment. CI runs it too
+// (.github/workflows/ci.yml, #258): twice on every PR, against its
+// throwaway Supabase, and on the shared project after every database
+// merge, with those two variables set for the run.
 //
 // NO SERVICE KEY: it signs in as each seed landlord with the anon key,
 // like the app does, so every upload and update goes through the

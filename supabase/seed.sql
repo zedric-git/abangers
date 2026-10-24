@@ -17,6 +17,11 @@
 --                                     npm run db:seed afterwards for the
 --                                     photos)
 --
+--   CI runs it too (.github/workflows/ci.yml, #258): twice on every PR,
+--   on its throwaway Supabase (`supabase start` runs it once, then the
+--   database job runs it again to check it's safe to re-run), and on the
+--   shared project after every database merge (the apply-database job).
+--
 -- IDEMPOTENT: safe to run as many times as you like. Running it again
 -- does NOT create duplicates — it brings the seed accounts and listings
 -- back to exactly what's written below (resetting passwords, names,

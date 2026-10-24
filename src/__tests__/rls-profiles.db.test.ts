@@ -1,6 +1,8 @@
 /**
- * RLS / trigger test for public.profiles (#174, #199) — runs against the
- * REAL shared Supabase project, signed in as the seed accounts.
+ * RLS / trigger test for public.profiles (#174, #199) — runs against a
+ * real Supabase, signed in as the seed accounts: CI's throwaway one on
+ * every PR, and the SHARED project after a database merge or when run by
+ * hand.
  *
  * Checks supabase/migrations/0007_enforce_roles_in_rls.sql:
  * - A user cannot change their own `role` (renter → landlord).
