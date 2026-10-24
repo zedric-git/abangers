@@ -1,7 +1,8 @@
 /**
  * Storage policy test for the private verification-documents bucket
- * (S1-15.2 / #200) — runs against the REAL shared Supabase project,
- * signed in as the seed accounts.
+ * (S1-15.2 / #200) — runs against a real Supabase, signed in as the seed
+ * accounts: CI's throwaway one on every PR, and the SHARED project after
+ * a database merge or when run by hand.
  *
  * Checks supabase/migrations/0009_create_verification_documents_bucket.sql:
  * - A landlord can upload into their own "<landlord id>/" folder, but not
@@ -26,7 +27,8 @@
  *   3. the size, while the bytes stream in → "413" if it's over 5 MB
  * (That's how Storage v1.71.0, the version on the shared project in
  * October 2026, does it — see src/storage/uploader.ts in
- * github.com/supabase/storage.) So the "allowed" cases upload a file
+ * github.com/supabase/storage. CI's throwaway Supabase runs v1.70.3,
+ * whose uploader.ts is the same.) So the "allowed" cases upload a file
  * 1 byte over 5 MB: a "413", rather than "403" or "415", proves the file
  * type is allowed and RLS let the upload through, and then the size
  * limit stops it before anything is saved.

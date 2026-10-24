@@ -1,7 +1,8 @@
 /**
  * RLS test for public.landlord_verifications (S1-15.1 / #199) — runs
- * against the REAL shared Supabase project, signed in as the seed
- * accounts.
+ * against a real Supabase, signed in as the seed accounts: CI's
+ * throwaway one on every PR, and the SHARED project after a database
+ * merge or when run by hand.
  *
  * Checks supabase/migrations/0008_create_landlord_verifications.sql:
  * - A landlord can submit a pending verification for themselves, but not
