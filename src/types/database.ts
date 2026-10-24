@@ -24,6 +24,7 @@ export type Database = {
           landlord_id: string;
           rejection_reason: string | null;
           reviewed_at: string | null;
+          reviewed_by: string | null;
           selfie_path: string;
           status: string;
           submitted_at: string;
@@ -37,6 +38,7 @@ export type Database = {
           landlord_id: string;
           rejection_reason?: string | null;
           reviewed_at?: string | null;
+          reviewed_by?: string | null;
           selfie_path: string;
           status?: string;
           submitted_at?: string;
@@ -50,6 +52,7 @@ export type Database = {
           landlord_id?: string;
           rejection_reason?: string | null;
           reviewed_at?: string | null;
+          reviewed_by?: string | null;
           selfie_path?: string;
           status?: string;
           submitted_at?: string;
@@ -58,6 +61,13 @@ export type Database = {
           {
             foreignKeyName: "landlord_verifications_landlord_id_fkey";
             columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "landlord_verifications_reviewed_by_fkey";
+            columns: ["reviewed_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
