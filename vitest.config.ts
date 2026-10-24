@@ -7,11 +7,13 @@ import { defineConfig } from "vitest/config";
 // - "unit" (`*.test.ts`): pure logic like Zod schemas, and the repo checks
 //   in scripts/. Fast, no network, safe to run anywhere. This is what
 //   `npm test` and CI run.
-// - "db" (`*.db.test.ts`): talk to the SHARED hosted Supabase project
-//   using the seed accounts from supabase/seed.sql. Run them on purpose
-//   with `npm run test:db` — they need .env.local and the seed data.
-//   They're written to leave the data unchanged, but they still hit the
-//   database everyone uses, so they're not part of CI.
+// - "db" (`*.db.test.ts`): talk to a real Supabase as the seed accounts
+//   from supabase/seed.sql: whichever one NEXT_PUBLIC_SUPABASE_URL points
+//   to. CI runs them (`npm run test:db`) on every PR against a throwaway
+//   local Supabase, and against the SHARED project after each database
+//   merge (#258). They're written to leave the data unchanged, since the
+//   shared project is the database everyone uses. Run by hand, they use
+//   .env.local, so they hit the shared project too.
 export default defineConfig({
   resolve: {
     // Same "@/..." import alias as tsconfig.json.

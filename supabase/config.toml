@@ -1,0 +1,53 @@
+# Supabase CLI settings for the THROWAWAY local Supabase that CI starts
+# (#258): the `database` job in .github/workflows/ci.yml runs
+# `npx supabase start`, which applies every migration to an empty
+# database, runs supabase/seed.sql, and then the DB tests run against it.
+#
+# This file does NOT configure the shared project: that's done in the
+# Supabase dashboard. Never run `supabase config push`. It would copy these
+# settings (local URLs, CI's rate limits, the services turned off below)
+# over the shared project's. .claude/settings.json blocks it.
+#
+# Anything not set here uses the CLI's default. Every setting:
+# https://supabase.com/docs/guides/local-development/cli/config
+
+# Names the local Docker containers (supabase_db_abangers, ...).
+project_id = "abangers"
+
+[api]
+# Like the shared project: a new table, sequence or function in `public`
+# gets no grants by itself, so each migration grants what its policies
+# allow (AGENTS.md, rule 1). Left unset, this CLI version (2.116) still
+# gives them the old automatic grants, so CI wouldn't notice a migration
+# that forgets one. Supabase plans to make this the only behaviour and
+# drop the setting; remove it then.
+auto_expose_new_tables = false
+
+[db]
+# Must be the shared project's Postgres major version (17.6 there).
+major_version = 17
+
+[auth.rate_limit]
+# The DB tests sign in as the seed accounts many times in a few minutes,
+# all from the same address. The default (30 per 5 minutes) would start
+# refusing them partway through the run.
+sign_in_sign_ups = 1000
+
+# Services the DB tests don't use are turned off, so `supabase start`
+# doesn't download or start them. What stays on: the database, the API
+# gateway, Auth, PostgREST and Storage. Turn Studio back on if you ever
+# run this on your own machine (it needs Docker).
+[realtime]
+enabled = false
+
+[studio]
+enabled = false
+
+[local_smtp]
+enabled = false
+
+[edge_runtime]
+enabled = false
+
+[analytics]
+enabled = false

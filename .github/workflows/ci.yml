@@ -5,6 +5,27 @@ on:
     branches: [main, dev]
   push:
     branches: [main, dev]
+  # "Run workflow" on the Actions tab. On dev, apply-database (the last
+  # job) then shows what's pending on the shared database without
+  # changing anything, or applies it if "apply" is ticked.
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Apply pending changes to the shared database (unticked: a dry run that only shows them)"
+        type: boolean
+        default: false
+
+# A new push to a PR cancels that PR's run that's still going: only the
+# newest commit's result counts. Every other run gets a group of its own,
+# so runs on dev and main are never cancelled: each merge keeps its own
+# run, and its own apply-database job.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Read-only by default. The jobs that need more say so themselves.
+permissions:
+  contents: read
 
 jobs:
   checks:
@@ -49,8 +70,8 @@ jobs:
       - name: Invisible character check
         run: npm run check:invisible-chars
 
-      # Unit tests only — the *.db.test.ts suite talks to the shared
-      # Supabase project and is run by hand with `npm run test:db`.
+      # Unit tests only. The *.db.test.ts suites need a database: the
+      # database job below runs them.
       - name: Unit tests
         run: npm test
 
@@ -64,3 +85,330 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
+
+  # Every migration, the seed and every DB test (src/__tests__/*.db.test.ts)
+  # on a throwaway Supabase that `supabase start` runs in Docker on the CI
+  # machine, never on the shared project. Also checks that
+  # src/types/database.ts matches the migrations (#258). No secrets.
+  database:
+    runs-on: ubuntu-latest
+    outputs:
+      # "true" when src/types/database.ts doesn't match the migrations:
+      # database-types then commits the new file to the PR's branch.
+      types-changed: ${{ steps.types.outputs.changed }}
+      # "true" when this push changed a migration or the seed (always, for
+      # "Run workflow"): apply-database then applies it, on dev.
+      database-changed: ${{ steps.changes.outputs.database }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history, so "Find database changes" can diff this push.
+          fetch-depth: 0
+
+      # First, so apply-database gets this answer even if a later step
+      # fails (it then reports that CI didn't pass).
+      - name: Find database changes
+        id: changes
+        if: github.event_name != 'pull_request'
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] ||
+            ! git diff --quiet "$BEFORE" "$GITHUB_SHA" -- supabase/migrations \
+              supabase/seed.sql supabase/seed-storage.mjs supabase/seed-storage; then
+            echo "database=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "database=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: "npm"
+
+      - run: npm ci
+
+      # Applies every migration in supabase/migrations/ to an empty
+      # database, then runs supabase/seed.sql. Its settings are in
+      # supabase/config.toml. A migration that fails here would fail on
+      # the shared project too.
+      - name: Start a throwaway Supabase
+        run: npx supabase start
+
+      - name: Point the seed and the DB tests at it
+        run: |
+          npx supabase status -o json > "$RUNNER_TEMP/supabase-status.json"
+          jq -r '"NEXT_PUBLIC_SUPABASE_URL=\(.API_URL)",
+            "NEXT_PUBLIC_SUPABASE_ANON_KEY=\(.ANON_KEY)",
+            "LOCAL_DB_URL=\(.DB_URL)"' "$RUNNER_TEMP/supabase-status.json" >> "$GITHUB_ENV"
+
+      # Regenerates src/types/database.ts from this database (see
+      # scripts/db-types.mjs) and compares it with the committed file.
+      - name: Generate the database types
+        id: types
+        run: |
+          npm run db:types
+          if git diff --quiet -- src/types/database.ts; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git --no-pager diff -- src/types/database.ts
+          fi
+
+      - name: Keep the new types for database-types
+        if: steps.types.outputs.changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: database-types
+          path: src/types/database.ts
+          retention-days: 7
+
+      # Uploads the seed's sample files, then runs the whole seed a second
+      # time, with the same commands apply-database runs on the shared
+      # project after every database merge: they must all work, and be
+      # safe to re-run.
+      - name: Seed the files, then re-run the seed
+        run: |
+          node supabase/seed-storage.mjs
+          npx supabase db push --db-url "$LOCAL_DB_URL" --dry-run --output-format json
+          psql "$LOCAL_DB_URL" -v ON_ERROR_STOP=1 --single-transaction -f supabase/seed.sql
+          node supabase/seed-storage.mjs
+
+      - name: DB tests
+        run: npm run test:db
+
+      # Last, so the DB tests still run when only the types are out of
+      # date.
+      - name: Check the database types
+        if: steps.types.outputs.changed == 'true'
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            echo "::error file=src/types/database.ts::src/types/database.ts doesn't match the migrations. The database-types job commits the regenerated file to this branch, and CI then runs again on that commit: run \`git pull\` before you push again. (It can't commit to a PR from a fork, or from dev or main: download database-types from this run's Artifacts and commit it as src/types/database.ts.)"
+            exit 1
+          fi
+          echo "::warning file=src/types/database.ts::src/types/database.ts on this branch doesn't match the migrations (two database PRs probably merged close together). CI commits the regenerated file to the next PR into dev."
+
+  # Commits the regenerated src/types/database.ts to the PR's branch, so
+  # the types merge together with the migration (#258).
+  #
+  # It pushes as a GitHub App (the "types bot", set up once: AGENTS.md,
+  # "Database (Supabase)"), not with the workflow's own GITHUB_TOKEN: a
+  # commit pushed with that token doesn't start CI, so the required checks
+  # would never run on it and the PR couldn't merge. It runs no code from
+  # the PR: it only copies in the file the database job generated.
+  database-types:
+    needs: database
+    # Also when database failed (it does until the types are committed),
+    # but only for a PR from a branch in this repo (a fork's PR can't use
+    # the bot's key) that isn't dev or main (the bot can't push to them).
+    if: >-
+      !cancelled() &&
+      needs.database.outputs.types-changed == 'true' &&
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref != 'dev' &&
+      github.head_ref != 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check the types bot is set up
+        env:
+          APP_ID: ${{ vars.DB_BOT_APP_ID }}
+          PRIVATE_KEY: ${{ secrets.DB_BOT_PRIVATE_KEY }}
+        run: |
+          if [ -z "$APP_ID" ] || [ -z "$PRIVATE_KEY" ]; then
+            echo "::error::The types bot isn't set up: the DB_BOT_APP_ID variable or the DB_BOT_PRIVATE_KEY secret is missing (AGENTS.md, \"Database (Supabase)\"). Until it is, download database-types from this run's Artifacts and commit it as src/types/database.ts."
+            exit 1
+          fi
+
+      - name: Get the types bot's token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.DB_BOT_APP_ID }}
+          private-key: ${{ secrets.DB_BOT_PRIVATE_KEY }}
+          # Only what it needs: pushing a commit to this repo.
+          permission-contents: write
+
+      # The exact commit CI tested. If the branch moves on in the
+      # meantime, the step below commits nothing.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          token: ${{ steps.app-token.outputs.token }}
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: database-types
+          path: ${{ runner.temp }}/database-types
+
+      - name: Commit and push the types
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APP_SLUG: ${{ steps.app-token.outputs.app-slug }}
+          BRANCH: ${{ github.head_ref }}
+          TESTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # A newer push to the branch has its own run, which regenerates
+          # the types for that commit.
+          if [ "$(git ls-remote origin "refs/heads/$BRANCH" | cut -f1)" != "$TESTED_SHA" ]; then
+            echo "::notice::$BRANCH moved on while CI ran, so nothing was committed: the newer run checks the types again."
+            exit 0
+          fi
+          cp "$RUNNER_TEMP/database-types/database.ts" src/types/database.ts
+          bot_id="$(gh api "/users/${APP_SLUG}[bot]" --jq .id)"
+          git config user.name "${APP_SLUG}[bot]"
+          git config user.email "${bot_id}+${APP_SLUG}[bot]@users.noreply.github.com"
+          git add src/types/database.ts
+          git commit -m "chore(types): regenerate src/types/database.ts from the migrations" \
+            -m "Committed by CI's database-types job. Run \`git pull\` before you push again."
+          git push origin "HEAD:refs/heads/$BRANCH"
+
+  # After a database change merges into dev: applies it to the SHARED
+  # Supabase project, re-runs the seed and the DB tests there, and
+  # comments on the merged PR with what happened (#258). This replaces
+  # running `db push`, `db:seed` and `test:db` by hand.
+  #
+  # Runs on dev only, and only once checks and database passed on the
+  # same commit (otherwise it reports that and stops):
+  # - after a push (a merge) that changed supabase/migrations/,
+  #   supabase/seed.sql, supabase/seed-storage.mjs or
+  #   supabase/seed-storage/, while the repo variable DB_AUTO_APPLY is
+  #   "true" (the off switch);
+  # - from "Run workflow" on the Actions tab: a dry run that only reads,
+  #   unless "apply" is ticked.
+  apply-database:
+    needs: [checks, database]
+    if: >-
+      !cancelled() &&
+      github.ref == 'refs/heads/dev' &&
+      (github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'push' &&
+          needs.database.outputs.database-changed == 'true' &&
+          vars.DB_AUTO_APPLY == 'true'))
+    runs-on: ubuntu-latest
+    # Holds the shared project's database password and anon key. GitHub
+    # only lets jobs on dev use it, so a PR's workflow (even from a fork)
+    # can never read them.
+    environment: shared-db
+    # One at a time: two runs must never push to the shared database at
+    # once. A newer run waits for the one in progress.
+    concurrency:
+      group: shared-database
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      # The comment on the merged PR.
+      pull-requests: write
+    env:
+      DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && !inputs.apply }}
+    defaults:
+      run:
+        # Adds -o pipefail: a command piped into `tee` still fails its step.
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history: the report names migrations from earlier merges.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: "npm"
+
+      - name: Check that CI passed
+        id: ci
+        env:
+          CHECKS: ${{ needs.checks.result }}
+          DATABASE: ${{ needs.database.result }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/apply-database"
+          if [ "$CHECKS" != success ] || [ "$DATABASE" != success ]; then
+            echo "::error::CI didn't pass on this commit (checks: $CHECKS, database: $DATABASE), so the shared database was left alone."
+            exit 1
+          fi
+
+      - run: npm ci
+
+      # The session pooler's connection string, which `supabase link`
+      # saved in supabase/.temp/pooler-url (committed), with the password
+      # added. With --db-url the CLI needs no personal access token.
+      - name: Connect to the shared project
+        id: connect
+        env:
+          DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$DB_PASSWORD" ] || [ -z "$ANON_KEY" ]; then
+            echo "::error::The shared-db environment is missing the SUPABASE_DB_PASSWORD or NEXT_PUBLIC_SUPABASE_ANON_KEY secret (AGENTS.md, \"Database (Supabase)\")."
+            exit 1
+          fi
+          # Percent-encoded for the URL. Masked too: the logs only hide the
+          # secret exactly as it was saved.
+          password="$(jq -rn --arg password "$DB_PASSWORD" '$password | @uri')"
+          echo "::add-mask::$password"
+          pooler_url="$(cat supabase/.temp/pooler-url)"
+          {
+            echo "DB_URL=${pooler_url/@/:$password@}"
+            echo "NEXT_PUBLIC_SUPABASE_URL=https://$(cat supabase/.temp/project-ref).supabase.co"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+          } >> "$GITHUB_ENV"
+
+      # Read-only. Fails, changing nothing, if the shared database has a
+      # migration this commit doesn't, or this commit has an unapplied
+      # migration numbered below an applied one. The report explains both.
+      - name: Check what's pending
+        id: pending
+        run: |
+          logs="$RUNNER_TEMP/apply-database"
+          if ! npx supabase db push --db-url "$DB_URL" --dry-run --output-format json \
+            > "$logs/pending.json" 2> "$logs/pending.log"; then
+            cat "$logs/pending.log" "$logs/pending.json"
+            exit 1
+          fi
+          cat "$logs/pending.log"
+          jq -r '"Pending migrations: " + (if (.migrations | length) == 0 then "none" else (.migrations | join(", ")) end)' "$logs/pending.json"
+
+      - name: Apply the migrations
+        id: push
+        if: env.DRY_RUN != 'true'
+        run: npx supabase db push --db-url "$DB_URL" --yes 2>&1 | tee "$RUNNER_TEMP/apply-database/push.log"
+
+      # Puts the seed accounts and sample listings back to their seed state,
+      # like `npm run db:seed` does. That runs seed.sql with
+      # `supabase db query --linked`, which goes through Supabase's API and
+      # needs a personal access token. With --db-url, `db query` sends the
+      # file as one prepared statement, which can't hold the seed's many
+      # statements, so this uses psql: all of seed.sql in one transaction,
+      # stopping at the first error.
+      - name: Re-run the seed
+        id: seed
+        if: env.DRY_RUN != 'true'
+        run: |
+          psql "$DB_URL" -v ON_ERROR_STOP=1 --single-transaction -f supabase/seed.sql 2>&1 | tee "$RUNNER_TEMP/apply-database/seed.log"
+          node supabase/seed-storage.mjs 2>&1 | tee -a "$RUNNER_TEMP/apply-database/seed.log"
+
+      - name: DB tests on the shared project
+        id: tests
+        if: env.DRY_RUN != 'true'
+        run: npm run test:db 2>&1 | tee "$RUNNER_TEMP/apply-database/tests.log"
+
+      # Whatever happened: writes the run's summary, and comments on the
+      # merged PR (see scripts/report-database-apply.mjs).
+      - name: Report
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LOG_DIR: ${{ runner.temp }}/apply-database
+          BEFORE: ${{ github.event.before }}
+          CI_OUTCOME: ${{ steps.ci.outcome }}
+          CONNECT_OUTCOME: ${{ steps.connect.outcome }}
+          PENDING_OUTCOME: ${{ steps.pending.outcome }}
+          PUSH_OUTCOME: ${{ steps.push.outcome }}
+          SEED_OUTCOME: ${{ steps.seed.outcome }}
+          TESTS_OUTCOME: ${{ steps.tests.outcome }}
+          # Who the comment tells: the team when the shared database
+          # changed, the PM when something needs a decision.
+          TEAM: "@zedric-git @ejkatealcover @chilsi-n"
+          PM: "@zedric-git"
+        run: node scripts/report-database-apply.mjs

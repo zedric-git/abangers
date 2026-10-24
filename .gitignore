@@ -55,3 +55,6 @@ supabase/.temp/*
 !supabase/.temp/project-ref
 !supabase/.temp/linked-project.json
 !supabase/.temp/pooler-url
+
+# Written by `npx supabase start` (CI's throwaway Supabase, #258).
+supabase/.branches/

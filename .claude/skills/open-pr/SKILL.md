@@ -33,9 +33,12 @@ npm run check
 If it fails, fix what's in scope and re-run. Don't open the PR with a
 failing check, and never use `--no-verify`.
 
-If the branch adds a migration or touches RLS/auth, also confirm the
-PR description will include the apply steps (see the `new-migration`
-skill) — `npm run test:db` can't verify policies that aren't applied yet.
+If the branch adds a migration or touches RLS/auth, `npm run check`
+doesn't test it: CI's `database` job does, on the PR, by running every
+migration, the seed and the DB tests on a throwaway Supabase. Don't
+`db push` it or run `npm run test:db` against the shared DB first, and
+don't put apply steps in the PR: CI applies it after merge (AGENTS.md,
+"Database (Supabase)").
 
 ## 3. Work out which issues it closes
 
@@ -100,7 +103,13 @@ Title style matches the repo history: `feat(...)`, `fix(...)`,
 
 `dev` is the default branch, so the `Closes #` lines close the issues
 and move their board cards to Done when the PR merges. `dev` is also
-protected: the PR can only merge once the `checks` CI run passes.
+protected: the PR can only merge once the `checks` and `database` CI
+runs pass.
 
-Give the user the PR link and note any migration that still needs
-applying.
+Give the user the PR link. If it changes the database, tell them:
+
+- if `src/types/database.ts` needed updating, CI commits it to the
+  branch, so `git pull` before pushing again;
+- after merge, CI applies the change to the shared database and
+  comments on the PR. If that comment says something failed, the PM
+  decides the fix.

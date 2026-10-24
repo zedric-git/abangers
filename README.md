@@ -66,8 +66,8 @@ You need **Node.js 22+** (CI uses 22 — see `.nvmrc`) and **npm**.
    Open http://localhost:3000.
 
 The shared database already has the schema and seed data, so you don't
-need to run migrations or the seed just to start developing. Only run
-`db push` when you've added a new migration (see below).
+need to run migrations or the seed to start developing. You never apply
+migrations yourself: CI does it after your PR merges (see below).
 
 ## Test accounts
 
@@ -94,26 +94,26 @@ the admin account only comes from the seed (or SQL).
 If the seed data gets messed up, run `npm run db:seed` — it's safe to
 re-run and puts the seed accounts, listings and verifications back
 without touching anything else. It also uploads the seed verifications'
-sample ID photos, so it needs `.env.local`.
+sample ID photos, so it needs `.env.local`. CI also re-runs it after
+every PR that changes the database.
 
 ## Everyday commands
 
-| Command                 | What it does                                                      |
-| ----------------------- | ----------------------------------------------------------------- |
-| `npm run dev`           | Local dev server                                                  |
-| `npm run check`         | **Everything CI checks** — run before opening a PR                |
-| `npm test`              | Unit tests (`*.test.ts`, Vitest)                                  |
-| `npm run test:db`       | RLS tests against the shared database (`*.db.test.ts`, not in CI) |
-| `npm run format`        | Auto-format with Prettier                                         |
-| `npm run db:seed`       | Load/reset test accounts + sample data (safe to re-run)           |
-| `npm run db:types`      | Regenerate `src/types/database.ts` after a migration is pushed    |
-| `npx supabase db push`  | Apply new migrations in `supabase/migrations/` to the DB          |
-| `npx shadcn add <name>` | Add a shadcn/ui component                                         |
+| Command                 | What it does                                                             |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `npm run dev`           | Local dev server                                                         |
+| `npm run check`         | **What CI's `checks` job runs** — run before opening a PR                |
+| `npm test`              | Unit tests (`*.test.ts`, Vitest)                                         |
+| `npm run test:db`       | RLS tests (`*.db.test.ts`). CI runs them; by hand they hit the shared DB |
+| `npm run format`        | Auto-format with Prettier                                                |
+| `npm run db:seed`       | Load/reset test accounts + sample data (safe to re-run)                  |
+| `npx shadcn add <name>` | Add a shadcn/ui component                                                |
 
 `npm run check` runs, in order: Next.js type generation, `tsc`, ESLint,
 the Prettier check, the migration check (`scripts/check-migrations.mjs`),
 the invisible-character check (`scripts/check-invisible-chars.mjs`) and
-the unit tests. CI runs the same steps plus a production build. A
+the unit tests. CI's `checks` job runs the same steps plus a production
+build, and its `database` job tests the migrations (below). A
 pre-commit hook (Husky) auto-formats staged files, so most formatting
 happens for you on `git commit`.
 
@@ -156,10 +156,23 @@ git push -u origin feature/listing-search  # 5. then open a PR into dev
 ```
 
 **Changing the database?** Add a new file in `supabase/migrations/`
-(highest number + 1 — never edit an existing one), with RLS policies
-**and** grants, then `npx supabase db push` and `npm run db:types`. The
+(highest number on `dev` + 1 — never edit an existing one), with RLS
+policies **and** grants, and a `*.db.test.ts` case for each policy. Then
+just open the PR. CI does the rest:
+
+- **On your PR**, the `database` job runs every migration, the seed and
+  every DB test on a throwaway Supabase (never the shared one). If
+  `src/types/database.ts` needs updating, a bot commits it to your
+  branch: run `git pull` before you push again.
+- **After it merges**, the `apply-database` job applies it to the shared
+  database, re-runs the seed and the DB tests there, and comments on
+  your PR with the result, tagging the team.
+
+Don't run `npx supabase db push` or `npm run db:types` yourself. The
 full checklist is in
-[`.claude/skills/new-migration/SKILL.md`](./.claude/skills/new-migration/SKILL.md).
+[`.claude/skills/new-migration/SKILL.md`](./.claude/skills/new-migration/SKILL.md),
+and how the automation works is in
+[AGENTS.md](./AGENTS.md#database-supabase).
 
 ### Using Claude Code (optional)
 
@@ -203,7 +216,9 @@ supabase/
   migrations/              SQL migrations, applied in order (0001, 0002, ...)
   seed.sql                 test accounts + sample listings
   seed-storage.mjs         uploads the seed's sample files (seed-storage/)
-scripts/                   repo checks run by `npm run check` and CI
+  config.toml              settings for CI's throwaway Supabase only
+scripts/                   repo checks run by `npm run check` and CI, and
+                           the scripts CI's database jobs run
 .claude/                   shared Claude Code settings, hooks and skills
 ```
 
