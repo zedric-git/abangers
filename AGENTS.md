@@ -134,7 +134,13 @@ https://github.com/users/zedric-git/projects/3
   pending submission to approved or rejected, recording themselves in
   `reviewed_by`. Only the four review columns can change, a reviewed
   submission can't be changed again from the app, and nobody can delete
-  one.
+  one. The admin dashboard (`/dashboard/admin`, #256) lists the pending
+  ones and reviews each through `src/lib/auth/review-verification.ts`:
+  it shows the photos through signed links that work for 10 minutes,
+  made with the admin's own session (no service key), and
+  `<Image unoptimized>`, so Next's image optimizer never downloads or
+  keeps a copy of an ID photo on our server. Keep that for any page that
+  shows a private file.
   Submit with `submitVerification` (`src/lib/auth/submit-verification.ts`,
   #204): it checks the form (`verificationSubmissionSchema`) and that the
   landlord isn't already Pending or Verified, uploads the photos straight
@@ -192,17 +198,19 @@ https://github.com/users/zedric-git/projects/3
   page (`/`), keeps each role on its own dashboard (via
   `resolvePostLoginPath`), and lets only landlords open `/profile-setup`
   (#233). The decision is `guardRedirect` in
-  `src/lib/auth/route-guard.ts`; guard a new page there. Logout uses
-  `window.location.replace(...)`, not `router.push` — a client-side
-  push leaves the dashboard in history and Next's client cache, so the
-  Back button would show it again after logging out. Even so, pages
-  visited before the logout stay in the history, and Back can show the
-  browser's own copy of one without asking the server (it did in
-  `next dev`, #252). `SignedInOnly` (`src/components/SignedInOnly.tsx`)
-  sends a signed-out browser home from such a copy: the landlord layout
-  and `/profile-setup` render it, and any new page that shows a
-  signed-in user's data outside them (e.g. the renter dashboard's
-  layout) should too.
+  `src/lib/auth/route-guard.ts`; guard a new page there. Each role's
+  dashboard is `/dashboard/<role>` (renter, landlord, admin). Logout is
+  `logOut()` in `src/lib/auth/log-out.ts`, which every dashboard layout's
+  Log Out uses: it calls `window.location.replace(...)`, not
+  `router.push` — a client-side push leaves the dashboard in history and
+  Next's client cache, so the Back button would show it again after
+  logging out. Even so, pages visited before the logout stay in the
+  history, and Back can show the browser's own copy of one without
+  asking the server (it did in `next dev`, #252). `SignedInOnly`
+  (`src/components/SignedInOnly.tsx`) sends a signed-out browser home
+  from such a copy: the landlord and admin layouts and `/profile-setup`
+  render it, and any new page that shows a signed-in user's data outside
+  them (e.g. the renter dashboard's layout) should too.
 - **There are no `/login` or `/signup` pages.** Login and sign-up both
   happen in `src/components/LandlordAuthModal.tsx`, opened from the home
   page. The old `/login` and `/signup` URLs redirect to `/` (see

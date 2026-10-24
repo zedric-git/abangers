@@ -2,33 +2,43 @@ import { z } from "zod";
 import type { AuthError } from "@supabase/supabase-js";
 
 /**
- * Validation rules for sign-up. Used by:
- * - LandlordAuthModal sign-up state (role is always "landlord" there)
- * - re-checked implicitly by Supabase Auth + the `profiles.role` CHECK
- *   constraint on the server side (see supabase/migrations/0001_init.sql)
- *
- * `role` matches the `check (role in ('renter', 'landlord'))` constraint
- * on public.profiles — keep these in sync if that constraint ever changes.
+ * Every account role. Matches the `check (role in ('renter', 'landlord',
+ * 'admin'))` constraint on public.profiles (0014): keep the two in sync.
+ * Used to read the role back from a profiles row after login
+ * (src/lib/auth/post-login.ts). Nobody can sign up as an admin: see
+ * signUpRoleSchema.
  */
-/**
- * The two account roles. Matches the `check (role in ('renter',
- * 'landlord'))` constraint on public.profiles. Also used to validate the
- * role read back from the database / auth metadata after login
- * (src/lib/auth/post-login.ts).
- */
-export const roleSchema = z.enum(["renter", "landlord"], {
-  message: "Select whether you're a renter or landlord",
-});
+export const roleSchema = z.enum(["renter", "landlord", "admin"]);
 
 export type Role = z.infer<typeof roleSchema>;
 
+/**
+ * The roles someone can sign up as: renter or landlord, never admin. The
+ * profiles insert policy (0014) only creates renter or landlord profiles,
+ * so an admin can only be made with SQL. Login also uses this for the role
+ * saved in auth user metadata at sign-up (post-login.ts), because users
+ * can change their own metadata.
+ */
+export const signUpRoleSchema = z.enum(["renter", "landlord"], {
+  message: "Select whether you're a renter or landlord",
+});
+
+export type SignUpRole = z.infer<typeof signUpRoleSchema>;
+
+/**
+ * Validation rules for sign-up. Used by:
+ * - LandlordAuthModal sign-up state (role is always "landlord" there)
+ * - re-checked implicitly by Supabase Auth, and on the server side by
+ *   the profiles insert policy and `profiles.role` CHECK constraint (see
+ *   supabase/migrations/0014_admin_role_and_verification_review.sql)
+ */
 export const signUpSchema = z
   .object({
     fullName: z.string().min(2, "Name must be at least 2 characters"),
     email: z.string().email("Enter a valid email address"),
     password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
-    role: roleSchema,
+    role: signUpRoleSchema,
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",

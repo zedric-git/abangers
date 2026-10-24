@@ -6,7 +6,9 @@
  * then hands both answers to `guardRedirect`.
  *
  * Guarded pages:
- * - `/dashboard/*`: each role only on its own dashboard;
+ * - `/dashboard/*`: each role only on its own dashboard
+ *   (`/dashboard/renter`, `/dashboard/landlord` or `/dashboard/admin`,
+ *   #256), so only admins can open the admin dashboard;
  * - `/profile-setup`: landlords only (#233). A signed-out visitor used to
  *   be able to fill in the whole form before finding out there was no
  *   session, and a renter's save failed at 0007's role trigger.

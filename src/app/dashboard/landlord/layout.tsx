@@ -3,31 +3,13 @@
 import { Building2, User, LogOut } from "lucide-react";
 import DashboardSidebar, { NavItem } from "@/components/DashboardSidebar";
 import SignedInOnly from "@/components/SignedInOnly";
-import { createClient } from "@/lib/supabase/client";
+import { logOut } from "@/lib/auth/log-out";
 
 export default function LandlordLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = createClient();
-
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error("Logout error:", err);
-    } finally {
-      // Not router.push: that keeps the dashboard in browser history and
-      // in Next's client-side cache, so pressing Back would show it again
-      // without asking the server. A full replace drops this page's history
-      // entry and Next's cache. Dashboard pages visited before it are still
-      // in the history, though, and Back can show the browser's own copy of
-      // one of them: <SignedInOnly /> below sends that copy home (#252).
-      window.location.replace("/");
-    }
-  };
-
   const landlordNavItems: NavItem[] = [
     {
       label: "My Listings",
@@ -43,7 +25,8 @@ export default function LandlordLayout({
     {
       label: "Log Out",
       icon: LogOut,
-      onClick: handleLogout,
+      // A hard navigation home, not router.push (src/lib/auth/log-out.ts).
+      onClick: logOut,
       isDanger: true,
       position: "bottom",
     },

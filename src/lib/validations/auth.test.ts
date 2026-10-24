@@ -35,9 +35,17 @@ describe("signUpSchema", () => {
     expect(result.success).toBe(false);
   });
 
-  it("only allows the roles in the profiles.role CHECK constraint", () => {
-    const result = signUpSchema.safeParse({ ...validSignUp, role: "admin" });
-    expect(result.success).toBe(false);
+  it("only allows signing up as a renter or landlord, never as an admin", () => {
+    // An admin is made with SQL only (0014).
+    expect(
+      signUpSchema.safeParse({ ...validSignUp, role: "renter" }).success,
+    ).toBe(true);
+    expect(
+      signUpSchema.safeParse({ ...validSignUp, role: "admin" }).success,
+    ).toBe(false);
+    expect(
+      signUpSchema.safeParse({ ...validSignUp, role: "superuser" }).success,
+    ).toBe(false);
   });
 });
 

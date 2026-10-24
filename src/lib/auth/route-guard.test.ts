@@ -93,4 +93,48 @@ describe("guardRedirect", () => {
       expect(guardRedirect("/dashboard/renter", true, null)).toBe("/");
     });
   });
+
+  describe("the admin dashboard (#256)", () => {
+    it("lets an admin into it and the pages under it", () => {
+      expect(
+        guardRedirect("/dashboard/admin", true, "/dashboard/admin"),
+      ).toBeNull();
+      expect(
+        guardRedirect(
+          "/dashboard/admin/verifications/abc",
+          true,
+          "/dashboard/admin",
+        ),
+      ).toBeNull();
+    });
+
+    it("sends landlords and renters back to their own dashboard", () => {
+      expect(
+        guardRedirect("/dashboard/admin", true, "/dashboard/landlord"),
+      ).toBe("/dashboard/landlord");
+      expect(
+        guardRedirect(
+          "/dashboard/admin/verifications/abc",
+          true,
+          "/dashboard/renter",
+        ),
+      ).toBe("/dashboard/renter");
+    });
+
+    it("sends a signed-out visitor to the home page", () => {
+      expect(guardRedirect("/dashboard/admin", false, null)).toBe("/");
+    });
+
+    it("sends an admin from the other dashboards and profile setup to theirs", () => {
+      expect(
+        guardRedirect("/dashboard/landlord", true, "/dashboard/admin"),
+      ).toBe("/dashboard/admin");
+      expect(guardRedirect("/dashboard/renter", true, "/dashboard/admin")).toBe(
+        "/dashboard/admin",
+      );
+      expect(guardRedirect("/profile-setup", true, "/dashboard/admin")).toBe(
+        "/dashboard/admin",
+      );
+    });
+  });
 });
