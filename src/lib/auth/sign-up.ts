@@ -1,5 +1,5 @@
 import type { Session, SupabaseClient, User } from "@supabase/supabase-js";
-import { mapAuthError, type Role } from "@/lib/validations/auth";
+import { mapAuthError, type SignUpRole } from "@/lib/validations/auth";
 
 /**
  * Creates an account and its `profiles` row. Used by LandlordAuthModal;
@@ -51,7 +51,13 @@ export function classifySignUpResponse(
 
 export async function signUpWithProfile(
   supabase: SupabaseClient,
-  values: { email: string; password: string; fullName: string; role: Role },
+  values: {
+    email: string;
+    password: string;
+    fullName: string;
+    // Never "admin": the profiles insert policy refuses it (0014).
+    role: SignUpRole;
+  },
 ): Promise<SignUpResult> {
   const { data, error } = await supabase.auth.signUp({
     email: values.email,

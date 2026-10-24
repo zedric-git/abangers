@@ -1,5 +1,10 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import { roleSchema, type Role } from "@/lib/validations/auth";
+import {
+  roleSchema,
+  signUpRoleSchema,
+  type Role,
+  type SignUpRole,
+} from "@/lib/validations/auth";
 
 /**
  * Decides where a user goes right after signing in. Used by
@@ -12,10 +17,15 @@ import { roleSchema, type Role } from "@/lib/validations/auth";
  * (the old login page guessed renter, the modal guessed landlord), silently
  * putting people on the wrong side of the app. Now:
  *
- *   1. profiles row exists      → go to that role's dashboard
+ *   1. profiles row exists      → go to that role's dashboard (renter,
+ *                                 landlord or admin)
  *   2. no row, but sign-up saved the role in auth user metadata
  *                               → recreate the row from it, then continue
  *   3. no row and no saved role → show an error; never guess
+ *
+ * Step 2 only ever recreates a renter or a landlord. Users can change their
+ * own auth metadata, so a saved "admin" proves nothing, and the profiles
+ * insert policy refuses it anyway (0014): an admin is made with SQL only.
  */
 
 export type PostLoginResult =
@@ -24,9 +34,22 @@ export type PostLoginResult =
 const MISSING_PROFILE_MESSAGE =
   "We couldn't find your account profile, so we don't know whether you're a renter or a landlord. Please contact support.";
 
-/** Turns an unknown value into a Role, or null if it isn't a valid one. */
+/**
+ * Turns a profiles row's role into a Role, or null if it isn't a known
+ * one.
+ */
 export function parseRole(value: unknown): Role | null {
   const result = roleSchema.safeParse(value);
+  return result.success ? result.data : null;
+}
+
+/**
+ * Turns the role saved in auth user metadata into a role someone can sign
+ * up as (renter or landlord), or null. Never "admin" (see the top of this
+ * file).
+ */
+function parseSignUpRole(value: unknown): SignUpRole | null {
+  const result = signUpRoleSchema.safeParse(value);
   return result.success ? result.data : null;
 }
 
@@ -40,7 +63,7 @@ export function decidePostLoginRoute(
   metadataRole: unknown,
 ):
   | { kind: "dashboard"; role: Role }
-  | { kind: "recreate-profile"; role: Role }
+  | { kind: "recreate-profile"; role: SignUpRole }
   | { kind: "error" } {
   if (profileRole !== undefined) {
     // A row exists: trust it, but only if it holds a known role.
@@ -48,12 +71,19 @@ export function decidePostLoginRoute(
     return role ? { kind: "dashboard", role } : { kind: "error" };
   }
 
-  const role = parseRole(metadataRole);
+  const role = parseSignUpRole(metadataRole);
   return role ? { kind: "recreate-profile", role } : { kind: "error" };
 }
 
+/** Each role's own dashboard, which the proxy keeps them on (route-guard.ts). */
+const DASHBOARDS: Record<Role, string> = {
+  renter: "/dashboard/renter",
+  landlord: "/dashboard/landlord",
+  admin: "/dashboard/admin",
+};
+
 function dashboardFor(role: Role): string {
-  return role === "landlord" ? "/dashboard/landlord" : "/dashboard/renter";
+  return DASHBOARDS[role];
 }
 
 /** Looks up the user's role (repairing a missing profile row if possible). */
@@ -89,7 +119,8 @@ export async function resolvePostLoginPath(
   }
 
   // decision.kind === "recreate-profile": the user is signed in now, so
-  // RLS (auth.uid() = id) allows inserting their own row.
+  // RLS (auth.uid() = id, as a renter or landlord, 0014) allows inserting
+  // their own row.
   const { error: insertError } = await supabase.from("profiles").insert({
     id: user.id,
     role: decision.role,

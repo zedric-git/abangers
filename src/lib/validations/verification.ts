@@ -157,3 +157,67 @@ export const verificationSubmissionSchema = z
 export type VerificationSubmissionInput = z.infer<
   typeof verificationSubmissionSchema
 >;
+
+// ── The admin's review (S2-11.2, #256) ──────────────────────────────
+
+/**
+ * The longest rejection reason. The landlord reads it on their dashboard's
+ * banner and checklist (#205), so it's kept to a short paragraph.
+ */
+export const REJECTION_REASON_MAX_LENGTH = 500;
+
+const REASON_MISSING_MESSAGE =
+  "Write the reason the landlord will see, so they know what to fix";
+
+/** Which submission: its landlord_verifications id. */
+const submissionIdSchema = z.uuid({
+  message:
+    "This verification's id isn't valid. Go back to the list and open it again.",
+});
+
+/** Approving: nothing else to say (an approval has no reason). */
+export const approvalSchema = z.object({
+  submissionId: submissionIdSchema,
+  decision: z.literal("approve"),
+});
+
+/**
+ * Rejecting: with a reason the landlord sees. The Reject dialog's form
+ * uses this part of verificationReviewSchema on its own (it only ever
+ * rejects).
+ */
+export const rejectionSchema = z.object({
+  submissionId: submissionIdSchema,
+  decision: z.literal("reject"),
+  // Trimmed first, so a reason of only spaces (or tabs, line breaks, and
+  // the other characters .trim() removes) counts as missing.
+  reason: z
+    .string({ message: REASON_MISSING_MESSAGE })
+    .trim()
+    .min(1, REASON_MISSING_MESSAGE)
+    .max(
+      REJECTION_REASON_MAX_LENGTH,
+      `Keep the reason to ${REJECTION_REASON_MAX_LENGTH} characters or fewer`,
+    ),
+});
+
+/**
+ * An admin's decision on one submission: approve it, or reject it with a
+ * reason. Used by the review page's dialogs and by reviewVerification
+ * (src/lib/auth/review-verification.ts), which checks it again on the
+ * server.
+ *
+ * WHO ENFORCES WHAT: the database does, whatever the app sends (0014's
+ * update policy and 0008's rejection_reason_matches_status CHECK): only an
+ * admin, only a pending submission, and a rejection needs a reason. This
+ * is stricter than that CHECK, which only refuses a reason that's empty
+ * once spaces are removed, so the database never refuses a reason the
+ * form accepts.
+ */
+export const verificationReviewSchema = z.discriminatedUnion("decision", [
+  approvalSchema,
+  rejectionSchema,
+]);
+
+export type VerificationReviewInput = z.infer<typeof verificationReviewSchema>;
+export type RejectionInput = z.infer<typeof rejectionSchema>;

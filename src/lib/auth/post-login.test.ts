@@ -13,8 +13,23 @@ describe("decidePostLoginRoute", () => {
     });
   });
 
+  it("sends an admin to the admin dashboard (#256)", () => {
+    expect(decidePostLoginRoute("admin", undefined)).toEqual({
+      kind: "dashboard",
+      role: "admin",
+    });
+  });
+
   it("errors on an unknown role in the profiles row instead of guessing", () => {
-    expect(decidePostLoginRoute("admin", "landlord")).toEqual({
+    expect(decidePostLoginRoute("superuser", "landlord")).toEqual({
+      kind: "error",
+    });
+  });
+
+  // Users can change their own auth metadata, and an admin is made with
+  // SQL only (0014), so a saved "admin" never recreates a profile.
+  it("never recreates an admin profile from the saved role", () => {
+    expect(decidePostLoginRoute(undefined, "admin")).toEqual({
       kind: "error",
     });
   });
