@@ -60,25 +60,31 @@ const PRIMARY_BUTTON =
  * Try again. newListingPageView() (src/lib/landlord-status-view.ts)
  * decides which.
  *
- * No "use client": the page draws it on the server.
+ * Can also be rendered in-place inside the dashboard when unverified.
  */
 export default function ListingChecklist({
   view,
+  hideBackLink = false,
 }: {
   view: Exclude<NewListingPageView, { show: "form" }>;
+  hideBackLink?: boolean;
 }) {
   const isProblem = view.show === "problem";
   const HeaderIcon = isProblem ? AlertCircle : Lock;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <Link
-        href="/dashboard/landlord"
-        className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-600 transition-colors hover:text-zinc-900 sm:text-sm dark:text-zinc-400 dark:hover:text-zinc-100"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Dashboard
-      </Link>
+    <div
+      className={cn("space-y-6", hideBackLink ? "w-full" : "mx-auto max-w-4xl")}
+    >
+      {!hideBackLink && (
+        <Link
+          href="/dashboard/landlord"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-600 transition-colors hover:text-zinc-900 sm:text-sm dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Dashboard
+        </Link>
+      )}
 
       <section
         aria-labelledby="listing-checklist-title"

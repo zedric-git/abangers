@@ -7,7 +7,10 @@ import {
   loadLandlordStatus,
   type LandlordStatus,
 } from "@/lib/auth/landlord-status";
-import { isAddListingLocked } from "@/lib/landlord-status-view";
+import {
+  isAddListingLocked,
+  newListingPageView,
+} from "@/lib/landlord-status-view";
 import { countListingsByTab } from "@/lib/filter-landlord-listings";
 import { Listing } from "@/types/listing";
 
@@ -19,11 +22,7 @@ export default async function LandlordDashboardPage() {
   } = await supabase.auth.getUser();
 
   let listings: Listing[] = [];
-  // The listings couldn't be read: the list says so instead of showing the
-  // "No listings created yet" empty state (#232).
   let listingsLoadError = false;
-  // Where the landlord stands (#205): the banner, and the lock on Add New
-  // Listing. null if it couldn't be read.
   let status: LandlordStatus | null = null;
 
   if (user) {
@@ -44,33 +43,39 @@ export default async function LandlordDashboardPage() {
     status = landlordStatus;
   }
 
-  // Available and Almost Full listings: the same number as the list's
-  // Active tab (#232).
   const activeCount = countListingsByTab(listings).active;
   const addListingLocked = isAddListingLocked(status);
 
+  // Compute whether in-place checklist will be shown instead of listings
+  const checklistView = newListingPageView(status);
+  const showInPlaceChecklist =
+    listings.length === 0 && checklistView.show !== "form";
+
   return (
-    <div className="w-full space-y-8">
-      {/* Top Banner / Welcome */}
+    <div className="w-full space-y-6">
+      {/* Breadcrumb & Header Section */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-extrabold text-zinc-950 dark:text-zinc-50">
-            Landlord Dashboard
+        <div className="space-y-1">
+          {/* Breadcrumb: Landlord / Listings */}
+          <nav className="flex items-center gap-1.5 text-xs text-zinc-400">
+            <span>Landlord</span>
+            <span>/</span>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">
+              Listings
+            </span>
+          </nav>
+          {/* Page Title */}
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-950 sm:text-3xl dark:text-zinc-50">
+            Rental Listings
           </h1>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Manage your rental listings, monitor inquiries, and update property
-            details.
-          </p>
         </div>
 
-        <AddListingButton
-          locked={addListingLocked}
-          className="inline-flex h-11 items-center gap-2 rounded-xl bg-purple-600 px-5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-purple-700"
-        />
+        {/* Add Listing Button (Unlocked Link or Locked Popover Tooltip) */}
+        <AddListingButton locked={addListingLocked} />
       </div>
 
-      {/* Not verified / Pending / Rejected (#205); nothing once verified */}
-      <VerificationBanner status={status} />
+      {/* Omit top VerificationBanner if checklist is already rendered in-place below */}
+      {!showInPlaceChecklist && <VerificationBanner status={status} />}
 
       {/* Quick Overview Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -128,11 +133,12 @@ export default async function LandlordDashboardPage() {
         </div>
       </div>
 
-      {/* Posted Listings Section */}
+      {/* Posted Listings Section (Persistent filter pills, search bar, and in-place checklist) */}
       <LandlordListingsView
         initialListings={listings}
         addListingLocked={addListingLocked}
         loadError={listingsLoadError}
+        checklistView={showInPlaceChecklist ? checklistView : null}
       />
     </div>
   );

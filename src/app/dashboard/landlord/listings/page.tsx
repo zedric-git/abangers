@@ -5,7 +5,10 @@ import AddListingButton from "@/components/AddListingButton";
 import LandlordListingsView from "@/components/LandlordListingsView";
 import VerificationBanner from "@/components/VerificationBanner";
 import { loadLandlordStatus } from "@/lib/auth/landlord-status";
-import { isAddListingLocked } from "@/lib/landlord-status-view";
+import {
+  isAddListingLocked,
+  newListingPageView,
+} from "@/lib/landlord-status-view";
 import {
   MISSING_LISTING_NOTE,
   MISSING_LISTING_NOTICE,
@@ -21,10 +24,6 @@ export default async function LandlordListingsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  // A listing's View or Edit page sends the landlord here with
-  // ?notice=listing-not-found when the listing isn't there (#244). The
-  // parameter only picks the note; its text is fixed below, so nothing
-  // from the URL is shown on the page.
   const { notice } = await searchParams;
   const showMissingListingNote = notice === MISSING_LISTING_NOTICE;
 
@@ -54,19 +53,21 @@ export default async function LandlordListingsPage({
   if (error) {
     console.error("Error fetching landlord listings:", error);
   }
-  // The listings couldn't be read: the list says so instead of showing the
-  // empty state, as on the dashboard (#239).
   const listingsLoadError = error !== null;
 
   const listings: Listing[] = rawListings ?? [];
   const addListingLocked = isAddListingLocked(status);
 
-  // Compute status summary counts, with the same labels as the status
-  // badges (#232). Almost Full listings count only in the total.
+  // Compute status summary counts
   const totalListings = listings.length;
   const statusCounts = countListingsByStatus(listings);
   const availableCount = statusCounts.available;
   const occupiedCount = statusCounts.fully_occupied;
+
+  // In-place checklist view when unverified with 0 listings
+  const checklistView = newListingPageView(status);
+  const showInPlaceChecklist =
+    listings.length === 0 && checklistView.show !== "form";
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
@@ -82,10 +83,7 @@ export default async function LandlordListingsPage({
           </p>
         </div>
 
-        <AddListingButton
-          locked={addListingLocked}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-purple-700 px-5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 dark:bg-purple-600 dark:hover:bg-purple-700"
-        />
+        <AddListingButton locked={addListingLocked} />
       </div>
 
       {/* Why the landlord was sent here from a listing's View or Edit */}
@@ -99,8 +97,8 @@ export default async function LandlordListingsPage({
         </div>
       )}
 
-      {/* Not verified / Pending / Rejected (#205); nothing once verified */}
-      <VerificationBanner status={status} />
+      {/* Omit top VerificationBanner if checklist is already rendered in-place below */}
+      {!showInPlaceChecklist && <VerificationBanner status={status} />}
 
       {/* Quick Summary Stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -147,15 +145,13 @@ export default async function LandlordListingsPage({
         </div>
       </div>
 
-      {/* The listings, shared with the dashboard (#239): one card per row
-          (the card is a wide row, so it can't sit in a grid), the tabs and
-          search, and the error and empty states. The page title above
-          already says "My Posted Listings", so the list leaves it out. */}
+      {/* The listings, shared with the dashboard: persistent toolbar & search */}
       <LandlordListingsView
         initialListings={listings}
         addListingLocked={addListingLocked}
         loadError={listingsLoadError}
         showHeading={false}
+        checklistView={showInPlaceChecklist ? checklistView : null}
       />
     </div>
   );
