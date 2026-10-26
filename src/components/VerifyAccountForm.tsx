@@ -178,8 +178,12 @@ export default function VerifyAccountForm({
           top: main.scrollTop + (targetRect.top - mainRect.top) - 20,
           behavior: "smooth",
         });
-      } else if (target) {
-        target.scrollIntoView({ behavior: "smooth" });
+      }
+      if (
+        typeof window !== "undefined" &&
+        (window.scrollY > 0 || window.scrollX > 0)
+      ) {
+        window.scrollTo(0, 0);
       }
     } else {
       // The landlord dashboard scrolls inside its <main>, not the window.
@@ -223,8 +227,12 @@ export default function VerifyAccountForm({
             top: main.scrollTop + (targetRect.top - mainRect.top) - 20,
             behavior: "smooth",
           });
-        } else if (target) {
-          target.scrollIntoView({ behavior: "smooth" });
+        }
+        if (
+          typeof window !== "undefined" &&
+          (window.scrollY > 0 || window.scrollX > 0)
+        ) {
+          window.scrollTo(0, 0);
         }
       } else {
         document
@@ -505,9 +513,23 @@ export default function VerifyAccountForm({
             <button
               type="button"
               onClick={() => {
+                const main = document.querySelector("main");
                 const el = document.getElementById("full-name");
+                if (main && el) {
+                  const mainRect = main.getBoundingClientRect();
+                  const elRect = el.getBoundingClientRect();
+                  main.scrollTo({
+                    top: main.scrollTop + (elRect.top - mainRect.top) - 20,
+                    behavior: "smooth",
+                  });
+                }
                 el?.focus();
-                el?.scrollIntoView({ behavior: "smooth" });
+                if (
+                  typeof window !== "undefined" &&
+                  (window.scrollY > 0 || window.scrollX > 0)
+                ) {
+                  window.scrollTo(0, 0);
+                }
               }}
               className="cursor-pointer font-semibold underline underline-offset-2"
             >

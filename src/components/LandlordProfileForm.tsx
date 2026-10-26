@@ -68,8 +68,12 @@ export default function LandlordProfileForm({
         top: main.scrollTop + (targetRect.top - mainRect.top) - 20,
         behavior: "smooth",
       });
-    } else if (target) {
-      target.scrollIntoView({ behavior: "smooth" });
+    }
+    if (
+      typeof window !== "undefined" &&
+      (window.scrollY > 0 || window.scrollX > 0)
+    ) {
+      window.scrollTo(0, 0);
     }
   };
 
@@ -77,6 +81,12 @@ export default function LandlordProfileForm({
     if (loadingUser) return;
     const checkHashAndScroll = () => {
       if (window.location.hash === "#verify-account") {
+        if (
+          typeof window !== "undefined" &&
+          (window.scrollY > 0 || window.scrollX > 0)
+        ) {
+          window.scrollTo(0, 0);
+        }
         setTimeout(() => {
           scrollToVerification();
         }, 100);
