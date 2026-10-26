@@ -9,7 +9,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AlertCircle,
   CheckCircle2,
-  ChevronDown,
   Eye,
   Loader2,
   Lock,
@@ -23,8 +22,16 @@ import SelfieCamera from "@/components/SelfieCamera";
 import VerificationStatusCard, {
   VERIFICATION_STATUS_HEADING_ID,
 } from "@/components/VerificationStatusCard";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { submitVerification } from "@/lib/auth/submit-verification";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 import {
   ID_TYPES,
   ID_TYPE_LABELS,
@@ -147,22 +154,6 @@ export default function VerifyAccountForm({
   const labels = idPhotoLabels(idType);
   // null for a passport, which only needs its photo page.
   const backLabel = labels.back;
-
-  const idTypeField = register("id_type", {
-    onChange: (event: React.ChangeEvent<HTMLSelectElement>) => {
-      const chosen = idTypeSchema.safeParse(event.target.value);
-      // A passport only needs its photo page: drop a back photo chosen
-      // before. The schema refuses one, and its picker is about to go.
-      if (chosen.success && !needsBackPhoto(chosen.data)) {
-        setValue("id_back", undefined);
-      }
-      // Once Review has been clicked, keep the back photo's message in
-      // step with the ID type (needed now, or not any more).
-      if (isSubmitted) {
-        void trigger("id_back");
-      }
-    },
-  });
 
   /** Switches steps, starting the new one at the top of the page. */
   function showStep(next: Step) {
@@ -474,31 +465,57 @@ export default function VerifyAccountForm({
           >
             Type of ID <span className="text-red-500">*</span>
           </label>
-          <div className="relative">
-            <select
-              id="id-type"
-              {...idTypeField}
-              aria-invalid={errors.id_type ? true : undefined}
-              aria-describedby={
-                errors.id_type ? "id-type-error id-type-hint" : "id-type-hint"
-              }
-              className="h-11 w-full appearance-none rounded-xl border border-zinc-200 bg-zinc-100/70 pr-10 pl-4 text-sm font-medium text-zinc-900 transition-colors focus:border-purple-600 focus:bg-zinc-100 focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:focus:border-purple-500"
-            >
-              <option value="">Choose your ID</option>
-              {ID_TYPES.map((type) => (
-                <option
-                  key={type}
-                  value={type}
-                  className="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100"
+          <Controller
+            control={control}
+            name="id_type"
+            render={({ field, fieldState }) => (
+              <Select
+                value={field.value || undefined}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  const chosen = idTypeSchema.safeParse(value);
+                  if (chosen.success && !needsBackPhoto(chosen.data)) {
+                    setValue("id_back", undefined);
+                  }
+                  if (isSubmitted) {
+                    void trigger("id_back");
+                  }
+                }}
+              >
+                <SelectTrigger
+                  id="id-type"
+                  ref={field.ref}
+                  aria-invalid={fieldState.error ? true : undefined}
+                  aria-describedby={
+                    fieldState.error
+                      ? "id-type-error id-type-hint"
+                      : "id-type-hint"
+                  }
+                  className={cn(
+                    "h-11 w-full rounded-xl border border-zinc-200 bg-zinc-100/70 px-4 text-sm font-medium text-zinc-900 transition-colors focus:border-purple-600 focus:bg-zinc-100 focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:focus:border-purple-500 [&_svg]:text-zinc-400 [&_svg]:opacity-100 dark:[&_svg]:text-zinc-500",
+                    !field.value &&
+                      "data-[placeholder]:text-zinc-400 dark:data-[placeholder]:text-zinc-500",
+                  )}
                 >
-                  {ID_TYPE_LABELS[type]}
-                </option>
-              ))}
-            </select>
-            <div className="pointer-events-none absolute inset-y-0 right-3.5 flex items-center pr-0.5 text-zinc-400">
-              <ChevronDown className="h-4.5 w-4.5" />
-            </div>
-          </div>
+                  <SelectValue placeholder="Choose your ID" />
+                </SelectTrigger>
+                <SelectContent
+                  position="popper"
+                  className="w-[var(--radix-select-trigger-width)] rounded-2xl border border-zinc-200 bg-white p-1.5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
+                >
+                  {ID_TYPES.map((type) => (
+                    <SelectItem
+                      key={type}
+                      value={type}
+                      className="cursor-pointer rounded-xl py-2.5 pr-8 pl-3 text-sm font-medium text-zinc-700 transition-colors focus:bg-zinc-100 focus:text-zinc-900 data-[state=checked]:bg-purple-50 data-[state=checked]:font-semibold data-[state=checked]:text-purple-700 dark:text-zinc-200 dark:focus:bg-zinc-800 dark:focus:text-zinc-50 dark:data-[state=checked]:bg-purple-950/40 dark:data-[state=checked]:text-purple-300 [&_svg]:text-purple-600 dark:[&_svg]:text-purple-400"
+                    >
+                      {ID_TYPE_LABELS[type]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
           {errors.id_type && (
             <p id="id-type-error" className={FIELD_ERROR}>
               {errors.id_type.message}
