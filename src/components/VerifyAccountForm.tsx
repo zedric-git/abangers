@@ -9,6 +9,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronDown,
   Eye,
   Loader2,
   Lock,
@@ -469,26 +470,35 @@ export default function VerifyAccountForm({
         <div className="mt-6 max-w-md">
           <label
             htmlFor="id-type"
-            className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300"
+            className="mb-1.5 block text-xs font-semibold text-zinc-600 dark:text-zinc-400"
           >
-            Type of ID *
+            Type of ID <span className="text-red-500">*</span>
           </label>
-          <select
-            id="id-type"
-            {...idTypeField}
-            aria-invalid={errors.id_type ? true : undefined}
-            aria-describedby={
-              errors.id_type ? "id-type-error id-type-hint" : "id-type-hint"
-            }
-            className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
-          >
-            <option value="">Choose your ID</option>
-            {ID_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {ID_TYPE_LABELS[type]}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              id="id-type"
+              {...idTypeField}
+              aria-invalid={errors.id_type ? true : undefined}
+              aria-describedby={
+                errors.id_type ? "id-type-error id-type-hint" : "id-type-hint"
+              }
+              className="h-11 w-full appearance-none rounded-xl border border-zinc-200 bg-zinc-100/70 pr-10 pl-4 text-sm font-medium text-zinc-900 transition-colors focus:border-purple-600 focus:bg-zinc-100 focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:focus:border-purple-500"
+            >
+              <option value="">Choose your ID</option>
+              {ID_TYPES.map((type) => (
+                <option
+                  key={type}
+                  value={type}
+                  className="bg-white text-zinc-900 dark:bg-zinc-900 dark:text-zinc-100"
+                >
+                  {ID_TYPE_LABELS[type]}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-3.5 flex items-center pr-0.5 text-zinc-400">
+              <ChevronDown className="h-4.5 w-4.5" />
+            </div>
+          </div>
           {errors.id_type && (
             <p id="id-type-error" className={FIELD_ERROR}>
               {errors.id_type.message}
