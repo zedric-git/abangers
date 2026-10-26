@@ -258,35 +258,35 @@ export default function VerifyAccountForm({
   }
 
   const stepsNav = (
-    <nav aria-label="Steps">
-      <div className="inline-flex items-center gap-2 rounded-xl bg-zinc-200/80 p-1 dark:bg-zinc-800">
+    <nav aria-label="Steps" className="w-full sm:w-auto">
+      <div className="grid w-full grid-cols-2 gap-1 rounded-xl bg-zinc-200/80 p-1 sm:inline-grid sm:w-auto sm:grid-cols-2 dark:bg-zinc-800">
         <button
           type="button"
           onClick={() => showStep("form")}
           disabled={submitting}
           aria-current={step === "form" ? "step" : undefined}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all disabled:cursor-not-allowed ${
+          className={`flex h-9 w-full items-center justify-center gap-2 rounded-lg px-3.5 text-xs font-bold whitespace-nowrap transition-all disabled:cursor-not-allowed sm:min-w-[145px] ${
             step === "form"
               ? "bg-white text-zinc-900 shadow-2xs dark:bg-zinc-900 dark:text-zinc-100"
               : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
           }`}
         >
-          <Pencil className="h-3.5 w-3.5" />
-          1. ID & selfie
+          <Pencil className="h-3.5 w-3.5 shrink-0" />
+          <span>1. ID & selfie</span>
         </button>
         <button
           type="button"
           onClick={handleSubmit(() => showStep("review"))}
           disabled={submitting}
           aria-current={step === "review" ? "step" : undefined}
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all disabled:cursor-not-allowed ${
+          className={`flex h-9 w-full items-center justify-center gap-2 rounded-lg px-3.5 text-xs font-bold whitespace-nowrap transition-all disabled:cursor-not-allowed sm:min-w-[145px] ${
             step === "review"
               ? "bg-purple-700 text-white shadow-2xs dark:bg-purple-600"
               : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
           }`}
         >
-          <Eye className="h-3.5 w-3.5" />
-          2. Review & submit
+          <Eye className="h-3.5 w-3.5 shrink-0" />
+          <span>2. Review & submit</span>
         </button>
       </div>
     </nav>
@@ -294,11 +294,11 @@ export default function VerifyAccountForm({
 
   const compactHeader = (
     <div className="flex flex-col gap-4 border-b border-zinc-100 pb-6 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800">
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400">
           <ShieldCheck className="h-6 w-6" />
         </div>
-        <div>
+        <div className="min-w-0">
           <h2 className="text-xl font-bold tracking-tight text-zinc-900 sm:text-2xl dark:text-zinc-50">
             Verify your account
           </h2>
@@ -307,7 +307,7 @@ export default function VerifyAccountForm({
           </p>
         </div>
       </div>
-      {stepsNav}
+      <div className="shrink-0">{stepsNav}</div>
     </div>
   );
 
