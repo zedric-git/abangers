@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import {
   User,
   Phone,
@@ -9,12 +8,14 @@ import {
   Loader2,
   Save,
   CheckCircle2,
+  Clock,
   Lock,
   ShieldCheck,
 } from "lucide-react";
 import PhMobileNumberInput from "@/components/PhMobileNumberInput";
 import VerificationBadge from "@/components/VerificationBadge";
 import VerificationBanner from "@/components/VerificationBanner";
+import VerifyAccountForm from "@/components/VerifyAccountForm";
 import type { LandlordStatus } from "@/lib/auth/landlord-status";
 import {
   nameFieldView,
@@ -26,7 +27,6 @@ import {
 } from "@/lib/ph-mobile-number";
 import { createClient } from "@/lib/supabase/client";
 import { profileSetupSchema } from "@/lib/validations/profile";
-import { VERIFY_ACCOUNT_PATH } from "@/lib/verify-account";
 
 interface LandlordProfileFormProps {
   /**
@@ -57,6 +57,38 @@ export default function LandlordProfileForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const scrollToVerification = () => {
+    const main = document.querySelector("main");
+    const target = document.getElementById("verify-account");
+    if (main && target) {
+      const mainRect = main.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      main.scrollTo({
+        top: main.scrollTop + (targetRect.top - mainRect.top) - 20,
+        behavior: "smooth",
+      });
+    } else if (target) {
+      target.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  useEffect(() => {
+    if (loadingUser) return;
+    const checkHashAndScroll = () => {
+      if (window.location.hash === "#verify-account") {
+        setTimeout(() => {
+          scrollToVerification();
+        }, 100);
+      }
+    };
+
+    checkHashAndScroll();
+    window.addEventListener("hashchange", checkHashAndScroll);
+    return () => {
+      window.removeEventListener("hashchange", checkHashAndScroll);
+    };
+  }, [loadingUser]);
 
   useEffect(() => {
     async function loadProfile() {
@@ -207,7 +239,14 @@ export default function LandlordProfileForm({
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold text-zinc-950 dark:text-zinc-50">
+          <div className="mb-1 flex items-center gap-1.5 text-xs text-zinc-400 dark:text-zinc-500">
+            <span>Landlord</span>
+            <span>/</span>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">
+              Profile
+            </span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-950 sm:text-3xl dark:text-zinc-50">
             Landlord Profile
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -216,25 +255,49 @@ export default function LandlordProfileForm({
           </p>
         </div>
 
-        {/* The verification badge (#205). The banner below has the
-            button to the Verify account page (#203). If the status
-            couldn't be read, link there instead, so there's always a way
-            in: that page checks for itself. */}
-        {status ? (
-          <VerificationBadge verification={status.verification} />
-        ) : (
-          <Link
-            href={VERIFY_ACCOUNT_PATH}
-            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-purple-600 px-5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-purple-700"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            Verify account
-          </Link>
-        )}
+        {/* Verification badge & action button */}
+        <div className="flex flex-wrap items-center gap-2">
+          {status ? (
+            <>
+              <VerificationBadge
+                verification={status.verification}
+                onClick={
+                  status.verification !== "verified"
+                    ? scrollToVerification
+                    : undefined
+                }
+              />
+              {status.verification !== "verified" && (
+                <button
+                  type="button"
+                  onClick={scrollToVerification}
+                  className="inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-1.5 rounded-full bg-purple-600 px-4 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-700 active:bg-purple-800"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  {status.verification === "pending"
+                    ? "View status"
+                    : "Verify now"}
+                </button>
+              )}
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={scrollToVerification}
+              className="inline-flex h-9 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-purple-700"
+            >
+              <ShieldCheck className="h-4 w-4" />
+              Verify account
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Not verified / Pending / Rejected with the reason; nothing once verified */}
-      <VerificationBanner status={status} />
+      <VerificationBanner
+        status={status}
+        onActionClick={scrollToVerification}
+      />
 
       {/* Alerts */}
       {error && (
@@ -431,7 +494,7 @@ export default function LandlordProfileForm({
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-purple-700 px-6 text-sm font-semibold text-white transition-colors hover:bg-purple-800 active:bg-purple-900 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-700"
+            className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-purple-700 px-6 text-sm font-semibold text-white transition-colors hover:bg-purple-800 active:bg-purple-900 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-700"
           >
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -444,6 +507,56 @@ export default function LandlordProfileForm({
           </button>
         </div>
       </form>
+
+      {/* Embedded Verification Section */}
+      <div id="verify-account" className="scroll-mt-6">
+        {status?.verification === "verified" ? (
+          <div className="rounded-3xl border border-emerald-200 bg-emerald-50/50 p-6 sm:p-8 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-emerald-950 dark:text-emerald-100">
+                  Account Verified
+                </h2>
+                <p className="mt-1 text-sm text-emerald-800 dark:text-emerald-300">
+                  Your government ID and selfie have been reviewed and approved
+                  by our admin team. You have full access to post, manage, and
+                  publish your rental listings.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : status?.verification === "pending" ? (
+          <div className="rounded-3xl border border-amber-200 bg-amber-50/50 p-6 sm:p-8 dark:border-amber-900/50 dark:bg-amber-950/20">
+            <div className="flex items-start gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                <Clock className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-amber-950 dark:text-amber-100">
+                  Verification Under Review
+                </h2>
+                <p className="mt-1 text-sm text-amber-800 dark:text-amber-200">
+                  Your verification documents have been submitted and are
+                  currently being reviewed by an admin. We&apos;ll notify you
+                  once the review is complete.
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          userId && (
+            <VerifyAccountForm
+              compact
+              landlordId={userId}
+              profileName={fullName.trim() || null}
+              rejectionReason={status?.rejectionReason ?? null}
+            />
+          )
+        )}
+      </div>
     </div>
   );
 }
