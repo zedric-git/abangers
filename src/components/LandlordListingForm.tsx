@@ -40,39 +40,90 @@ const OCCUPANCY_TYPES = ["Bedspace", "Single Room", "Shared Room", "Studio"];
 
 const GENDER_POLICIES = ["Any / Co-ed", "Male Only", "Female Only"];
 
-const AVAILABLE_UTILITIES = [
+// 7 checklist categories from prototype specification
+const AMENITIES_OPTIONS = ["Has Parking"];
+
+const UTILITIES_OPTIONS = [
+  "Wi-Fi Included",
   "Water Included",
   "Electricity Included",
-  "Wi-Fi Included",
-  "Gas Included",
 ];
 
-const AVAILABLE_AMENITIES = [
+const ROOM_FEATURES_OPTIONS = [
   "Air Conditioning",
-  "Fully Furnished",
-  "Private Bathroom",
-  "Study Desk & Chair",
-  "Balcony / Terrace",
-  "Parking Space",
+  "Electric Fan",
+  "Bed Provided",
+  "Cabinet/Wardrobe",
+  "Table/Desk",
+  "Chair",
 ];
 
-const SAFETY_FEATURES = [
-  "CCTV Surveillance",
-  "24/7 Security / Gated",
-  "Fire Extinguisher",
-  "Smoke Detector",
+const BATHROOM_FEATURES_OPTIONS = ["Private Bathroom/CR", "Shared Bathroom/CR"];
+
+const KITCHEN_FEATURES_OPTIONS = ["Has Kitchen", "Cooking Allowed"];
+
+const LAUNDRY_FEATURES_OPTIONS = ["Has Laundry Area", "Has Washing Machine"];
+
+const SAFETY_FEATURES_OPTIONS = [
+  "CCTV",
+  "Gated Property",
+  "Security Guard",
+  "Secure/Individual Door Lock",
 ];
+
+// 5 House Rules pills from prototype specification
+const HOUSE_RULES_PILLS = [
+  "Cooking Allowed",
+  "Visitors Allowed",
+  "Pets Allowed",
+  "No Curfew",
+  "Smoking Allowed",
+];
+
+/** Parse combined contact info into separate name and phone */
+function parseContactInfo(
+  contactInfo?: string,
+  defaultName?: string,
+  defaultPhone?: string,
+) {
+  if (!contactInfo || contactInfo.trim() === "") {
+    return {
+      name: defaultName || "",
+      phone: defaultPhone || "",
+    };
+  }
+  const pipeParts = contactInfo.split("|").map((s) => s.trim());
+  if (pipeParts.length >= 2) {
+    return { name: pipeParts[0], phone: pipeParts.slice(1).join(" | ") };
+  }
+  const dashParts = contactInfo.split(" - ").map((s) => s.trim());
+  if (dashParts.length >= 2) {
+    return { name: dashParts[0], phone: dashParts.slice(1).join(" - ") };
+  }
+  const parenMatch = contactInfo.match(/^(.*?)\s*\((.*?)\)$/);
+  if (parenMatch) {
+    return { name: parenMatch[1].trim(), phone: parenMatch[2].trim() };
+  }
+  if (/^(\+?63|0)9\d{9}$/.test(contactInfo.replace(/[\s-]/g, ""))) {
+    return { name: defaultName || "", phone: contactInfo };
+  }
+  return { name: contactInfo, phone: defaultPhone || "" };
+}
 
 interface LandlordListingFormProps {
   initialValues?: Partial<ListingInput>;
   listingId?: string;
   isEditing?: boolean;
+  defaultContactName?: string;
+  defaultContactPhone?: string;
 }
 
 export default function LandlordListingForm({
   initialValues,
   listingId,
   isEditing = false,
+  defaultContactName,
+  defaultContactPhone,
 }: LandlordListingFormProps) {
   const router = useRouter();
   const [step, setStep] = useState<"form" | "preview">("form");
@@ -81,6 +132,21 @@ export default function LandlordListingForm({
   const [saveError, setSaveError] = useState<ListingSaveError | null>(null);
   // The Publish / Save button, which gets the focus back when the card closes.
   const saveButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Split contact person name and phone
+  const initialContact = parseContactInfo(
+    initialValues?.contact_info,
+    defaultContactName,
+    defaultContactPhone,
+  );
+  const [contactName, setContactName] = useState(initialContact.name);
+  const [contactPhone, setContactPhone] = useState(initialContact.phone);
+
+  const initialCombinedContact =
+    initialValues?.contact_info ||
+    (initialContact.name && initialContact.phone
+      ? `${initialContact.name} | ${initialContact.phone}`
+      : initialContact.name || initialContact.phone || "");
 
   const {
     register,
@@ -95,8 +161,6 @@ export default function LandlordListingForm({
       title: initialValues?.title || "",
       address: initialValues?.address || "",
       city: initialValues?.city || "",
-      // `??`, not `||`: a saved 0 (e.g. no rooms left) must stay 0. Only a
-      // value that isn't there at all (a new listing) gets the default.
       monthly_rent: initialValues?.monthly_rent ?? 3000,
       total_rooms: initialValues?.total_rooms ?? 1,
       available_rooms: initialValues?.available_rooms ?? 1,
@@ -112,7 +176,7 @@ export default function LandlordListingForm({
       safety_features: initialValues?.safety_features || [],
       description: initialValues?.description || "",
       house_rules: initialValues?.house_rules || "",
-      contact_info: initialValues?.contact_info || "",
+      contact_info: initialCombinedContact,
       availability_status: initialValues?.availability_status || "available",
       images: initialValues?.images || [],
       cover_image: initialValues?.cover_image || "",
@@ -123,16 +187,56 @@ export default function LandlordListingForm({
     },
   });
 
-  const selectedUtilities = useWatch({ control, name: "utilities" }) || [];
   const selectedAmenities = useWatch({ control, name: "amenities" }) || [];
+  const selectedUtilities = useWatch({ control, name: "utilities" }) || [];
+  const selectedRoomFeatures =
+    useWatch({ control, name: "room_features" }) || [];
+  const selectedBathroomFeatures =
+    useWatch({ control, name: "bathroom_features" }) || [];
+  const selectedKitchenFeatures =
+    useWatch({ control, name: "kitchen_features" }) || [];
+  const selectedLaundryFeatures =
+    useWatch({ control, name: "laundry_features" }) || [];
   const selectedSafety = useWatch({ control, name: "safety_features" }) || [];
+  const houseRulesValue = useWatch({ control, name: "house_rules" }) || "";
   const uploadedImages = useWatch({ control, name: "images" }) || [];
   const activeCoverImage = useWatch({ control, name: "cover_image" }) || "";
   const latitude = useWatch({ control, name: "latitude" });
   const longitude = useWatch({ control, name: "longitude" });
 
+  const updateContactInfo = (name: string, phone: string) => {
+    const trimmedName = name.trim();
+    const trimmedPhone = phone.trim();
+    let combined = "";
+    if (trimmedName && trimmedPhone) {
+      combined = `${trimmedName} | ${trimmedPhone}`;
+    } else {
+      combined = trimmedName || trimmedPhone;
+    }
+    setValue("contact_info", combined, { shouldValidate: true });
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newName = e.target.value;
+    setContactName(newName);
+    updateContactInfo(newName, contactPhone);
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newPhone = e.target.value;
+    setContactPhone(newPhone);
+    updateContactInfo(contactName, newPhone);
+  };
+
   const handleToggleArrayItem = (
-    fieldName: "utilities" | "amenities" | "safety_features",
+    fieldName:
+      | "amenities"
+      | "utilities"
+      | "room_features"
+      | "bathroom_features"
+      | "kitchen_features"
+      | "laundry_features"
+      | "safety_features",
     item: string,
   ) => {
     const currentList = getValues(fieldName) || [];
@@ -147,23 +251,41 @@ export default function LandlordListingForm({
     }
   };
 
+  const toggleHouseRule = (rule: string) => {
+    const currentRules = getValues("house_rules") || "";
+    const rulesList = currentRules
+      .split(/[,;\n]+/)
+      .map((r) => r.trim())
+      .filter(Boolean);
+
+    const ruleLower = rule.toLowerCase();
+    const exists = rulesList.some((r) => r.toLowerCase() === ruleLower);
+
+    let updatedRules: string;
+    if (exists) {
+      updatedRules = rulesList
+        .filter((r) => r.toLowerCase() !== ruleLower)
+        .join(", ");
+    } else {
+      updatedRules =
+        rulesList.length > 0 ? `${currentRules.trim()}, ${rule}` : rule;
+    }
+
+    setValue("house_rules", updatedRules, { shouldValidate: true });
+  };
+
+  const isRuleActive = (rule: string) => {
+    const rulesList = (houseRulesValue || "")
+      .split(/[,;\n]+/)
+      .map((r) => r.trim().toLowerCase())
+      .filter(Boolean);
+    return rulesList.includes(rule.toLowerCase());
+  };
+
   // Switches between the form and the preview, and starts the new step at
   // the top of the page (#223).
   const showStep = (nextStep: "form" | "preview") => {
-    // flushSync puts the new step on the page right away. Without it, React
-    // re-renders only after this function returns, so the scroll below
-    // would happen on the step we're leaving.
     flushSync(() => setStep(nextStep));
-
-    // The landlord dashboard scrolls inside its <main>, not the window: the
-    // layout (src/app/dashboard/landlord/layout.tsx) is h-dvh with
-    // overflow-hidden since #161, so window.scrollTo does nothing here.
-    // That <main> is the only one on dashboard pages. (A ref on this form +
-    // closest("main") would also find it, but the react-hooks/refs lint rule
-    // rejects reading a ref here: handlePreviewSubmit is passed to
-    // handleSubmit during render.)
-    // "instant", not "smooth": the whole step is new, so there's nothing to
-    // animate past.
     document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
   };
 
@@ -190,9 +312,6 @@ export default function LandlordListingForm({
         router.push("/dashboard/landlord/listings");
         router.refresh();
       } else {
-        // Shown in a card over the page, and we stay on the preview:
-        // closing the card puts the landlord back next to Edit Listing
-        // and Publish (#221).
         setSaveError({
           message: res.error,
           fixOnProfilePage: res.fixOnProfilePage ?? false,
@@ -317,19 +436,20 @@ export default function LandlordListingForm({
         </div>
       ) : (
         /* STEP 1: FORM MODE */
-        <div className="space-y-8">
-          <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400">
-                <Home className="h-6 w-6" />
+        <div className="space-y-6">
+          {/* Header Banner with compact size & snug spacing */}
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4.5 shadow-2xs sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex items-center gap-3.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400">
+                <Home className="h-5 w-5" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
+                <h1 className="text-lg font-bold tracking-tight text-zinc-900 sm:text-xl dark:text-zinc-50">
                   {isEditing
                     ? "Edit Property Listing"
                     : "Add New Property Listing"}
                 </h1>
-                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
                   Update property details so potential renters can easily find
                   and contact you.
                 </p>
@@ -339,10 +459,10 @@ export default function LandlordListingForm({
 
           <form
             onSubmit={handleSubmit(handlePreviewSubmit)}
-            className="space-y-8"
+            className="space-y-6"
           >
             {/* Section 1: Basic Info & Location */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xs sm:p-7 dark:border-zinc-800 dark:bg-zinc-900">
               <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
                 1. Basic Info & Location
               </h2>
@@ -350,7 +470,7 @@ export default function LandlordListingForm({
                 Title and address details for your property listing.
               </p>
 
-              <div className="mt-6 space-y-4">
+              <div className="mt-5 space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     Property Listing Title *
@@ -432,13 +552,6 @@ export default function LandlordListingForm({
                       }
                     }}
                     onClear={() => {
-                      // "Remove pin" (#241): back to no location, the way a
-                      // new listing starts (see defaultValues), so Preview
-                      // asks for a pin again. Street Address and City stay
-                      // as they are. The cast is because the form's types
-                      // say latitude/longitude are always numbers (that's
-                      // what listingSchema needs to publish); listingSchema
-                      // reports the missing pin.
                       setValue("latitude", undefined as unknown as number);
                       setValue("longitude", undefined as unknown as number);
                     }}
@@ -454,12 +567,12 @@ export default function LandlordListingForm({
             </div>
 
             {/* Section 2: Property Type & Pricing */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xs sm:p-7 dark:border-zinc-800 dark:bg-zinc-900">
               <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
                 2. Property Specifications & Rent Pricing
               </h2>
 
-              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     Property Type *
@@ -534,10 +647,6 @@ export default function LandlordListingForm({
                   <input
                     type="number"
                     {...register("total_rooms", {
-                      // "Available rooms can't be more than total rooms"
-                      // sits under Available Rooms, so re-check that field
-                      // too when this one changes, or the message would
-                      // stay after the landlord raises the total (#231).
                       deps: "available_rooms",
                     })}
                     placeholder="1"
@@ -598,97 +707,228 @@ export default function LandlordListingForm({
               </div>
             </div>
 
-            {/* Section 3: Features & Amenities */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+            {/* Section 3: Features & Amenities Checklist (7 categories matching Picture 3) */}
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xs sm:p-7 dark:border-zinc-800 dark:bg-zinc-900">
               <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                3. Features & Amenities Checklist
+                3. Features &amp; Amenities Checklist
               </h2>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Select all features included with your property. These match
+                renter search filters directly.
+              </p>
 
-              <div className="mt-6 space-y-6">
+              <div className="mt-6 space-y-5">
+                {/* 1. Amenities */}
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Amenities
+                  </label>
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {AMENITIES_OPTIONS.map((item) => {
+                      const active = selectedAmenities.includes(item);
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() =>
+                            handleToggleArrayItem("amenities", item)
+                          }
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
+                            active
+                              ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
+                              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-300"
+                          }`}
+                        >
+                          <CheckCircle2
+                            className={`h-3.5 w-3.5 ${active ? "opacity-100" : "opacity-30"}`}
+                          />
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 2. Utilities Included */}
                 <div>
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     Utilities Included
                   </label>
                   <div className="mt-2.5 flex flex-wrap gap-2">
-                    {AVAILABLE_UTILITIES.map((utility) => {
-                      const active = selectedUtilities.includes(utility);
+                    {UTILITIES_OPTIONS.map((item) => {
+                      const active = selectedUtilities.includes(item);
                       return (
                         <button
-                          key={utility}
+                          key={item}
                           type="button"
                           onClick={() =>
-                            handleToggleArrayItem("utilities", utility)
+                            handleToggleArrayItem("utilities", item)
                           }
-                          className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
                             active
                               ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
-                              : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-400"
+                              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-300"
                           }`}
                         >
                           <CheckCircle2
                             className={`h-3.5 w-3.5 ${active ? "opacity-100" : "opacity-30"}`}
                           />
-                          {utility}
+                          {item}
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
+                {/* 3. Room Features */}
                 <div>
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    Room & Property Amenities
+                    Room Features
                   </label>
                   <div className="mt-2.5 flex flex-wrap gap-2">
-                    {AVAILABLE_AMENITIES.map((amenity) => {
-                      const active = selectedAmenities.includes(amenity);
+                    {ROOM_FEATURES_OPTIONS.map((item) => {
+                      const active = selectedRoomFeatures.includes(item);
                       return (
                         <button
-                          key={amenity}
+                          key={item}
                           type="button"
                           onClick={() =>
-                            handleToggleArrayItem("amenities", amenity)
+                            handleToggleArrayItem("room_features", item)
                           }
-                          className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
                             active
                               ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
-                              : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-400"
+                              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-300"
                           }`}
                         >
                           <CheckCircle2
                             className={`h-3.5 w-3.5 ${active ? "opacity-100" : "opacity-30"}`}
                           />
-                          {amenity}
+                          {item}
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
+                {/* 4. Bathroom */}
                 <div>
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    Safety & Security Features
+                    Bathroom
                   </label>
                   <div className="mt-2.5 flex flex-wrap gap-2">
-                    {SAFETY_FEATURES.map((feature) => {
-                      const active = selectedSafety.includes(feature);
+                    {BATHROOM_FEATURES_OPTIONS.map((item) => {
+                      const active = selectedBathroomFeatures.includes(item);
                       return (
                         <button
-                          key={feature}
+                          key={item}
                           type="button"
                           onClick={() =>
-                            handleToggleArrayItem("safety_features", feature)
+                            handleToggleArrayItem("bathroom_features", item)
                           }
-                          className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition-all ${
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
                             active
                               ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
-                              : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-400"
+                              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-300"
                           }`}
                         >
                           <CheckCircle2
                             className={`h-3.5 w-3.5 ${active ? "opacity-100" : "opacity-30"}`}
                           />
-                          {feature}
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 5. Kitchen & Food */}
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Kitchen &amp; Food
+                  </label>
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {KITCHEN_FEATURES_OPTIONS.map((item) => {
+                      const active = selectedKitchenFeatures.includes(item);
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() =>
+                            handleToggleArrayItem("kitchen_features", item)
+                          }
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
+                            active
+                              ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
+                              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-300"
+                          }`}
+                        >
+                          <CheckCircle2
+                            className={`h-3.5 w-3.5 ${active ? "opacity-100" : "opacity-30"}`}
+                          />
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 6. Laundry */}
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Laundry
+                  </label>
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {LAUNDRY_FEATURES_OPTIONS.map((item) => {
+                      const active = selectedLaundryFeatures.includes(item);
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() =>
+                            handleToggleArrayItem("laundry_features", item)
+                          }
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
+                            active
+                              ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
+                              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-300"
+                          }`}
+                        >
+                          <CheckCircle2
+                            className={`h-3.5 w-3.5 ${active ? "opacity-100" : "opacity-30"}`}
+                          />
+                          {item}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 7. Safety & Security Features */}
+                <div>
+                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    Safety &amp; Security Features
+                  </label>
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {SAFETY_FEATURES_OPTIONS.map((item) => {
+                      const active = selectedSafety.includes(item);
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          onClick={() =>
+                            handleToggleArrayItem("safety_features", item)
+                          }
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
+                            active
+                              ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
+                              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-300"
+                          }`}
+                        >
+                          <CheckCircle2
+                            className={`h-3.5 w-3.5 ${active ? "opacity-100" : "opacity-30"}`}
+                          />
+                          {item}
                         </button>
                       );
                     })}
@@ -698,16 +938,16 @@ export default function LandlordListingForm({
             </div>
 
             {/* Section 4: Property Photos */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xs sm:p-7 dark:border-zinc-800 dark:bg-zinc-900">
               <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                4. Property Photos & Cover Image
+                4. Property Photos &amp; Cover Image
               </h2>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                 Upload photos of your property. Choose one photo as the main
                 cover photo.
               </p>
 
-              <div className="mt-6">
+              <div className="mt-5">
                 <ImageUploader
                   images={uploadedImages}
                   coverImage={activeCoverImage}
@@ -733,29 +973,47 @@ export default function LandlordListingForm({
               </div>
             </div>
 
-            {/* Section 5: Contact & Details */}
-            <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+            {/* Section 5: Contact Details & Description (Split contact + 5 House Rules pills) */}
+            <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xs sm:p-7 dark:border-zinc-800 dark:bg-zinc-900">
               <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-                5. Contact Details & Description
+                5. Contact Details &amp; Description
               </h2>
 
-              <div className="mt-6 space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    Contact Information *
-                  </label>
-                  <input
-                    type="text"
-                    {...register("contact_info")}
-                    placeholder="e.g. Phone: 0917-123-4567 | Email: landlord@example.com"
-                    className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
-                  />
-                  {errors.contact_info && (
-                    <p className="mt-1 text-xs text-rose-500">
-                      {errors.contact_info.message}
-                    </p>
-                  )}
+              <div className="mt-5 space-y-4">
+                {/* Split Contact Info: Name & Phone */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                      Contact Person&apos;s Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={contactName}
+                      onChange={handleNameChange}
+                      placeholder="e.g. Juan Dela Cruz"
+                      className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                      Contact Person&apos;s Number *
+                    </label>
+                    <input
+                      type="tel"
+                      value={contactPhone}
+                      onChange={handlePhoneChange}
+                      placeholder="e.g. 09171234567"
+                      className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
+                    />
+                  </div>
                 </div>
+
+                {errors.contact_info && (
+                  <p className="text-xs text-rose-500">
+                    {errors.contact_info.message}
+                  </p>
+                )}
 
                 <div>
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
@@ -770,14 +1028,44 @@ export default function LandlordListingForm({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                    House Rules & Policies
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                      House Rules &amp; Policies
+                    </label>
+                    <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                      Click pills to toggle or type below
+                    </span>
+                  </div>
+
+                  {/* 5 Rule Pills from Picture 4 */}
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    {HOUSE_RULES_PILLS.map((rule) => {
+                      const active = isRuleActive(rule);
+                      return (
+                        <button
+                          key={rule}
+                          type="button"
+                          onClick={() => toggleHouseRule(rule)}
+                          className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all ${
+                            active
+                              ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
+                              : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-300"
+                          }`}
+                        >
+                          <CheckCircle2
+                            className={`h-3.5 w-3.5 ${active ? "opacity-100" : "opacity-30"}`}
+                          />
+                          {rule}
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <textarea
                     rows={3}
                     {...register("house_rules")}
-                    placeholder="e.g. No smoking, visitors allowed until 9 PM..."
-                    className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
+                    placeholder="e.g. Cooking Allowed, Visitors Allowed until 9 PM, Pets Allowed, No Curfew..."
+                    className="mt-2.5 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
                   />
                 </div>
               </div>

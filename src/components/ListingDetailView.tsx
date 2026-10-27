@@ -258,6 +258,90 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
             </div>
           </div>
         )}
+
+        {/* Room Features */}
+        {listing.room_features && listing.room_features.length > 0 && (
+          <div className="mt-6">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              Room Features
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {listing.room_features.map((feature) => (
+                <span
+                  key={feature}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-800 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Bathroom Features */}
+        {listing.bathroom_features && listing.bathroom_features.length > 0 && (
+          <div className="mt-6">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              Bathroom
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {listing.bathroom_features.map((feature) => (
+                <span
+                  key={feature}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-800 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Kitchen & Food Features */}
+        {listing.kitchen_features && listing.kitchen_features.length > 0 && (
+          <div className="mt-6">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              Kitchen &amp; Food
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {listing.kitchen_features.map((feature) => (
+                <span
+                  key={feature}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-800 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Laundry Features */}
+        {listing.laundry_features && listing.laundry_features.length > 0 && (
+          <div className="mt-6">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              Laundry
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {listing.laundry_features.map((feature) => (
+                <span
+                  key={feature}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-800 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Description & House Rules */}

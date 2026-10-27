@@ -28,10 +28,20 @@ export default async function NewListingPage() {
     redirect("/");
   }
 
-  const view = newListingPageView(await loadLandlordStatus(supabase, user.id));
+  const landlordStatus = await loadLandlordStatus(supabase, user.id);
+  const view = newListingPageView(landlordStatus);
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, contact_number")
+    .eq("id", user.id)
+    .maybeSingle();
 
   return view.show === "form" ? (
-    <LandlordListingForm />
+    <LandlordListingForm
+      defaultContactName={profile?.full_name ?? undefined}
+      defaultContactPhone={profile?.contact_number ?? undefined}
+    />
   ) : (
     <ListingChecklist view={view} />
   );

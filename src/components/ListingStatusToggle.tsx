@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
+  ChevronDown,
   Loader2,
   type LucideIcon,
 } from "lucide-react";
@@ -152,6 +153,7 @@ export default function ListingStatusToggle({
           >
             {updating && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
             <span>{badgeConfig.label}</span>
+            <ChevronDown className="ml-1 h-3 w-3 shrink-0 opacity-70" />
           </button>
         </DropdownMenuTrigger>
 

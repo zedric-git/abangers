@@ -68,6 +68,12 @@ export default async function EditListingPage({
     );
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, contact_number")
+    .eq("id", user.id)
+    .maybeSingle();
+
   // listingRowToFormValues passes the saved values through as they are
   // (null becomes undefined), so a listing with 0 available rooms opens
   // with 0. The form fills in its own defaults for empty columns (#231).
@@ -76,6 +82,8 @@ export default async function EditListingPage({
       listingId={id}
       isEditing={true}
       initialValues={listingRowToFormValues(lookup.listing)}
+      defaultContactName={profile?.full_name ?? undefined}
+      defaultContactPhone={profile?.contact_number ?? undefined}
     />
   );
 }
