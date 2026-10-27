@@ -24,6 +24,13 @@ import ListingSaveErrorModal, {
 } from "@/components/ListingSaveErrorModal";
 import { LocationPicker } from "@/components/map";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   createListingAction,
   updateListingAction,
 } from "@/app/dashboard/landlord/listings/actions";
@@ -203,6 +210,13 @@ export default function LandlordListingForm({
   const activeCoverImage = useWatch({ control, name: "cover_image" }) || "";
   const latitude = useWatch({ control, name: "latitude" });
   const longitude = useWatch({ control, name: "longitude" });
+  const propertyTypeValue = useWatch({ control, name: "property_type" });
+  const occupancyTypeValue = useWatch({ control, name: "occupancy_type" });
+  const allowedGenderValue = useWatch({ control, name: "allowed_gender" });
+  const availabilityStatusValue = useWatch({
+    control,
+    name: "availability_status",
+  });
 
   const updateContactInfo = (name: string, phone: string) => {
     const trimmedName = name.trim();
@@ -577,48 +591,69 @@ export default function LandlordListingForm({
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     Property Type *
                   </label>
-                  <select
-                    {...register("property_type")}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
+                  <Select
+                    value={propertyTypeValue}
+                    onValueChange={(val) =>
+                      setValue("property_type", val, { shouldValidate: true })
+                    }
                   >
-                    {PROPERTY_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder="Select property type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROPERTY_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     Occupancy Type *
                   </label>
-                  <select
-                    {...register("occupancy_type")}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
+                  <Select
+                    value={occupancyTypeValue}
+                    onValueChange={(val) =>
+                      setValue("occupancy_type", val, { shouldValidate: true })
+                    }
                   >
-                    {OCCUPANCY_TYPES.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder="Select occupancy type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {OCCUPANCY_TYPES.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     Allowed Gender *
                   </label>
-                  <select
-                    {...register("allowed_gender")}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
+                  <Select
+                    value={allowedGenderValue}
+                    onValueChange={(val) =>
+                      setValue("allowed_gender", val, { shouldValidate: true })
+                    }
                   >
-                    {GENDER_POLICIES.map((policy) => (
-                      <option key={policy} value={policy}>
-                        {policy}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder="Select allowed gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {GENDER_POLICIES.map((policy) => (
+                        <SelectItem key={policy} value={policy}>
+                          {policy}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
@@ -690,20 +725,31 @@ export default function LandlordListingForm({
                 <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                   Availability Status *
                 </label>
-                <select
-                  {...register("availability_status")}
-                  className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-white px-3 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
+                <Select
+                  value={availabilityStatusValue}
+                  onValueChange={(val) =>
+                    setValue(
+                      "availability_status",
+                      val as "available" | "almost_full" | "fully_occupied",
+                      { shouldValidate: true },
+                    )
+                  }
                 >
-                  <option value="available">
-                    Available (🟢 Rooms Available)
-                  </option>
-                  <option value="almost_full">
-                    Almost Full (🟡 Few Rooms Left)
-                  </option>
-                  <option value="fully_occupied">
-                    Fully Occupied / Unavailable (🔴 Occupied)
-                  </option>
-                </select>
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue placeholder="Select availability status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="available">
+                      Available (🟢 Rooms Available)
+                    </SelectItem>
+                    <SelectItem value="almost_full">
+                      Almost Full (🟡 Few Rooms Left)
+                    </SelectItem>
+                    <SelectItem value="fully_occupied">
+                      Fully Occupied / Unavailable (🔴 Occupied)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
