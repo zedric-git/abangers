@@ -57,7 +57,7 @@ export default function AddListingButton({
       {showTooltip && (
         <div
           role="tooltip"
-          className="animate-in fade-in zoom-in-95 pointer-events-none absolute right-0 bottom-full z-50 mb-2 flex w-64 items-start gap-2.5 rounded-xl border border-amber-200 bg-white p-3 text-xs text-zinc-700 shadow-xl dark:border-amber-900/50 dark:bg-zinc-900 dark:text-zinc-300"
+          className="animate-in fade-in zoom-in-95 pointer-events-none absolute top-full right-0 z-50 mt-2 flex w-64 items-start gap-2.5 rounded-xl border border-amber-200 bg-white p-3 text-xs text-zinc-700 shadow-xl dark:border-amber-900/50 dark:bg-zinc-900 dark:text-zinc-300"
         >
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
           <p className="leading-tight">

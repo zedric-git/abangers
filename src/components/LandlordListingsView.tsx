@@ -27,6 +27,8 @@ interface LandlordListingsViewProps {
   showHeading?: boolean;
   /** When unverified with 0 listings, render the checklist in-place */
   checklistView?: Exclude<NewListingPageView, { show: "form" }> | null;
+  /** Whether the landlord account is verified. For unverified/pending accounts, filter pills are disabled and rendered in grey. */
+  isVerified?: boolean;
 }
 
 export default function LandlordListingsView({
@@ -35,6 +37,7 @@ export default function LandlordListingsView({
   loadError = false,
   showHeading = false,
   checklistView = null,
+  isVerified = true,
 }: LandlordListingsViewProps) {
   const [tab, setTab] = useState<ListingsTab>("all");
   const [search, setSearch] = useState("");
@@ -53,6 +56,8 @@ export default function LandlordListingsView({
   const currentTabObj =
     LISTINGS_TABS.find((t) => t.value === tab) ?? LISTINGS_TABS[0];
 
+  const isFilterDisabled = !isVerified;
+
   return (
     <div className="space-y-6">
       {showHeading && (
@@ -70,7 +75,13 @@ export default function LandlordListingsView({
           <span className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
             FILTER BY STATUS / METRIC
           </span>
-          <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+          <span
+            className={`text-xs font-semibold ${
+              isFilterDisabled
+                ? "text-zinc-400 dark:text-zinc-500"
+                : "text-purple-600 dark:text-purple-400"
+            }`}
+          >
             Viewing: {currentTabObj.label} ({tabCounts[tab]})
           </span>
         </div>
@@ -78,27 +89,39 @@ export default function LandlordListingsView({
         {/* 5 Pill Buttons spanning grid width */}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
           {LISTINGS_TABS.map(({ value, label }) => {
-            const isActive = tab === value;
+            const isActive = !isFilterDisabled && tab === value;
             const count = tabCounts[value];
+
+            let buttonStyle = "";
+            let badgeStyle = "";
+
+            if (isFilterDisabled) {
+              buttonStyle =
+                "border-2 border-zinc-200 bg-white text-zinc-400 cursor-not-allowed dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500";
+              badgeStyle =
+                "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500";
+            } else if (isActive) {
+              buttonStyle = "bg-purple-600 text-white shadow-xs";
+              badgeStyle = "bg-white text-purple-700";
+            } else {
+              buttonStyle =
+                "border-2 border-purple-500/30 bg-white text-purple-700 hover:bg-purple-50 dark:border-purple-400/30 dark:bg-zinc-900 dark:text-purple-300 dark:hover:bg-purple-950/30";
+              badgeStyle =
+                "bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300";
+            }
+
             return (
               <button
                 key={value}
                 type="button"
+                disabled={isFilterDisabled}
                 aria-pressed={isActive}
-                onClick={() => setTab(value)}
-                className={`inline-flex items-center justify-between gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all sm:justify-center ${
-                  isActive
-                    ? "bg-purple-600 text-white shadow-xs"
-                    : "border-2 border-purple-500/30 text-purple-700 hover:bg-purple-50 dark:border-purple-400/30 dark:text-purple-300 dark:hover:bg-purple-950/30"
-                }`}
+                onClick={isFilterDisabled ? undefined : () => setTab(value)}
+                className={`inline-flex items-center justify-between gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all sm:justify-center ${buttonStyle}`}
               >
                 <span className="truncate">{label}</span>
                 <span
-                  className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-extrabold ${
-                    isActive
-                      ? "bg-white text-purple-700"
-                      : "bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300"
-                  }`}
+                  className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-extrabold ${badgeStyle}`}
                 >
                   {count}
                 </span>
