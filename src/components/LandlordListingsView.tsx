@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { AlertCircle, Building2, Search } from "lucide-react";
+import { AlertCircle, Building2, Lock, Search } from "lucide-react";
 import { Listing } from "@/types/listing";
 import AddListingButton from "@/components/AddListingButton";
 import LandlordListingCard from "@/components/LandlordListingCard";
@@ -59,7 +59,7 @@ export default function LandlordListingsView({
   const isFilterDisabled = !isVerified;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {showHeading && (
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
@@ -132,15 +132,27 @@ export default function LandlordListingsView({
 
         {/* Search Bar Input */}
         <div className="relative w-full">
-          <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
           <input
             type="search"
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            disabled={isFilterDisabled}
+            onChange={
+              isFilterDisabled
+                ? undefined
+                : (event) => setSearch(event.target.value)
+            }
             aria-label="Search listing titles, addresses, or prices..."
             placeholder="Search listing titles, addresses, or prices..."
-            className="flex h-11 w-full rounded-xl border border-zinc-200 bg-white pr-4 pl-10 text-sm text-zinc-900 shadow-xs transition-colors placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:focus-visible:ring-purple-400"
+            className={`flex h-11 w-full rounded-xl pl-10 text-sm shadow-xs transition-colors focus-visible:outline-none ${
+              isFilterDisabled
+                ? "cursor-not-allowed border-2 border-zinc-200 bg-white pr-10 text-zinc-400 shadow-none placeholder:text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500 dark:placeholder:text-zinc-600"
+                : "border border-zinc-200 bg-white pr-4 text-zinc-900 placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-purple-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:focus-visible:ring-purple-400"
+            }`}
           />
+          {isFilterDisabled && (
+            <Lock className="pointer-events-none absolute top-1/2 right-3.5 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
+          )}
         </div>
       </div>
 
@@ -157,7 +169,7 @@ export default function LandlordListingsView({
         </div>
       ) : initialListings.length === 0 && checklistView ? (
         /* In-place step-by-step checklist when unverified/pending with 0 listings */
-        <div className="mt-2">
+        <div>
           <ListingChecklist view={checklistView} hideBackLink />
         </div>
       ) : initialListings.length === 0 ? (

@@ -50,7 +50,7 @@ export default async function LandlordDashboardPage() {
     listings.length === 0 && checklistView.show !== "form";
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-4 sm:space-y-5">
       {/* Breadcrumb & Header Section */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">

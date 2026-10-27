@@ -49,8 +49,8 @@ export default function LandlordLayout({
         userRoleLabel="Landlord Dashboard"
       />
 
-      {/* Main Content Area */}
-      <main className="custom-scrollbar bg-background flex-1 overflow-y-auto p-6 md:p-10">
+      {/* Main Content Area: snug padding so content fits on standard desktop screens */}
+      <main className="custom-scrollbar bg-background flex-1 overflow-y-auto p-4 sm:p-6 md:px-8 md:py-6">
         {children}
       </main>
     </div>
