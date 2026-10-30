@@ -393,18 +393,18 @@ export default function LandlordListingForm({
 
       {/* STEP 2: PREVIEW MODE */}
       {step === "preview" ? (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Sticky Preview Header Banner */}
-          <div className="sticky top-4 z-50 rounded-2xl border border-purple-200 bg-purple-50/95 p-4 shadow-lg backdrop-blur-md sm:p-5 dark:border-purple-900/50 dark:bg-purple-950/90">
+          <div className="sticky top-0 z-50 rounded-2xl border border-purple-200 bg-purple-50/95 p-2.5 shadow-md backdrop-blur-md sm:top-1 sm:px-4 sm:py-2.5 dark:border-purple-900/50 dark:bg-purple-950/90">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-700 text-white dark:bg-purple-600">
-                <Eye className="h-5 w-5" />
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-purple-700 text-white dark:bg-purple-600">
+                <Eye className="h-4 w-4" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-purple-950 dark:text-purple-100">
+                <h2 className="text-xs font-bold text-purple-950 sm:text-sm dark:text-purple-100">
                   Listing Preview Mode
                 </h2>
-                <p className="text-xs text-purple-700 dark:text-purple-300">
+                <p className="text-[11px] text-purple-700 sm:text-xs dark:text-purple-300">
                   Review your property details exactly as renters will see them
                   before saving.
                 </p>
