@@ -343,7 +343,7 @@ export default function LandlordListingForm({
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       {/* Top Header & Back Navigation */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <Link
@@ -395,7 +395,7 @@ export default function LandlordListingForm({
       {step === "preview" ? (
         <div className="space-y-6">
           {/* Sticky Preview Header Banner */}
-          <div className="sticky top-4 z-40 rounded-2xl border border-purple-200 bg-purple-50/95 p-4 shadow-lg backdrop-blur-md sm:p-5 dark:border-purple-900/50 dark:bg-purple-950/90">
+          <div className="sticky top-4 z-50 rounded-2xl border border-purple-200 bg-purple-50/95 p-4 shadow-lg backdrop-blur-md sm:p-5 dark:border-purple-900/50 dark:bg-purple-950/90">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-700 text-white dark:bg-purple-600">
                 <Eye className="h-5 w-5" />
@@ -413,7 +413,7 @@ export default function LandlordListingForm({
           </div>
 
           {/* Shared Detail Component */}
-          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-2xs sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <ListingDetailView listing={getValues() as ListingInput} />
           </div>
 

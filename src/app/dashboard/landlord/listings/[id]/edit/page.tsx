@@ -49,7 +49,7 @@ export default async function EditListingPage({
   if (lookup.kind === "failed") {
     console.error("Error fetching listing:", lookup.error);
     return (
-      <div className="mx-auto max-w-4xl space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6">
         <Link
           href="/dashboard/landlord"
           className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-600 transition-colors hover:text-zinc-900 sm:text-sm dark:text-zinc-400 dark:hover:text-zinc-100"

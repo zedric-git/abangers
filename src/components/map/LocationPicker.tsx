@@ -405,7 +405,7 @@ export default function LocationPicker({
       </div>
 
       {/* Map Container */}
-      <div className="relative aspect-16/10 w-full overflow-hidden rounded-2xl border border-zinc-300 bg-zinc-100 shadow-inner sm:aspect-16/9 dark:border-zinc-700 dark:bg-zinc-950">
+      <div className="relative isolate z-0 aspect-16/10 w-full overflow-hidden rounded-2xl border border-zinc-300 bg-zinc-100 shadow-inner sm:aspect-16/9 dark:border-zinc-700 dark:bg-zinc-950">
         <MapContainer
           center={currentPos}
           zoom={hasValue ? 16 : 13}

@@ -37,7 +37,7 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
   const statusView = listingStatusView(listing.availability_status);
 
   return (
-    <div className="space-y-8 text-zinc-900 dark:text-zinc-100">
+    <div className="space-y-5 text-zinc-900 sm:space-y-6 dark:text-zinc-100">
       {/* Photo Gallery Hero */}
       <div className="space-y-4">
         {/* Featured Large Photo Display */}
@@ -164,7 +164,7 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
 
       {/* Property Location Map Section */}
       {listing.latitude != null && listing.longitude != null && (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="relative isolate z-0 rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="flex items-center gap-2 text-xl font-bold text-zinc-900 dark:text-zinc-100">
@@ -191,7 +191,7 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
       )}
 
       {/* Features, Utilities & Amenities */}
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
           Features, Utilities & Amenities
         </h2>
@@ -345,42 +345,42 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
       </div>
 
       {/* Description & House Rules */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Description */}
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="flex items-center gap-2 text-lg font-bold text-zinc-900 dark:text-zinc-100">
-            <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="flex items-center gap-2 text-base font-bold text-zinc-900 dark:text-zinc-100">
+            <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             Property Description
           </h2>
-          <p className="mt-4 text-sm leading-relaxed whitespace-pre-line text-zinc-600 dark:text-zinc-400">
+          <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-zinc-600 dark:text-zinc-400">
             {listing.description || "No description provided."}
           </p>
         </div>
 
         {/* House Rules */}
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="flex items-center gap-2 text-lg font-bold text-zinc-900 dark:text-zinc-100">
-            <AlertCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="flex items-center gap-2 text-base font-bold text-zinc-900 dark:text-zinc-100">
+            <AlertCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             House Rules
           </h2>
-          <p className="mt-4 text-sm leading-relaxed whitespace-pre-line text-zinc-600 dark:text-zinc-400">
+          <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-zinc-600 dark:text-zinc-400">
             {listing.house_rules || "No specific house rules listed."}
           </p>
         </div>
       </div>
 
       {/* Landlord Contact Info Card */}
-      <div className="rounded-3xl border border-purple-200 bg-purple-50/60 p-6 shadow-xs sm:p-8 dark:border-purple-900/40 dark:bg-purple-950/30">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-4 shadow-xs sm:p-5 dark:border-purple-900/40 dark:bg-purple-950/30">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-lg font-bold text-purple-950 dark:text-purple-100">
+            <h3 className="text-base font-bold text-purple-950 dark:text-purple-100">
               Landlord Contact Details
             </h3>
-            <p className="mt-1 text-xs text-purple-700 dark:text-purple-300">
+            <p className="mt-0.5 text-xs text-purple-700 dark:text-purple-300">
               Renters will reach out to you via the contact info below.
             </p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-purple-950 shadow-xs dark:bg-purple-900 dark:text-purple-100">
+          <div className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-purple-950 shadow-xs dark:bg-purple-900 dark:text-purple-100">
             <Phone className="h-4 w-4 text-purple-700 dark:text-purple-300" />
             <span>{listing.contact_info || "Contact info not provided"}</span>
           </div>
