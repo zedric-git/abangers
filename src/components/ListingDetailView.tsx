@@ -15,6 +15,8 @@ import {
   FileText,
   AlertCircle,
   Star,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { ListingInput } from "@/lib/validations/listing";
 import { listingStatusView } from "@/lib/listing-status-view";
@@ -35,6 +37,22 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
 
   const imagesList = listing.images || [];
   const activeCover = listing.cover_image || imagesList[0] || "";
+  const currentPhoto = selectedPhoto || activeCover;
+  const currentIndex = Math.max(0, imagesList.indexOf(currentPhoto));
+  const isCoverActive = currentPhoto === (listing.cover_image || imagesList[0]);
+
+  const handlePrevPhoto = () => {
+    if (imagesList.length <= 1) return;
+    const nextIdx = (currentIndex - 1 + imagesList.length) % imagesList.length;
+    setSelectedPhoto(imagesList[nextIdx]);
+  };
+
+  const handleNextPhoto = () => {
+    if (imagesList.length <= 1) return;
+    const nextIdx = (currentIndex + 1) % imagesList.length;
+    setSelectedPhoto(imagesList[nextIdx]);
+  };
+
   // Same label and colour as the landlord's listing cards (#232).
   const statusView = listingStatusView(listing.availability_status);
 
@@ -43,10 +61,10 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
       {/* Photo Gallery Hero */}
       <div className="space-y-4">
         {/* Featured Large Photo Display */}
-        <div className="relative aspect-16/10 w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 shadow-md sm:aspect-16/9 dark:border-zinc-800 dark:bg-zinc-900">
-          {selectedPhoto || activeCover ? (
+        <div className="group relative aspect-16/10 w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 shadow-md sm:aspect-16/9 dark:border-zinc-800 dark:bg-zinc-900">
+          {currentPhoto ? (
             <Image
-              src={selectedPhoto || activeCover}
+              src={currentPhoto}
               alt={listing.title || "Listing photo"}
               fill
               className="object-cover transition-all duration-300"
@@ -62,16 +80,46 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
 
           {/* Status Badge Overlay */}
           <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-700/90 px-3.5 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur-md dark:bg-purple-600/90">
-              <Star className="h-3.5 w-3.5 fill-current text-yellow-300" />
-              Cover Photo
-            </span>
+            {isCoverActive && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-700/90 px-3.5 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur-md dark:bg-purple-600/90">
+                <Star className="h-3.5 w-3.5 fill-current text-yellow-300" />
+                Cover Photo
+              </span>
+            )}
             <span
               className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-bold shadow-lg ${statusView.badgeClassName}`}
             >
               {statusView.label}
             </span>
           </div>
+
+          {/* Left & Right Navigation Buttons */}
+          {imagesList.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={handlePrevPhoto}
+                aria-label="Previous photo"
+                className="absolute top-1/2 left-3 z-20 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/90 text-zinc-800 shadow-lg backdrop-blur-md transition-all hover:scale-110 hover:bg-white active:scale-95 sm:left-4 sm:h-10 sm:w-10 dark:bg-zinc-900/90 dark:text-zinc-100 dark:hover:bg-zinc-900"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleNextPhoto}
+                aria-label="Next photo"
+                className="absolute top-1/2 right-3 z-20 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/90 text-zinc-800 shadow-lg backdrop-blur-md transition-all hover:scale-110 hover:bg-white active:scale-95 sm:right-4 sm:h-10 sm:w-10 dark:bg-zinc-900/90 dark:text-zinc-100 dark:hover:bg-zinc-900"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+
+              {/* Photo Counter Pill */}
+              <div className="absolute right-4 bottom-4 z-10 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white shadow-md backdrop-blur-md">
+                {currentIndex + 1} / {imagesList.length}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Photo Thumbnails Strip */}
