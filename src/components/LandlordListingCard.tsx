@@ -106,7 +106,8 @@ export default function LandlordListingCard({
                     : "text-red-500"
                 }`}
               >
-                {listing.available_rooms} rooms available
+                {listing.available_rooms}{" "}
+                {listing.available_rooms === 1 ? "room" : "rooms"} available
               </span>
             </div>
           </div>

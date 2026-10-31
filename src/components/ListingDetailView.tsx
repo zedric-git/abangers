@@ -197,7 +197,8 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
             Total Rooms
           </div>
           <p className="mt-1.5 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {listing.total_rooms || 1} Rooms
+            {listing.total_rooms ?? 1}{" "}
+            {(listing.total_rooms ?? 1) === 1 ? "Room" : "Rooms"}
           </p>
         </div>
 
@@ -207,7 +208,8 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
             Available Now
           </div>
           <p className="mt-1.5 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-            {listing.available_rooms || 0} Rooms Left
+            {listing.available_rooms ?? 0}{" "}
+            {(listing.available_rooms ?? 0) === 1 ? "Room" : "Rooms"} Left
           </p>
         </div>
       </div>
