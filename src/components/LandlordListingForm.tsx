@@ -34,6 +34,11 @@ import {
   createListingAction,
   updateListingAction,
 } from "@/app/dashboard/landlord/listings/actions";
+import {
+  parseHouseRules,
+  formatHouseRules,
+  STANDARD_HOUSE_RULES,
+} from "@/lib/house-rules";
 
 const PROPERTY_TYPES = [
   "Boarding House",
@@ -79,13 +84,7 @@ const SAFETY_FEATURES_OPTIONS = [
 ];
 
 // 5 House Rules pills from prototype specification
-const HOUSE_RULES_PILLS = [
-  "Cooking Allowed",
-  "Visitors Allowed",
-  "Pets Allowed",
-  "No Curfew",
-  "Smoking Allowed",
-];
+const HOUSE_RULES_PILLS = STANDARD_HOUSE_RULES;
 
 /** Parse combined contact info into separate name and phone */
 function parseContactInfo(
@@ -149,6 +148,14 @@ export default function LandlordListingForm({
   const [contactName, setContactName] = useState(initialContact.name);
   const [contactPhone, setContactPhone] = useState(initialContact.phone);
 
+  const initialParsedRules = parseHouseRules(initialValues?.house_rules);
+  const [selectedRules, setSelectedRules] = useState<string[]>(
+    initialParsedRules.rules,
+  );
+  const [customNotes, setCustomNotes] = useState<string>(
+    initialParsedRules.notes,
+  );
+
   const initialCombinedContact =
     initialValues?.contact_info ||
     (initialContact.name && initialContact.phone
@@ -205,7 +212,6 @@ export default function LandlordListingForm({
   const selectedLaundryFeatures =
     useWatch({ control, name: "laundry_features" }) || [];
   const selectedSafety = useWatch({ control, name: "safety_features" }) || [];
-  const houseRulesValue = useWatch({ control, name: "house_rules" }) || "";
   const uploadedImages = useWatch({ control, name: "images" }) || [];
   const activeCoverImage = useWatch({ control, name: "cover_image" }) || "";
   const latitude = useWatch({ control, name: "latitude" });
@@ -266,35 +272,26 @@ export default function LandlordListingForm({
   };
 
   const toggleHouseRule = (rule: string) => {
-    const currentRules = getValues("house_rules") || "";
-    const rulesList = currentRules
-      .split(/[,;\n]+/)
-      .map((r) => r.trim())
-      .filter(Boolean);
-
-    const ruleLower = rule.toLowerCase();
-    const exists = rulesList.some((r) => r.toLowerCase() === ruleLower);
-
-    let updatedRules: string;
-    if (exists) {
-      updatedRules = rulesList
-        .filter((r) => r.toLowerCase() !== ruleLower)
-        .join(", ");
-    } else {
-      updatedRules =
-        rulesList.length > 0 ? `${currentRules.trim()}, ${rule}` : rule;
-    }
-
-    setValue("house_rules", updatedRules, { shouldValidate: true });
+    const nextRules = selectedRules.includes(rule)
+      ? selectedRules.filter((r) => r !== rule)
+      : [...selectedRules, rule];
+    setSelectedRules(nextRules);
+    setValue("house_rules", formatHouseRules(nextRules, customNotes), {
+      shouldValidate: true,
+    });
   };
 
-  const isRuleActive = (rule: string) => {
-    const rulesList = (houseRulesValue || "")
-      .split(/[,;\n]+/)
-      .map((r) => r.trim().toLowerCase())
-      .filter(Boolean);
-    return rulesList.includes(rule.toLowerCase());
+  const handleCustomNotesChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement>,
+  ) => {
+    const nextNotes = e.target.value;
+    setCustomNotes(nextNotes);
+    setValue("house_rules", formatHouseRules(selectedRules, nextNotes), {
+      shouldValidate: true,
+    });
   };
+
+  const isRuleActive = (rule: string) => selectedRules.includes(rule);
 
   // Switches between the form and the preview, and starts the new step at
   // the top of the page (#223).
@@ -1079,11 +1076,11 @@ export default function LandlordListingForm({
                       House Rules &amp; Policies
                     </label>
                     <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                      Click pills to toggle or type below
+                      Click to toggle standard policies
                     </span>
                   </div>
 
-                  {/* 5 Rule Pills from Picture 4 */}
+                  {/* 5 Rule Pills */}
                   <div className="mt-2.5 flex flex-wrap gap-2">
                     {HOUSE_RULES_PILLS.map((rule) => {
                       const active = isRuleActive(rule);
@@ -1107,12 +1104,19 @@ export default function LandlordListingForm({
                     })}
                   </div>
 
-                  <textarea
-                    rows={3}
-                    {...register("house_rules")}
-                    placeholder="e.g. Cooking Allowed, Visitors Allowed until 9 PM, Pets Allowed, No Curfew..."
-                    className="mt-2.5 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
-                  />
+                  {/* Dedicated Additional Guidelines & Custom Notes */}
+                  <div className="mt-3.5">
+                    <label className="block text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
+                      Additional Guidelines &amp; Custom Notes (Optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={customNotes}
+                      onChange={handleCustomNotesChange}
+                      placeholder="e.g. Visitors allowed until 9 PM only, please clean up the kitchen after cooking..."
+                      className="mt-1.5 w-full rounded-xl border border-zinc-300 bg-white px-4 py-2.5 text-xs text-zinc-900 shadow-2xs focus:border-purple-600 focus:outline-hidden dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:focus:border-purple-500"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

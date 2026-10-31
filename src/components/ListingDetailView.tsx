@@ -7,6 +7,7 @@ import {
   Building,
   Users,
   Home,
+  Check,
   CheckCircle2,
   ShieldCheck,
   Zap,
@@ -18,6 +19,7 @@ import {
 import { ListingInput } from "@/lib/validations/listing";
 import { listingStatusView } from "@/lib/listing-status-view";
 import { ReadOnlyMap } from "@/components/map";
+import { parseHouseRules } from "@/lib/house-rules";
 
 interface ListingDetailViewProps {
   // Partial: the form preview shows a listing before every field is filled
@@ -361,11 +363,58 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
           <h2 className="flex items-center gap-2 text-base font-bold text-zinc-900 dark:text-zinc-100">
             <AlertCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-            House Rules
+            House Rules & Policies
           </h2>
-          <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-zinc-600 dark:text-zinc-400">
-            {listing.house_rules || "No specific house rules listed."}
-          </p>
+          {(() => {
+            const parsedRules = parseHouseRules(listing.house_rules);
+            if (parsedRules.rules.length > 0 || parsedRules.notes) {
+              return (
+                <div className="mt-3 space-y-3">
+                  {/* Checklist for standard / listed rules */}
+                  {parsedRules.rules.length > 0 && (
+                    <ul className="space-y-2 text-xs text-zinc-800 dark:text-zinc-200">
+                      {parsedRules.rules.map((rule) => (
+                        <li key={rule} className="flex items-center gap-2.5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+                            <Check className="h-3 w-3 stroke-[3]" />
+                          </span>
+                          <span className="font-medium">{rule}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Dedicated Additional Guidelines & Notes section */}
+                  {parsedRules.notes && (
+                    <div
+                      className={
+                        parsedRules.rules.length > 0
+                          ? "border-t border-zinc-100 pt-3 dark:border-zinc-800"
+                          : ""
+                      }
+                    >
+                      <p className="mb-1.5 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+                        Additional Guidelines & Notes
+                      </p>
+                      <div className="flex items-start gap-2 rounded-xl border border-zinc-200/70 bg-zinc-50 p-3 text-xs leading-relaxed text-zinc-700 dark:border-zinc-700/60 dark:bg-zinc-800/50 dark:text-zinc-300">
+                        <span className="mt-0.5 shrink-0 text-purple-600 dark:text-purple-400">
+                          💬
+                        </span>
+                        <span className="whitespace-pre-line">
+                          {parsedRules.notes}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            return (
+              <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-zinc-600 dark:text-zinc-400">
+                No specific house rules listed.
+              </p>
+            );
+          })()}
         </div>
       </div>
 
