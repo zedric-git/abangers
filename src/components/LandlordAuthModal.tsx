@@ -17,6 +17,7 @@ import {
   loginSchema,
   mapAuthError,
   signUpSchema,
+  type SignUpRole,
 } from "@/lib/validations/auth";
 import { resolvePostLoginPath } from "@/lib/auth/post-login";
 import { signUpWithProfile } from "@/lib/auth/sign-up";
@@ -25,6 +26,9 @@ interface LandlordAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialMode?: "login" | "signup";
+  initialRole?: SignUpRole;
+  promptTitle?: string;
+  promptDescription?: string;
 }
 
 /**
@@ -39,6 +43,9 @@ export default function LandlordAuthModal({
   isOpen,
   onClose,
   initialMode = "signup",
+  initialRole = "landlord",
+  promptTitle,
+  promptDescription,
 }: LandlordAuthModalProps) {
   const router = useRouter();
   const supabase = createClient();
@@ -46,6 +53,7 @@ export default function LandlordAuthModal({
   const openerRef = useRef<HTMLElement | null>(null);
 
   const [isLoginMode, setIsLoginMode] = useState(initialMode === "login");
+  const [selectedRole, setSelectedRole] = useState<SignUpRole>(initialRole);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -72,7 +80,7 @@ export default function LandlordAuthModal({
           email,
           password,
           confirmPassword,
-          role: "landlord",
+          role: selectedRole,
         });
 
     if (result.success) {
@@ -122,13 +130,13 @@ export default function LandlordAuthModal({
           onClose();
         }
       } else {
-        // Sign Up (Landlord) — shared flow, including the
+        // Sign Up — shared flow, including the
         // already-registered-email check (src/lib/auth/sign-up.ts).
         const result = await signUpWithProfile(supabase, {
           email,
           password,
           fullName,
-          role: "landlord",
+          role: selectedRole,
         });
 
         if (!result.ok) {
@@ -137,8 +145,13 @@ export default function LandlordAuthModal({
         }
 
         if (result.kind === "signed-in") {
-          // New landlords fill in their contact details first.
-          router.push("/profile-setup");
+          if (selectedRole === "landlord") {
+            // New landlords fill in their contact details first.
+            router.push("/profile-setup");
+          } else {
+            // Renters go directly to renter dashboard.
+            router.push("/dashboard/renter");
+          }
           onClose();
         } else {
           setSuccess(
@@ -206,12 +219,16 @@ export default function LandlordAuthModal({
           {/* Title & Subtitle — DialogTitle names the dialog for screen readers */}
           <div className="mb-6 space-y-1.5">
             <DialogTitle className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-              {isLoginMode ? "Welcome back" : "Create an account"}
+              {promptTitle ||
+                (isLoginMode ? "Welcome back" : "Create an account")}
             </DialogTitle>
             <DialogDescription className="text-sm text-zinc-500 dark:text-zinc-400">
-              {isLoginMode
-                ? "Sign in to manage your listings"
-                : "Start listing your properties today"}
+              {promptDescription ||
+                (isLoginMode
+                  ? "Sign in to manage your listings or viewings"
+                  : selectedRole === "renter"
+                    ? "Start finding and booking boarding houses today"
+                    : "Start listing your properties today")}
             </DialogDescription>
           </div>
 
@@ -230,6 +247,32 @@ export default function LandlordAuthModal({
           {/* Form */}
           {/* noValidate: the shared Zod schemas show the messages, not the browser */}
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
+            {!isLoginMode && (
+              <div className="flex rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole("renter")}
+                  className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
+                    selectedRole === "renter"
+                      ? "bg-white text-purple-700 shadow-xs dark:bg-zinc-900 dark:text-purple-300"
+                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                  }`}
+                >
+                  Renter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole("landlord")}
+                  className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
+                    selectedRole === "landlord"
+                      ? "bg-white text-purple-700 shadow-xs dark:bg-zinc-900 dark:text-purple-300"
+                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                  }`}
+                >
+                  Landlord
+                </button>
+              </div>
+            )}
             {!isLoginMode && (
               <div className="space-y-1.5">
                 <input
