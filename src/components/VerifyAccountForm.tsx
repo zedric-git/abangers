@@ -710,7 +710,7 @@ export default function VerifyAccountForm({
 
   if (compact) {
     return (
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xs sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         {compactHeader}
         <div className="pt-6">
           {step === "review" ? reviewContent : formContent}
