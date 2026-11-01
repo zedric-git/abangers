@@ -20,7 +20,11 @@ export default async function LandlordDashboardPage() {
   } = await supabase.auth.getUser();
 
   let listings: Listing[] = [];
+  // The listings couldn't be read: the list says so instead of showing the
+  // "No listings created yet" empty state (#232).
   let listingsLoadError = false;
+  // Where the landlord stands (#205): the banner, and the lock on Add New
+  // Listing. null if it couldn't be read.
   let status: LandlordStatus | null = null;
 
   if (user) {
@@ -68,11 +72,12 @@ export default async function LandlordDashboardPage() {
           </h1>
         </div>
 
-        {/* Add Listing Button (Unlocked Link or Locked Popover Tooltip) */}
+        {/* Add Listing Button (Unlocked Link or Locked Link with Tooltip) */}
         <AddListingButton locked={addListingLocked} />
       </div>
 
-      {/* Omit top VerificationBanner if checklist is already rendered in-place below */}
+      {/* Not verified / Pending / Rejected (#205); nothing once verified, or
+          when the checklist is already rendered in-place below */}
       {!showInPlaceChecklist && <VerificationBanner status={status} />}
 
       {/* Posted Listings Section (Persistent filter pills, search bar, and in-place checklist) */}

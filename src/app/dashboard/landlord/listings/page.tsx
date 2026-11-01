@@ -20,6 +20,10 @@ export default async function LandlordListingsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  // A listing's View or Edit page sends the landlord here with
+  // ?notice=listing-not-found when the listing isn't there (#244). The
+  // parameter only picks the note; its text is fixed below, so nothing
+  // from the URL is shown on the page.
   const { notice } = await searchParams;
   const showMissingListingNote = notice === MISSING_LISTING_NOTICE;
 
@@ -49,6 +53,8 @@ export default async function LandlordListingsPage({
   if (error) {
     console.error("Error fetching landlord listings:", error);
   }
+  // The listings couldn't be read: the list says so instead of showing the
+  // empty state, as on the dashboard (#239).
   const listingsLoadError = error !== null;
 
   const listings: Listing[] = rawListings ?? [];
@@ -88,10 +94,14 @@ export default async function LandlordListingsPage({
         </div>
       )}
 
-      {/* Omit top VerificationBanner if checklist is already rendered in-place below */}
+      {/* Not verified / Pending / Rejected (#205); nothing once verified, or
+          when the checklist is already rendered in-place below */}
       {!showInPlaceChecklist && <VerificationBanner status={status} />}
 
-      {/* Posted Listings Section (Persistent filter pills, search bar, and in-place checklist) */}
+      {/* The listings, shared with the dashboard (#239): one card per row
+          (the card is a wide row, so it can't sit in a grid), the tabs and
+          search, and the error and empty states. The page title above
+          already says "My Posted Listings", so the list leaves it out. */}
       <LandlordListingsView
         initialListings={listings}
         addListingLocked={addListingLocked}

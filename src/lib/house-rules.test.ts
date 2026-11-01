@@ -13,9 +13,9 @@ describe("house-rules helper", () => {
       expect(result).toBe("Cooking Allowed\nNo Curfew");
     });
 
-    it("formats notes only", () => {
+    it("formats notes only under the Additional Notes header", () => {
       const result = formatHouseRules([], "pwede maka luto");
-      expect(result).toBe("pwede maka luto");
+      expect(result).toBe("Additional Notes:\npwede maka luto");
     });
 
     it("formats both rules and notes with delimiter", () => {
@@ -46,26 +46,42 @@ describe("house-rules helper", () => {
       });
     });
 
-    it("parses legacy comma-separated string containing standard rules and custom text", () => {
-      const raw =
-        "Pets Allowed, No Curfew, Visitors Allowed, Cooking Allowed pwede maka luto";
-      const result = parseHouseRules(raw);
-      expect(result.rules).toEqual(
-        expect.arrayContaining([
-          "Cooking Allowed",
-          "Visitors Allowed",
-          "Pets Allowed",
-          "No Curfew",
-        ]),
-      );
-      expect(result.notes).toBe("pwede maka luto");
+    it("parses notes-only string with Additional Notes header", () => {
+      const raw = "Additional Notes:\nNo smoking allowed";
+      expect(parseHouseRules(raw)).toEqual({
+        rules: [],
+        notes: "No smoking allowed",
+      });
     });
 
-    it("parses standard rules only without notes", () => {
-      const raw = "Cooking Allowed, Visitors Allowed";
-      const result = parseHouseRules(raw);
-      expect(result.rules).toEqual(["Cooking Allowed", "Visitors Allowed"]);
-      expect(result.notes).toBe("");
+    it("counts a line as a ticked rule only when the whole line is one of the five rules", () => {
+      const raw = "Cooking Allowed\nVisitors Allowed";
+      expect(parseHouseRules(raw)).toEqual({
+        rules: ["Cooking Allowed", "Visitors Allowed"],
+        notes: "",
+      });
+    });
+
+    it("does not misread opposite or qualified free-text sentences as ticked rules", () => {
+      const cases = [
+        "No smoking allowed",
+        "Strictly no pets allowed",
+        "No visitors allowed after 9 PM",
+        "Visitors allowed until 9 PM only, please clean up the kitchen after cooking...",
+      ];
+
+      for (const note of cases) {
+        expect(parseHouseRules(note)).toEqual({
+          rules: [],
+          notes: note,
+        });
+        // Round-trip through formatHouseRules with no pills ticked
+        const saved = formatHouseRules([], note);
+        expect(parseHouseRules(saved)).toEqual({
+          rules: [],
+          notes: note,
+        });
+      }
     });
 
     it("parses purely custom notes without standard rules", () => {
@@ -77,14 +93,13 @@ describe("house-rules helper", () => {
       );
     });
 
-    it("parses multiline custom rules without standard rules", () => {
+    it("keeps multiline custom rules in notes when none are exact standard rules", () => {
       const raw = "Gate closes at 10 PM\nNo loud parties allowed";
       const result = parseHouseRules(raw);
-      expect(result.rules).toEqual([
-        "Gate closes at 10 PM",
-        "No loud parties allowed",
-      ]);
-      expect(result.notes).toBe("");
+      expect(result.rules).toEqual([]);
+      expect(result.notes).toBe(
+        "Gate closes at 10 PM\nNo loud parties allowed",
+      );
     });
   });
 });

@@ -39,6 +39,8 @@ export default function LandlordListingsView({
   checklistView = null,
   isVerified = true,
 }: LandlordListingsViewProps) {
+  // The toolbar (#232): the tab and the search filter the listings the
+  // page already loaded (see filter-landlord-listings.ts).
   const [tab, setTab] = useState<ListingsTab>("all");
   const [search, setSearch] = useState("");
 

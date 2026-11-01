@@ -175,6 +175,8 @@ export default function LandlordListingForm({
       title: initialValues?.title || "",
       address: initialValues?.address || "",
       city: initialValues?.city || "",
+      // `??`, not `||`: a saved 0 (e.g. no rooms left) must stay 0. Only a
+      // value that isn't there at all (a new listing) gets the default.
       monthly_rent: initialValues?.monthly_rent ?? 3000,
       total_rooms: initialValues?.total_rooms ?? 1,
       available_rooms: initialValues?.available_rooms ?? 1,
@@ -296,7 +298,20 @@ export default function LandlordListingForm({
   // Switches between the form and the preview, and starts the new step at
   // the top of the page (#223).
   const showStep = (nextStep: "form" | "preview") => {
+    // flushSync puts the new step on the page right away. Without it, React
+    // re-renders only after this function returns, so the scroll below
+    // would happen on the step we're leaving.
     flushSync(() => setStep(nextStep));
+
+    // The landlord dashboard scrolls inside its <main>, not the window: the
+    // layout (src/app/dashboard/landlord/layout.tsx) is h-dvh with
+    // overflow-hidden since #161, so window.scrollTo does nothing here.
+    // That <main> is the only one on dashboard pages. (A ref on this form +
+    // closest("main") would also find it, but the react-hooks/refs lint rule
+    // rejects reading a ref here: handlePreviewSubmit is passed to
+    // handleSubmit during render.)
+    // "instant", not "smooth": the whole step is new, so there's nothing to
+    // animate past.
     document.querySelector("main")?.scrollTo({ top: 0, behavior: "instant" });
   };
 
@@ -323,6 +338,9 @@ export default function LandlordListingForm({
         router.push("/dashboard/landlord/listings");
         router.refresh();
       } else {
+        // Shown in a card over the page, and we stay on the preview:
+        // closing the card puts the landlord back next to Edit Listing
+        // and Publish (#221).
         setSaveError({
           message: res.error,
           fixOnProfilePage: res.fixOnProfilePage ?? false,
@@ -563,6 +581,13 @@ export default function LandlordListingForm({
                       }
                     }}
                     onClear={() => {
+                      // "Remove pin" (#241): back to no location, the way a
+                      // new listing starts (see defaultValues), so Preview
+                      // asks for a pin again. Street Address and City stay
+                      // as they are. The cast is because the form's types
+                      // say latitude/longitude are always numbers (that's
+                      // what listingSchema needs to publish); listingSchema
+                      // reports the missing pin.
                       setValue("latitude", undefined as unknown as number);
                       setValue("longitude", undefined as unknown as number);
                     }}
@@ -679,6 +704,10 @@ export default function LandlordListingForm({
                   <input
                     type="number"
                     {...register("total_rooms", {
+                      // "Available rooms can't be more than total rooms"
+                      // sits under Available Rooms, so re-check that field
+                      // too when this one changes, or the message would
+                      // stay after the landlord raises the total (#231).
                       deps: "available_rooms",
                     })}
                     placeholder="1"

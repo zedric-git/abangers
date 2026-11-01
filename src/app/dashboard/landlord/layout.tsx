@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
-import { usePathname } from "next/navigation";
 import { Building2, User, LogOut } from "lucide-react";
 import DashboardSidebar, { NavItem } from "@/components/DashboardSidebar";
 import SignedInOnly from "@/components/SignedInOnly";
@@ -12,23 +10,6 @@ export default function LandlordLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-
-  // Pin the desktop window itself to (0, 0) so window scrolling never reveals blank voids below the layout
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 0 || window.scrollX > 0) {
-        window.scrollTo(0, 0);
-      }
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
   const landlordNavItems: NavItem[] = [
     {
       label: "My Listings",
@@ -52,9 +33,13 @@ export default function LandlordLayout({
   ];
 
   return (
-    // Fixed viewport lock: container pinned to viewport bounds so the desktop
-    // window itself never scrolls and never reveals blank space below the sidebar.
-    <div className="bg-background fixed inset-0 flex h-dvh h-screen w-screen flex-col overflow-hidden font-sans md:flex-row">
+    // bg-background (not bg-white/dark:bg-black + transition-colors): it
+    // fades via the single shared --background transition in globals.css,
+    // so it always matches the sidebar's active tab exactly.
+    // h-dvh (not h-screen): on a phone 100vh is the height with the
+    // browser's address bar hidden, so the bottom of the dashboard would
+    // sit under the bar while it shows (#245).
+    <div className="bg-background flex h-dvh flex-col overflow-hidden font-sans md:flex-row">
       {/* Signed out (e.g. Back after logging out) → home page (#252) */}
       <SignedInOnly />
 
@@ -64,8 +49,8 @@ export default function LandlordLayout({
         userRoleLabel="Landlord Dashboard"
       />
 
-      {/* Main Content Area: snug padding so content fits on standard desktop screens */}
-      <main className="custom-scrollbar bg-background min-w-0 flex-1 overflow-y-auto p-4 sm:p-6 md:px-8 md:py-6">
+      {/* Main Content Area */}
+      <main className="custom-scrollbar bg-background flex-1 overflow-y-auto p-6 md:p-10">
         {children}
       </main>
     </div>
