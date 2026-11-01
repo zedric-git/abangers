@@ -78,8 +78,7 @@ export default function LogoutConfirmModal({
             Log Out?
           </h3>
           <p className="mt-2 text-xs text-zinc-500 sm:text-sm dark:text-zinc-400">
-            Are you sure you want to log out? Any unsaved changes in your
-            dashboard will be lost.
+            Are you sure you want to log out?
           </p>
         </div>
 
