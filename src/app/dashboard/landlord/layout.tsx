@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
 import {
   Building2,
   CalendarCheck,
@@ -15,7 +14,7 @@ import {
 import DashboardSidebar, { NavItem } from "@/components/DashboardSidebar";
 import LogoutConfirmModal from "@/components/LogoutConfirmModal";
 import SignedInOnly from "@/components/SignedInOnly";
-import { createClient } from "@/lib/supabase/client";
+import { logOut } from "@/lib/auth/log-out";
 
 export default function LandlordLayout({
   children,
@@ -23,26 +22,12 @@ export default function LandlordLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { setTheme } = useTheme();
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
   // Keep window itself pinned at (0, 0) on route changes so no scroll voids appear
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathname]);
-
-  const handleLogout = async () => {
-    setTheme("light");
-    const supabase = createClient();
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.error("Logout error:", err);
-    } finally {
-      // Hard navigation home, dropping client cache and history entry
-      window.location.replace("/");
-    }
-  };
 
   const landlordNavItems: NavItem[] = [
     // Top Group
@@ -100,9 +85,15 @@ export default function LandlordLayout({
   const isMessagesRoute = pathname.startsWith("/dashboard/landlord/messages");
 
   return (
-    // Fixed viewport lock: container pinned to viewport bounds so the desktop
+    // bg-background (not bg-white/dark:bg-black + transition-colors): it
+    // fades via the single shared --background transition in globals.css,
+    // so it always matches the sidebar's active tab exactly.
+    // h-dvh (not h-screen): on a phone 100vh is the height with the
+    // browser's address bar hidden, so the bottom of the dashboard would
+    // sit under the bar while it shows (#245).
+    // fixed inset-0: container pinned to viewport bounds so the desktop
     // window itself never scrolls and never reveals blank space below the sidebar.
-    <div className="bg-background fixed inset-0 flex h-dvh h-screen w-screen flex-col overflow-hidden font-sans md:flex-row">
+    <div className="bg-background fixed inset-0 flex h-dvh flex-col overflow-hidden font-sans md:flex-row">
       {/* Signed out (e.g. Back after logging out) → home page (#252) */}
       <SignedInOnly />
 
@@ -127,7 +118,7 @@ export default function LandlordLayout({
       <LogoutConfirmModal
         isOpen={isLogoutOpen}
         onClose={() => setIsLogoutOpen(false)}
-        onConfirm={handleLogout}
+        onConfirm={logOut}
       />
     </div>
   );
