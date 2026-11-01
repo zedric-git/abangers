@@ -7,6 +7,7 @@ import {
   Building,
   Users,
   Home,
+  Check,
   CheckCircle2,
   ShieldCheck,
   Zap,
@@ -14,10 +15,13 @@ import {
   FileText,
   AlertCircle,
   Star,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { ListingInput } from "@/lib/validations/listing";
 import { listingStatusView } from "@/lib/listing-status-view";
 import { ReadOnlyMap } from "@/components/map";
+import { parseHouseRules } from "@/lib/house-rules";
 
 interface ListingDetailViewProps {
   // Partial: the form preview shows a listing before every field is filled
@@ -33,18 +37,34 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
 
   const imagesList = listing.images || [];
   const activeCover = listing.cover_image || imagesList[0] || "";
+  const currentPhoto = selectedPhoto || activeCover;
+  const currentIndex = Math.max(0, imagesList.indexOf(currentPhoto));
+  const isCoverActive = currentPhoto === (listing.cover_image || imagesList[0]);
+
+  const handlePrevPhoto = () => {
+    if (imagesList.length <= 1) return;
+    const nextIdx = (currentIndex - 1 + imagesList.length) % imagesList.length;
+    setSelectedPhoto(imagesList[nextIdx]);
+  };
+
+  const handleNextPhoto = () => {
+    if (imagesList.length <= 1) return;
+    const nextIdx = (currentIndex + 1) % imagesList.length;
+    setSelectedPhoto(imagesList[nextIdx]);
+  };
+
   // Same label and colour as the landlord's listing cards (#232).
   const statusView = listingStatusView(listing.availability_status);
 
   return (
-    <div className="space-y-8 text-zinc-900 dark:text-zinc-100">
+    <div className="space-y-5 text-zinc-900 sm:space-y-6 dark:text-zinc-100">
       {/* Photo Gallery Hero */}
       <div className="space-y-4">
         {/* Featured Large Photo Display */}
-        <div className="relative aspect-16/10 w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 shadow-md sm:aspect-16/9 dark:border-zinc-800 dark:bg-zinc-900">
-          {selectedPhoto || activeCover ? (
+        <div className="group relative aspect-16/10 w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 shadow-md sm:aspect-16/9 dark:border-zinc-800 dark:bg-zinc-900">
+          {currentPhoto ? (
             <Image
-              src={selectedPhoto || activeCover}
+              src={currentPhoto}
               alt={listing.title || "Listing photo"}
               fill
               className="object-cover transition-all duration-300"
@@ -60,16 +80,46 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
 
           {/* Status Badge Overlay */}
           <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-700/90 px-3.5 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur-md dark:bg-purple-600/90">
-              <Star className="h-3.5 w-3.5 fill-current text-yellow-300" />
-              Cover Photo
-            </span>
+            {isCoverActive && (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-700/90 px-3.5 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur-md dark:bg-purple-600/90">
+                <Star className="h-3.5 w-3.5 fill-current text-yellow-300" />
+                Cover Photo
+              </span>
+            )}
             <span
               className={`inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-bold shadow-lg ${statusView.badgeClassName}`}
             >
               {statusView.label}
             </span>
           </div>
+
+          {/* Left & Right Navigation Buttons */}
+          {imagesList.length > 1 && (
+            <>
+              <button
+                type="button"
+                onClick={handlePrevPhoto}
+                aria-label="Previous photo"
+                className="absolute top-1/2 left-3 z-20 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/90 text-zinc-800 shadow-lg backdrop-blur-md transition-all hover:scale-110 hover:bg-white active:scale-95 sm:left-4 sm:h-10 sm:w-10 dark:bg-zinc-900/90 dark:text-zinc-100 dark:hover:bg-zinc-900"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleNextPhoto}
+                aria-label="Next photo"
+                className="absolute top-1/2 right-3 z-20 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-white/90 text-zinc-800 shadow-lg backdrop-blur-md transition-all hover:scale-110 hover:bg-white active:scale-95 sm:right-4 sm:h-10 sm:w-10 dark:bg-zinc-900/90 dark:text-zinc-100 dark:hover:bg-zinc-900"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+
+              {/* Photo Counter Pill */}
+              <div className="absolute right-4 bottom-4 z-10 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white shadow-md backdrop-blur-md">
+                {currentIndex + 1} / {imagesList.length}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Photo Thumbnails Strip */}
@@ -147,7 +197,8 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
             Total Rooms
           </div>
           <p className="mt-1.5 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {listing.total_rooms || 1} Rooms
+            {listing.total_rooms ?? 1}{" "}
+            {(listing.total_rooms ?? 1) === 1 ? "Room" : "Rooms"}
           </p>
         </div>
 
@@ -157,14 +208,15 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
             Available Now
           </div>
           <p className="mt-1.5 text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-            {listing.available_rooms || 0} Rooms Left
+            {listing.available_rooms ?? 0}{" "}
+            {(listing.available_rooms ?? 0) === 1 ? "Room" : "Rooms"} Left
           </p>
         </div>
       </div>
 
       {/* Property Location Map Section */}
       {listing.latitude != null && listing.longitude != null && (
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="relative isolate z-0 rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
             <div>
               <h2 className="flex items-center gap-2 text-xl font-bold text-zinc-900 dark:text-zinc-100">
@@ -191,7 +243,7 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
       )}
 
       {/* Features, Utilities & Amenities */}
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
         <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
           Features, Utilities & Amenities
         </h2>
@@ -258,45 +310,176 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
             </div>
           </div>
         )}
+
+        {/* Room Features */}
+        {listing.room_features && listing.room_features.length > 0 && (
+          <div className="mt-6">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              Room Features
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {listing.room_features.map((feature) => (
+                <span
+                  key={feature}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-800 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Bathroom Features */}
+        {listing.bathroom_features && listing.bathroom_features.length > 0 && (
+          <div className="mt-6">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              Bathroom
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {listing.bathroom_features.map((feature) => (
+                <span
+                  key={feature}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-800 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Kitchen & Food Features */}
+        {listing.kitchen_features && listing.kitchen_features.length > 0 && (
+          <div className="mt-6">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              Kitchen &amp; Food
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {listing.kitchen_features.map((feature) => (
+                <span
+                  key={feature}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-800 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Laundry Features */}
+        {listing.laundry_features && listing.laundry_features.length > 0 && (
+          <div className="mt-6">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+              <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              Laundry
+            </h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {listing.laundry_features.map((feature) => (
+                <span
+                  key={feature}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-800 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+                  {feature}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Description & House Rules */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Description */}
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="flex items-center gap-2 text-lg font-bold text-zinc-900 dark:text-zinc-100">
-            <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="flex items-center gap-2 text-base font-bold text-zinc-900 dark:text-zinc-100">
+            <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             Property Description
           </h2>
-          <p className="mt-4 text-sm leading-relaxed whitespace-pre-line text-zinc-600 dark:text-zinc-400">
+          <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-zinc-600 dark:text-zinc-400">
             {listing.description || "No description provided."}
           </p>
         </div>
 
         {/* House Rules */}
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
-          <h2 className="flex items-center gap-2 text-lg font-bold text-zinc-900 dark:text-zinc-100">
-            <AlertCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-            House Rules
+        <div className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-5 dark:border-zinc-800 dark:bg-zinc-900">
+          <h2 className="flex items-center gap-2 text-base font-bold text-zinc-900 dark:text-zinc-100">
+            <AlertCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            House Rules & Policies
           </h2>
-          <p className="mt-4 text-sm leading-relaxed whitespace-pre-line text-zinc-600 dark:text-zinc-400">
-            {listing.house_rules || "No specific house rules listed."}
-          </p>
+          {(() => {
+            const parsedRules = parseHouseRules(listing.house_rules);
+            if (parsedRules.rules.length > 0 || parsedRules.notes) {
+              return (
+                <div className="mt-3 space-y-3">
+                  {/* Checklist for standard / listed rules */}
+                  {parsedRules.rules.length > 0 && (
+                    <ul className="space-y-2 text-xs text-zinc-800 dark:text-zinc-200">
+                      {parsedRules.rules.map((rule) => (
+                        <li key={rule} className="flex items-center gap-2.5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
+                            <Check className="h-3 w-3 stroke-[3]" />
+                          </span>
+                          <span className="font-medium">{rule}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {/* Dedicated Additional Guidelines & Notes section */}
+                  {parsedRules.notes && (
+                    <div
+                      className={
+                        parsedRules.rules.length > 0
+                          ? "border-t border-zinc-100 pt-3 dark:border-zinc-800"
+                          : ""
+                      }
+                    >
+                      <p className="mb-1.5 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+                        Additional Guidelines & Notes
+                      </p>
+                      <div className="flex items-start gap-2 rounded-xl border border-zinc-200/70 bg-zinc-50 p-3 text-xs leading-relaxed text-zinc-700 dark:border-zinc-700/60 dark:bg-zinc-800/50 dark:text-zinc-300">
+                        <span className="mt-0.5 shrink-0 text-purple-600 dark:text-purple-400">
+                          💬
+                        </span>
+                        <span className="whitespace-pre-line">
+                          {parsedRules.notes}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            return (
+              <p className="mt-2 text-sm leading-relaxed whitespace-pre-line text-zinc-600 dark:text-zinc-400">
+                No specific house rules listed.
+              </p>
+            );
+          })()}
         </div>
       </div>
 
       {/* Landlord Contact Info Card */}
-      <div className="rounded-3xl border border-purple-200 bg-purple-50/60 p-6 shadow-xs sm:p-8 dark:border-purple-900/40 dark:bg-purple-950/30">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-2xl border border-purple-200 bg-purple-50/60 p-4 shadow-xs sm:p-5 dark:border-purple-900/40 dark:bg-purple-950/30">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-lg font-bold text-purple-950 dark:text-purple-100">
+            <h3 className="text-base font-bold text-purple-950 dark:text-purple-100">
               Landlord Contact Details
             </h3>
-            <p className="mt-1 text-xs text-purple-700 dark:text-purple-300">
+            <p className="mt-0.5 text-xs text-purple-700 dark:text-purple-300">
               Renters will reach out to you via the contact info below.
             </p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-purple-950 shadow-xs dark:bg-purple-900 dark:text-purple-100">
+          <div className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-purple-950 shadow-xs dark:bg-purple-900 dark:text-purple-100">
             <Phone className="h-4 w-4 text-purple-700 dark:text-purple-300" />
             <span>{listing.contact_info || "Contact info not provided"}</span>
           </div>

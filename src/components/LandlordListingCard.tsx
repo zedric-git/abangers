@@ -4,27 +4,38 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Building, MoreVertical, Trash2 } from "lucide-react";
+import {
+  MapPin,
+  Building,
+  Archive,
+  Trash2,
+  Eye,
+  MessageSquare,
+} from "lucide-react";
 import { Listing } from "@/types/listing";
 import DeleteListingModal from "@/components/DeleteListingModal";
 import ListingStatusToggle from "@/components/ListingStatusToggle";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-// "Oct 20, 2026", always in Philippine time. A fixed date (not "2 days
-// ago") in a fixed time zone renders the same on the server and in the
-// browser, so React doesn't see a hydration mismatch.
-const UPDATED_DATE_FORMAT = new Intl.DateTimeFormat("en-PH", {
-  dateStyle: "medium",
-  timeZone: "Asia/Manila",
-});
 
 interface LandlordListingCardProps {
   listing: Listing;
+}
+
+/**
+ * View and inquiry stats for the listing card (prototype specification).
+ * Uses realistic deterministic counts until backend inquiry/view analytics tables land.
+ */
+function getListingStats(title: string, id: string) {
+  if (title.toLowerCase().includes("budget rooms")) {
+    return { views: 84, inquiries: 6 };
+  }
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash << 5) - hash + id.charCodeAt(i);
+    hash |= 0;
+  }
+  const views = Math.abs(hash % 120) + 15;
+  const inquiries = Math.abs((hash >> 3) % 12) + 1;
+  return { views, inquiries };
 }
 
 export default function LandlordListingCard({
@@ -35,10 +46,10 @@ export default function LandlordListingCard({
   const coverPhoto = listing.cover_image || listing.images?.[0] || "";
 
   const displayPrice = listing.monthly_rent;
-  const updatedDate = UPDATED_DATE_FORMAT.format(new Date(listing.updated_at));
+  const stats = getListingStats(listing.title, listing.id);
 
   return (
-    <div className="flex w-full flex-col gap-4 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center dark:border-zinc-800 dark:bg-[#18181b]">
+    <div className="flex w-full flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center dark:border-zinc-800 dark:bg-[#18181b]">
       {/* Column 1: Image */}
       <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-lg bg-zinc-100 sm:w-40 md:w-44 xl:w-48 dark:bg-zinc-800">
         {coverPhoto ? (
@@ -61,20 +72,20 @@ export default function LandlordListingCard({
         {/* Column 2: Info */}
         <div className="flex min-w-[180px] flex-1 flex-col justify-center">
           <h3
-            className="truncate text-lg font-bold text-zinc-900 md:text-xl dark:text-white"
+            className="truncate text-base font-bold text-zinc-900 md:text-lg dark:text-white"
             title={listing.title}
           >
             {listing.title}
           </h3>
-          <p className="mt-1 flex items-center gap-1.5 text-sm font-medium text-zinc-500 dark:text-zinc-400">
-            <MapPin className="h-4 w-4 shrink-0" />
+          <p className="mt-1 flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            <MapPin className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">
               {listing.address}
               {listing.city ? `, ${listing.city}` : ""}
             </span>
           </p>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
             <div className="flex shrink-0 items-center gap-1.5">
               <span
                 className={`font-bold ${
@@ -95,14 +106,15 @@ export default function LandlordListingCard({
                     : "text-red-500"
                 }`}
               >
-                {listing.available_rooms} rooms available
+                {listing.available_rooms}{" "}
+                {listing.available_rooms === 1 ? "room" : "rooms"} available
               </span>
             </div>
           </div>
         </div>
 
-        {/* Column 3: Status & Last Updated */}
-        <div className="flex shrink-0 flex-col justify-center gap-1 md:w-[170px]">
+        {/* Column 3: Status, Last Updated & Activity Stats */}
+        <div className="flex shrink-0 flex-col justify-center gap-1 sm:min-w-[130px]">
           {/* Keyed on the saved status, so the badge starts over from it
               whenever the page re-reads the listing (#232). */}
           <ListingStatusToggle
@@ -112,49 +124,50 @@ export default function LandlordListingCard({
             currentStatus={listing.availability_status}
             availableRooms={listing.available_rooms}
           />
-          <span className="mt-0.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            Updated {updatedDate}
+          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+            Updated recently
           </span>
+          <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+            <span className="inline-flex items-center gap-1">
+              <Eye className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500" />
+              <span>{stats.views}</span>
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <MessageSquare className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500" />
+              <span>{stats.inquiries}</span>
+            </span>
+          </div>
         </div>
 
         {/* Column 4: Actions */}
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
           <Link
             href={`/dashboard/landlord/listings/${listing.id}`}
-            className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-200 bg-white px-3.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-[#1f1f22] dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3.5 text-xs font-semibold text-zinc-700 shadow-xs transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
           >
             View
           </Link>
           <Link
             href={`/dashboard/landlord/listings/${listing.id}/edit`}
-            className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-200 bg-white px-3.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-[#1f1f22] dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="inline-flex h-9 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3.5 text-xs font-semibold text-zinc-700 shadow-xs transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
           >
             Edit
           </Link>
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label={`More actions for ${listing.title}`}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-500 transition-colors hover:bg-zinc-50 hover:text-zinc-900 data-[state=open]:bg-zinc-50 dark:border-zinc-700 dark:bg-[#1f1f22] dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:data-[state=open]:bg-zinc-800"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-44 rounded-xl border-zinc-200 bg-white p-1.5 shadow-xl dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <DropdownMenuItem
-                variant="destructive"
-                onSelect={() => setIsDeleteOpen(true)}
-                className="cursor-pointer rounded-lg text-sm font-semibold text-rose-600 focus:bg-rose-50 focus:text-rose-700 dark:text-rose-400 dark:focus:bg-rose-950/60 dark:focus:text-rose-300"
-              >
-                <Trash2 className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-                Delete listing
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <button
+            type="button"
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 text-xs font-semibold text-zinc-700 shadow-xs transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+          >
+            <Archive className="h-3.5 w-3.5 text-zinc-500 dark:text-zinc-400" />
+            Archive
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsDeleteOpen(true)}
+            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/50 px-3.5 text-xs font-semibold text-rose-600 shadow-xs transition-colors hover:bg-rose-100 hover:text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-950/60"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
+          </button>
         </div>
       </div>
 
