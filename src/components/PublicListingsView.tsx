@@ -3,10 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Home, Building2 } from "lucide-react";
+import { Home, Building2, LogOut } from "lucide-react";
 import type { Listing } from "@/types/listing";
 import PublicListingCard from "@/components/PublicListingCard";
 import LandlordAuthModal from "@/components/LandlordAuthModal";
+import { createClient } from "@/lib/supabase/client";
 
 interface PublicListingsViewProps {
   listings: Listing[];
@@ -76,12 +77,27 @@ export default function PublicListingsView({
           {/* Navigation / Auth Actions */}
           <div className="flex items-center gap-3">
             {dashboardPath ? (
-              <Link
-                href={dashboardPath}
-                className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-700 active:bg-purple-800"
-              >
-                Go to my dashboard
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={dashboardPath}
+                  className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-700 active:bg-purple-800"
+                >
+                  Go to my dashboard
+                </Link>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const supabase = createClient();
+                    await supabase.auth.signOut();
+                    window.location.reload();
+                  }}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200 px-3 py-2 text-xs font-semibold text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  title="Log out to test as a guest"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>Log Out</span>
+                </button>
+              </div>
             ) : (
               <>
                 <button
@@ -124,11 +140,23 @@ export default function PublicListingsView({
             </div>
 
             <div className="self-start rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-xs text-zinc-600 shadow-2xs md:self-auto dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-              Showing{" "}
-              <span className="font-bold text-zinc-900 dark:text-white">
-                {listings.length}
-              </span>{" "}
-              active {listings.length === 1 ? "listing" : "listings"}
+              {dashboardPath ? (
+                <span>
+                  Logged In • Showing{" "}
+                  <span className="font-bold text-zinc-900 dark:text-white">
+                    {listings.length}
+                  </span>{" "}
+                  active listings
+                </span>
+              ) : (
+                <span>
+                  Guest Mode • Click{" "}
+                  <span className="font-bold text-purple-600 dark:text-purple-400">
+                    &quot;View Details&quot;
+                  </span>{" "}
+                  to prompt sign in
+                </span>
+              )}
             </div>
           </div>
         </div>
