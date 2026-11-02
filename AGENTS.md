@@ -371,7 +371,10 @@ Three-tier flow: `feature/*` → `dev` → `main`.
   The same flow applies to non-feature work with a different prefix:
   `fix/<bug>`, `chore/<tooling-or-data>`, `docs/<what>`.
   Open a PR into `dev` when ready; needs a passing CI check to merge.
-  Delete the branch after it merges.
+  Don't delete the branch when it merges: keep every branch from the
+  current sprint, on GitHub and locally, until the sprint is over (the
+  next sprint starts, or `dev` merges into `main`; see
+  "Sprint schedule"). Delete them after that.
 - **`dev` branch** — the repo's **default branch** and the integration
   branch for the sprint currently in progress. All `feature/*` branches
   merge here first. This is where we test and stabilize everything the
