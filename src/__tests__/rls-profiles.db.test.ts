@@ -290,17 +290,33 @@ describe("renter profile fields and check constraints (S2-01, #82)", () => {
 
   it("rejects values outside the check constraint list with 23514 (check_violation)", async () => {
     const renter = await signedInAs(RENTER_EMAIL);
-
-    const { error: genderError } = await renter.client
+    const { data: current } = await renter.client
       .from("profiles")
-      .update({ gender: "InvalidGender" })
-      .eq("id", renter.userId);
-    expect(genderError?.code).toBe("23514");
+      .select("gender, occupation_status")
+      .eq("id", renter.userId)
+      .single();
 
-    const { error: occupationError } = await renter.client
-      .from("profiles")
-      .update({ occupation_status: "InvalidOccupation" })
-      .eq("id", renter.userId);
-    expect(occupationError?.code).toBe("23514");
+    try {
+      const { error: genderError } = await renter.client
+        .from("profiles")
+        .update({ gender: "InvalidGender" })
+        .eq("id", renter.userId);
+      expect(genderError?.code).toBe("23514");
+
+      const { error: occupationError } = await renter.client
+        .from("profiles")
+        .update({ occupation_status: "InvalidOccupation" })
+        .eq("id", renter.userId);
+      expect(occupationError?.code).toBe("23514");
+    } finally {
+      // Put the seed renter's values back if the CHECK constraints went missing.
+      await renter.client
+        .from("profiles")
+        .update({
+          gender: current?.gender,
+          occupation_status: current?.occupation_status,
+        })
+        .eq("id", renter.userId);
+    }
   });
 });

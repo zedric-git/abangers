@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Home, Loader2, User } from "lucide-react";
 import PhMobileNumberInput from "@/components/PhMobileNumberInput";
+import { profileSaveErrorMessage } from "@/lib/landlord-status-view";
 import {
   toPhMobileDigits,
   toStoredPhMobileNumber,
@@ -131,18 +132,15 @@ export default function RenterProfileForm() {
 
       if (saveError) {
         console.error("Renter profile save error:", saveError);
-        setError(
-          saveError.message || "Failed to save profile. Please try again.",
-        );
+        setError(profileSaveErrorMessage(saveError));
         return;
       }
 
       router.push("/dashboard/renter");
       router.refresh();
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to update profile";
-      setError(message);
+      console.error("Renter profile save exception:", err);
+      setError("We couldn't save your profile. Please try again.");
     } finally {
       setSubmitting(false);
     }

@@ -240,13 +240,14 @@ export default function LandlordAuthModal({
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             {!isLoginMode && (
               <>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                <fieldset className="m-0 space-y-1.5 border-0 p-0">
+                  <legend className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     I am a
-                  </label>
+                  </legend>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
+                      aria-pressed={role === "renter"}
                       onClick={() => setRole("renter")}
                       className={cn(
                         "flex h-10 items-center justify-center rounded-xl border text-xs font-semibold transition-colors",
@@ -259,6 +260,7 @@ export default function LandlordAuthModal({
                     </button>
                     <button
                       type="button"
+                      aria-pressed={role === "landlord"}
                       onClick={() => setRole("landlord")}
                       className={cn(
                         "flex h-10 items-center justify-center rounded-xl border text-xs font-semibold transition-colors",
@@ -270,7 +272,7 @@ export default function LandlordAuthModal({
                       Landlord
                     </button>
                   </div>
-                </div>
+                </fieldset>
 
                 <div className="space-y-1.5">
                   <input
