@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { LogOut, ShieldCheck } from "lucide-react";
 import DashboardSidebar, { NavItem } from "@/components/DashboardSidebar";
+import LogoutConfirmModal from "@/components/LogoutConfirmModal";
 import SignedInOnly from "@/components/SignedInOnly";
 import { logOut } from "@/lib/auth/log-out";
 import { ADMIN_DASHBOARD_PATH } from "@/lib/admin-review-view";
@@ -16,6 +18,8 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+
   const adminNavItems: NavItem[] = [
     {
       label: "Verifications",
@@ -25,8 +29,9 @@ export default function AdminLayout({
     {
       label: "Log Out",
       icon: LogOut,
-      // A hard navigation home, not router.push (src/lib/auth/log-out.ts).
-      onClick: logOut,
+      // Opens the confirmation dialog, which then calls logOut() for a
+      // hard navigation home (src/lib/auth/log-out.ts).
+      onClick: () => setIsLogoutOpen(true),
       isDanger: true,
       position: "bottom",
     },
@@ -45,6 +50,12 @@ export default function AdminLayout({
       <main className="custom-scrollbar bg-background flex-1 overflow-y-auto p-6 md:p-10">
         {children}
       </main>
+
+      <LogoutConfirmModal
+        isOpen={isLogoutOpen}
+        onClose={() => setIsLogoutOpen(false)}
+        onConfirm={logOut}
+      />
     </div>
   );
 }
