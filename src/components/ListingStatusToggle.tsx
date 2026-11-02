@@ -33,6 +33,28 @@ const STATUS_ICONS: Record<ListingStatus, LucideIcon> = {
   fully_occupied: XCircle,
 };
 
+/** Visual badge styling for the card matching prototype specifications. */
+const STATUS_BADGE_CONFIG: Record<
+  ListingStatus,
+  { label: string; badgeClassName: string }
+> = {
+  available: {
+    label: "ACTIVE",
+    badgeClassName:
+      "border-emerald-300 bg-emerald-50 text-emerald-600 hover:bg-emerald-100/60 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 dark:hover:bg-emerald-950/80",
+  },
+  almost_full: {
+    label: "ALMOST FULL",
+    badgeClassName:
+      "border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100/60 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-400 dark:hover:bg-amber-950/80",
+  },
+  fully_occupied: {
+    label: "OCCUPIED",
+    badgeClassName:
+      "border-rose-300 bg-rose-50 text-rose-600 hover:bg-rose-100/60 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-400 dark:hover:bg-rose-950/80",
+  },
+};
+
 /** When the action couldn't be reached at all (e.g. the connection dropped). */
 const UNEXPECTED_ERROR =
   "We couldn't change the status. Check your connection and try again.";
@@ -72,8 +94,7 @@ export default function ListingStatusToggle({
   const [pendingTargetStatus, setPendingTargetStatus] =
     useState<ListingStatus | null>(null);
 
-  const activeView = listingStatusView(status);
-  const ActiveIcon = STATUS_ICONS[status];
+  const badgeConfig = STATUS_BADGE_CONFIG[status];
 
   const executeStatusChange = async (targetStatus: ListingStatus) => {
     setUpdating(true);
@@ -127,16 +148,12 @@ export default function ListingStatusToggle({
           <button
             type="button"
             disabled={updating}
-            aria-label={`${activeView.label}. Change the status of ${listingTitle}`}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold whitespace-nowrap shadow-sm transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-60 dark:focus-visible:ring-offset-zinc-900 ${activeView.badgeClassName}`}
+            aria-label={`${badgeConfig.label}. Change the status of ${listingTitle}`}
+            className={`inline-flex items-center justify-center rounded-md border px-2.5 py-0.5 text-xs font-bold tracking-wider uppercase transition-colors focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:outline-none disabled:opacity-60 dark:focus-visible:ring-offset-zinc-900 ${badgeConfig.badgeClassName}`}
           >
-            {updating ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <ActiveIcon className="h-3.5 w-3.5" />
-            )}
-            <span>{activeView.label}</span>
-            <ChevronDown className="h-3 w-3 opacity-80" />
+            {updating && <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />}
+            <span>{badgeConfig.label}</span>
+            <ChevronDown className="ml-1 h-3 w-3 shrink-0 opacity-70" />
           </button>
         </DropdownMenuTrigger>
 

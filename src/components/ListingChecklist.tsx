@@ -60,45 +60,60 @@ const PRIMARY_BUTTON =
  * Try again. newListingPageView() (src/lib/landlord-status-view.ts)
  * decides which.
  *
- * No "use client": the page draws it on the server.
+ * Can also be rendered in-place inside the dashboard when unverified.
  */
 export default function ListingChecklist({
   view,
+  hideBackLink = false,
 }: {
   view: Exclude<NewListingPageView, { show: "form" }>;
+  hideBackLink?: boolean;
 }) {
   const isProblem = view.show === "problem";
   const HeaderIcon = isProblem ? AlertCircle : Lock;
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <Link
-        href="/dashboard/landlord"
-        className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-600 transition-colors hover:text-zinc-900 sm:text-sm dark:text-zinc-400 dark:hover:text-zinc-100"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Dashboard
-      </Link>
+    <div
+      className={cn(
+        hideBackLink ? "w-full space-y-4" : "mx-auto max-w-4xl space-y-6",
+      )}
+    >
+      {!hideBackLink && (
+        <Link
+          href="/dashboard/landlord"
+          className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-600 transition-colors hover:text-zinc-900 sm:text-sm dark:text-zinc-400 dark:hover:text-zinc-100"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Dashboard
+        </Link>
+      )}
 
       <section
         aria-labelledby="listing-checklist-title"
-        className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-2xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900"
+        className={cn(
+          "rounded-2xl border border-zinc-200 bg-white shadow-2xs dark:border-zinc-800 dark:bg-zinc-900",
+          hideBackLink ? "p-5 sm:p-6" : "p-6 sm:p-8",
+        )}
       >
         <div className="flex items-center gap-3">
           <div
             className={cn(
-              "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl",
+              "flex shrink-0 items-center justify-center rounded-xl",
+              hideBackLink ? "h-10 w-10" : "h-12 w-12",
               isProblem
                 ? "bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400"
                 : "bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-400",
             )}
           >
-            <HeaderIcon className="h-6 w-6" />
+            <HeaderIcon className={hideBackLink ? "h-5 w-5" : "h-6 w-6"} />
           </div>
           <div>
             <h1
               id="listing-checklist-title"
-              className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50"
+              className={cn(
+                "font-bold tracking-tight text-zinc-900 dark:text-zinc-50",
+                hideBackLink ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl",
+              )}
             >
               {isProblem
                 ? "We couldn't check your account"
@@ -113,7 +128,9 @@ export default function ListingChecklist({
         </div>
 
         {view.show === "checklist" ? (
-          <ol className="mt-8 space-y-3">
+          <ol
+            className={cn(hideBackLink ? "mt-5 space-y-2.5" : "mt-8 space-y-3")}
+          >
             {view.steps.map((step, index) => {
               const state = STEP_STATES[step.state];
               const StateIcon = state.icon;
@@ -121,7 +138,10 @@ export default function ListingChecklist({
               return (
                 <li
                   key={step.title}
-                  className="flex flex-col gap-4 rounded-2xl border border-zinc-200 p-4 sm:flex-row sm:items-center sm:p-5 dark:border-zinc-800"
+                  className={cn(
+                    "flex flex-col gap-3 rounded-xl border border-zinc-200 sm:flex-row sm:items-center dark:border-zinc-800",
+                    hideBackLink ? "p-3.5 sm:p-4" : "p-4 sm:p-5",
+                  )}
                 >
                   <div className="flex min-w-0 flex-1 items-start gap-3">
                     <StateIcon
