@@ -373,8 +373,8 @@ Three-tier flow: `feature/*` → `dev` → `main`.
   Open a PR into `dev` when ready; needs a passing CI check to merge.
   Don't delete the branch when it merges: keep every branch from the
   current sprint, on GitHub and locally, until the sprint is over (the
-  next sprint starts, or `dev` merges into `main`; see
-  "Sprint schedule"). Delete them after that.
+  next sprint starts, or `dev` merges into `main`). Delete them after
+  that.
 - **`dev` branch** — the repo's **default branch** and the integration
   branch for the sprint currently in progress. All `feature/*` branches
   merge here first. This is where we test and stabilize everything the
@@ -398,6 +398,11 @@ right after each exam window closes:
 | Sprint 1 | Now → Midterms        | Midterm Exams (Oct 5–10)  | After Oct 10         |
 | Sprint 2 | Midterms → Pre-Finals | Pre-Final Exams (Nov 5–7) | After Nov 7          |
 | Sprint 3 | Pre-Finals → Finals   | Final Exams (Dec 4–11)    | After Dec 11         |
+
+These dates often slip: unplanned class suspensions extend the sprints
+(Sprint 1 ran well past its dates). A sprint is over when the PM says
+the next one has started, or when `dev` merges into `main`, not when
+its date passes.
 
 If a sprint's features aren't all done and stable on `dev` by its exam
 window, that's a signal to descope for `main` rather than merge
