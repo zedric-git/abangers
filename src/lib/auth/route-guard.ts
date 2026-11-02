@@ -11,10 +11,14 @@
  *   #256), so only admins can open the admin dashboard;
  * - `/profile-setup`: landlords only (#233). A signed-out visitor used to
  *   be able to fill in the whole form before finding out there was no
- *   session, and a renter's save failed at 0007's role trigger.
+ *   session, and a renter's save failed at 0007's role trigger;
+ * - `/renter/profile-setup`: renters only, and only while their profile is
+ *   incomplete (S2-01). Complete renters and other roles are redirected
+ *   to their own dashboards.
  */
 
 const PROFILE_SETUP_PATH = "/profile-setup";
+const RENTER_PROFILE_SETUP_PATH = "/renter/profile-setup";
 
 /**
  * Where `resolvePostLoginPath` can send a landlord: their dashboard, or
@@ -30,7 +34,9 @@ function isUnder(pathname: string, base: string): boolean {
 /** Whether the proxy checks who's signed in before showing this page. */
 export function isGuardedPath(pathname: string): boolean {
   return (
-    isUnder(pathname, "/dashboard") || isUnder(pathname, PROFILE_SETUP_PATH)
+    isUnder(pathname, "/dashboard") ||
+    isUnder(pathname, PROFILE_SETUP_PATH) ||
+    isUnder(pathname, RENTER_PROFILE_SETUP_PATH)
   );
 }
 
@@ -39,8 +45,9 @@ export function isGuardedPath(pathname: string): boolean {
  *
  * - `signedIn`: whether the request has a user.
  * - `ownPath`: the path `resolvePostLoginPath` returned for that user
- *   (their own dashboard, or `/profile-setup` for a landlord whose profile
- *   row had to be recreated), or null when it found no usable role.
+ *   (their own dashboard, `/profile-setup` for landlords, or
+ *   `/renter/profile-setup` for incomplete renters), or null when it found
+ *   no usable role.
  */
 export function guardRedirect(
   pathname: string,
@@ -59,10 +66,16 @@ export function guardRedirect(
     return "/";
   }
 
-  // Profile setup is for landlords only. Everyone else goes to their own
-  // dashboard.
+  // Landlord profile setup is for landlords only. Everyone else goes to their own
+  // dashboard/path.
   if (isUnder(pathname, PROFILE_SETUP_PATH)) {
     return LANDLORD_PATHS.includes(ownPath) ? null : ownPath;
+  }
+
+  // Renter profile setup is for incomplete renters only. Complete renters and
+  // other roles go to their own dashboard.
+  if (isUnder(pathname, RENTER_PROFILE_SETUP_PATH)) {
+    return ownPath === RENTER_PROFILE_SETUP_PATH ? null : ownPath;
   }
 
   // A dashboard page: only the user's own.

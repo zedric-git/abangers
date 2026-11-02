@@ -164,6 +164,24 @@ join auth.users as u on u.email = v.email
 where p.id = u.id;
 
 
+-- ── 2b. Renter profiles: complete ───────────────────────────────────
+-- What a renter fills in on profile setup (S2-01). Mark seed renters
+-- complete with sample gender, status and contact numbers so tests and
+-- login go directly to /dashboard/renter. Admin profile is left alone.
+update public.profiles as p
+set contact_number    = v.contact_number,
+    email             = v.email,
+    gender            = v.gender,
+    occupation_status = v.occupation_status,
+    profile_completed = true
+from (
+  values
+    ('renter1@abangers.test', '09185550404', 'Female', 'Student'),
+    ('renter2@abangers.test', '09295550505', 'Male',   'Worker')
+) as v (email, contact_number, gender, occupation_status)
+join auth.users as u on u.email = v.email
+where p.id = u.id;
+
 -- ── 3. Landlord verification ────────────────────────────────────────
 -- "Verified" means the landlord has an approved landlord_verifications
 -- row (0008). Every run leaves the seed landlords with exactly this:
