@@ -13,6 +13,7 @@ export const LANDLORD_A_EMAIL = "landlord1@abangers.test";
 export const LANDLORD_B_EMAIL = "landlord2@abangers.test";
 export const LANDLORD_C_EMAIL = "landlord3@abangers.test";
 export const RENTER_EMAIL = "renter1@abangers.test";
+export const RENTER_B_EMAIL = "renter2@abangers.test";
 /** The seed admin (#255): the only admin, made by seed.sql (0014). */
 export const ADMIN_EMAIL = "admin@abangers.test";
 
