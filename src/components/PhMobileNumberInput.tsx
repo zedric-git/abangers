@@ -8,6 +8,8 @@ type PhMobileNumberInputProps = {
   /** The 10 digits after +63 ("9171234567"), not the saved "09..." form. */
   value: string;
   onChange: (digits: string) => void;
+  /** Whether the field is required by the form (defaults to true). */
+  required?: boolean;
   /** Extra classes for the box around the field, e.g. its height. */
   className?: string;
   "aria-describedby"?: string;
@@ -15,9 +17,9 @@ type PhMobileNumberInputProps = {
 };
 
 /**
- * The landlord's contact number: a fixed "+63", then the 10 digits after
- * it (#225). Used by ProfileSetupModal and LandlordProfileForm, which load
- * a saved number with toPhMobileDigits() and save
+ * The landlord or renter contact number: a fixed "+63", then the 10 digits after
+ * it (#225, S2-01). Used by ProfileSetupModal, LandlordProfileForm, and RenterProfileForm,
+ * which load a saved number with toPhMobileDigits() and save
  * toStoredPhMobileNumber(value) (src/lib/ph-mobile-number.ts).
  *
  * - inputMode="numeric" opens the number pad on phones (digits only).
@@ -31,6 +33,7 @@ export default function PhMobileNumberInput({
   id,
   value,
   onChange,
+  required = true,
   className,
   "aria-describedby": ariaDescribedBy,
   "aria-labelledby": ariaLabelledBy,
@@ -55,7 +58,7 @@ export default function PhMobileNumberInput({
         type="tel"
         inputMode="numeric"
         autoComplete="tel"
-        required
+        required={required}
         placeholder="9171234567"
         aria-describedby={ariaDescribedBy}
         aria-labelledby={ariaLabelledBy}

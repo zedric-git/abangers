@@ -249,3 +249,74 @@ describe("profiles name lock", () => {
     }
   });
 });
+
+describe("renter profile fields and check constraints (S2-01, #82)", () => {
+  it("a renter can save their own gender and occupation_status", async () => {
+    const renter = await signedInAs(RENTER_EMAIL);
+
+    const { data: current, error: readError } = await renter.client
+      .from("profiles")
+      .select("gender, occupation_status")
+      .eq("id", renter.userId)
+      .single();
+    expect(readError).toBeNull();
+
+    try {
+      const { data, error } = await renter.client
+        .from("profiles")
+        .update({
+          gender: "Prefer not to say",
+          occupation_status: "Student & Worker",
+        })
+        .eq("id", renter.userId)
+        .select("gender, occupation_status");
+
+      expect(error).toBeNull();
+      expect(data?.[0]).toEqual({
+        gender: "Prefer not to say",
+        occupation_status: "Student & Worker",
+      });
+    } finally {
+      // Put the seed renter's values back so shared data is unchanged.
+      await renter.client
+        .from("profiles")
+        .update({
+          gender: current?.gender,
+          occupation_status: current?.occupation_status,
+        })
+        .eq("id", renter.userId);
+    }
+  });
+
+  it("rejects values outside the check constraint list with 23514 (check_violation)", async () => {
+    const renter = await signedInAs(RENTER_EMAIL);
+    const { data: current } = await renter.client
+      .from("profiles")
+      .select("gender, occupation_status")
+      .eq("id", renter.userId)
+      .single();
+
+    try {
+      const { error: genderError } = await renter.client
+        .from("profiles")
+        .update({ gender: "InvalidGender" })
+        .eq("id", renter.userId);
+      expect(genderError?.code).toBe("23514");
+
+      const { error: occupationError } = await renter.client
+        .from("profiles")
+        .update({ occupation_status: "InvalidOccupation" })
+        .eq("id", renter.userId);
+      expect(occupationError?.code).toBe("23514");
+    } finally {
+      // Put the seed renter's values back if the CHECK constraints went missing.
+      await renter.client
+        .from("profiles")
+        .update({
+          gender: current?.gender,
+          occupation_status: current?.occupation_status,
+        })
+        .eq("id", renter.userId);
+    }
+  });
+});

@@ -192,12 +192,12 @@ https://github.com/users/zedric-git/projects/3
   the PC, and add a port forwarding rule from `3000` to
   `localhost:3000`. Then open `http://localhost:3000` in Chrome on the
   phone. An iPhone needs real https.
-- **`/dashboard/*` and `/profile-setup` are guarded in the proxy, and
+- **`/dashboard/*`, `/profile-setup` and `/renter/profile-setup` are guarded in the proxy, and
   logout must be a hard navigation.** `updateSession` in
   `src/lib/supabase/middleware.ts` sends signed-out users to the home
   page (`/`), keeps each role on its own dashboard (via
   `resolvePostLoginPath`), and lets only landlords open `/profile-setup`
-  (#233). The decision is `guardRedirect` in
+  (#233), and keeps incomplete renters on `/renter/profile-setup` (S2-01). The decision is `guardRedirect` in
   `src/lib/auth/route-guard.ts`; guard a new page there. Each role's
   dashboard is `/dashboard/<role>` (renter, landlord, admin). Logout is
   `logOut()` in `src/lib/auth/log-out.ts`, which every dashboard layout's
@@ -208,7 +208,7 @@ https://github.com/users/zedric-git/projects/3
   history, and Back can show the browser's own copy of one without
   asking the server (it did in `next dev`, #252). `SignedInOnly`
   (`src/components/SignedInOnly.tsx`) sends a signed-out browser home
-  from such a copy: the landlord and admin layouts and `/profile-setup`
+  from such a copy: the landlord and admin layouts, `/profile-setup` and `/renter/profile-setup`
   render it, and any new page that shows a signed-in user's data outside
   them (e.g. the renter dashboard's layout) should too.
 - **There are no `/login` or `/signup` pages.** Login and sign-up both
@@ -226,9 +226,9 @@ https://github.com/users/zedric-git/projects/3
   logic lives in shared helpers — validation (`loginSchema` /
   `signUpSchema` in `src/lib/validations/auth.ts`), sign-up
   (`signUpWithProfile` in `src/lib/auth/sign-up.ts`) and post-login
-  routing (`resolvePostLoginPath` in `src/lib/auth/post-login.ts`). Renter
-  sign-up (Sprint 2) should extend the modal with those helpers rather
-  than bring back a second auth form.
+  routing (`resolvePostLoginPath` in `src/lib/auth/post-login.ts`). Both renter
+  and landlord sign-up extend the modal with those helpers (S2-01) rather
+  than having a second auth form.
 - **Write invisible characters as escapes, never raw.** A no-break
   space, a zero-width space, a byte order mark, a text-direction mark
   and the like look like a normal space, or like nothing at all, in an
