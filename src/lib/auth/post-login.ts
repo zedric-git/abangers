@@ -18,7 +18,8 @@ import {
  * putting people on the wrong side of the app. Now:
  *
  *   1. profiles row exists      → go to that role's dashboard (renter,
- *                                 landlord or admin)
+ *                                 landlord or admin), or to /renter/profile-setup
+ *                                 if the renter has not completed their profile yet (S2-01)
  *   2. no row, but sign-up saved the role in auth user metadata
  *                               → recreate the row from it, then continue
  *   3. no row and no saved role → show an error; never guess
@@ -82,8 +83,19 @@ const DASHBOARDS: Record<Role, string> = {
   admin: "/dashboard/admin",
 };
 
-function dashboardFor(role: Role): string {
+export function dashboardFor(role: Role): string {
   return DASHBOARDS[role];
+}
+
+/**
+ * Resolves the destination path for a given role and profile completion status.
+ * Renters who haven't completed their profile go to /renter/profile-setup (S2-01).
+ */
+export function pathForRole(role: Role, profileCompleted?: boolean): string {
+  if (role === "renter" && !profileCompleted) {
+    return "/renter/profile-setup";
+  }
+  return dashboardFor(role);
 }
 
 /** Looks up the user's role (repairing a missing profile row if possible). */
@@ -93,7 +105,7 @@ export async function resolvePostLoginPath(
 ): Promise<PostLoginResult> {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, profile_completed")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -115,7 +127,10 @@ export async function resolvePostLoginPath(
   }
 
   if (decision.kind === "dashboard") {
-    return { ok: true, path: dashboardFor(decision.role) };
+    return {
+      ok: true,
+      path: pathForRole(decision.role, profile?.profile_completed),
+    };
   }
 
   // decision.kind === "recreate-profile": the user is signed in now, so
@@ -131,11 +146,11 @@ export async function resolvePostLoginPath(
     return { ok: false, message: MISSING_PROFILE_MESSAGE };
   }
 
-  // A recreated landlord profile has no contact details yet, so send
-  // landlords through profile setup (same as a brand-new landlord).
+  // A recreated profile has no contact or profile details yet, so send
+  // users through their role's setup page.
   return {
     ok: true,
     path:
-      decision.role === "landlord" ? "/profile-setup" : dashboardFor("renter"),
+      decision.role === "landlord" ? "/profile-setup" : "/renter/profile-setup",
   };
 }

@@ -182,8 +182,10 @@ export type Database = {
           email: string | null;
           facebook_url: string | null;
           full_name: string | null;
+          gender: string | null;
           id: string;
           instagram_url: string | null;
+          occupation_status: string | null;
           profile_completed: boolean;
           role: string;
           x_url: string | null;
@@ -194,8 +196,10 @@ export type Database = {
           email?: string | null;
           facebook_url?: string | null;
           full_name?: string | null;
+          gender?: string | null;
           id: string;
           instagram_url?: string | null;
+          occupation_status?: string | null;
           profile_completed?: boolean;
           role: string;
           x_url?: string | null;
@@ -206,8 +210,10 @@ export type Database = {
           email?: string | null;
           facebook_url?: string | null;
           full_name?: string | null;
+          gender?: string | null;
           id?: string;
           instagram_url?: string | null;
+          occupation_status?: string | null;
           profile_completed?: boolean;
           role?: string;
           x_url?: string | null;
