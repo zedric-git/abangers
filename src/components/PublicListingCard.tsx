@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Building, MapPin, Users } from "lucide-react";
-import type { Listing } from "@/types/listing";
+import type { ListingPreview } from "@/types/listing";
 import { listingStatusView } from "@/lib/listing-status-view";
 
 interface PublicListingCardProps {
-  listing: Listing;
+  listing: ListingPreview;
   /**
    * Optional action button slot in top corner (e.g. favorite toggle from #96).
    */

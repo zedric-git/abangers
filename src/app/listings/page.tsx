@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { AlertCircle, Home } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { dashboardFor, parseRole } from "@/lib/auth/post-login";
 import { parseSearchQuery } from "@/lib/search-listings";
+import type { ListingPreview } from "@/types/listing";
 import PublicListingsView from "@/components/PublicListingsView";
 
 interface ListingsPageProps {
@@ -14,6 +16,9 @@ export const metadata = {
     "Search boarding houses, bedspaces, and apartments for rent near universities and workplaces in Cebu.",
 };
 
+const PUBLIC_LISTING_COLUMNS =
+  "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, created_at";
+
 export default async function ListingsPage({
   searchParams,
 }: ListingsPageProps) {
@@ -22,10 +27,15 @@ export default async function ListingsPage({
 
   const supabase = await createClient();
 
-  const { data: rawListings, error } = await supabase
-    .from("listings")
-    .select("*")
-    .order("created_at", { ascending: false });
+  // Load public available listings and current user session in parallel
+  const [{ data: rawListings, error }, { data: authData }] = await Promise.all([
+    supabase
+      .from("listings")
+      .select(PUBLIC_LISTING_COLUMNS)
+      .in("availability_status", ["available", "almost_full"])
+      .order("created_at", { ascending: false }),
+    supabase.auth.getUser(),
+  ]);
 
   if (error) {
     console.error("Failed to load listings:", error);
@@ -49,6 +59,23 @@ export default async function ListingsPage({
       </div>
     );
   }
+
+  // Look up dashboard link if signed in (#14)
+  let dashboardPath: string | null = null;
+  if (authData?.user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", authData.user.id)
+      .maybeSingle();
+
+    const role = parseRole(profile?.role);
+    if (role) {
+      dashboardPath = dashboardFor(role);
+    }
+  }
+
+  const listings = (rawListings ?? []) as ListingPreview[];
 
   return (
     <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 dark:bg-black dark:text-zinc-100">
@@ -74,6 +101,14 @@ export default async function ListingsPage({
             >
               Home
             </Link>
+            {dashboardPath && (
+              <Link
+                href={dashboardPath}
+                className="rounded-xl bg-purple-50 px-3.5 py-2 text-sm font-semibold text-purple-700 transition-colors hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/50"
+              >
+                My Dashboard
+              </Link>
+            )}
           </nav>
         </div>
       </header>
@@ -81,7 +116,7 @@ export default async function ListingsPage({
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <PublicListingsView
-          initialListings={rawListings ?? []}
+          initialListings={listings}
           initialQuery={initialQuery}
         />
       </main>

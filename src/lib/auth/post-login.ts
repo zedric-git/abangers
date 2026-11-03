@@ -82,7 +82,7 @@ const DASHBOARDS: Record<Role, string> = {
   admin: "/dashboard/admin",
 };
 
-function dashboardFor(role: Role): string {
+export function dashboardFor(role: Role): string {
   return DASHBOARDS[role];
 }
 

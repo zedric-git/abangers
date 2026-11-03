@@ -1,15 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { SearchX } from "lucide-react";
-import type { Listing } from "@/types/listing";
+import type { ListingPreview } from "@/types/listing";
 import { filterListings } from "@/lib/search-listings";
 import ListingSearchBar from "@/components/ListingSearchBar";
 import PublicListingCard from "@/components/PublicListingCard";
 
 interface PublicListingsViewProps {
-  initialListings: Listing[];
+  initialListings: ListingPreview[];
   initialQuery?: string;
 }
 
@@ -17,15 +16,14 @@ interface PublicListingsViewProps {
  * Interactive public listings view (S2-04, #87, #88).
  *
  * Performs instant in-memory filtering across the preloaded public listings,
- * while keeping the URL query parameter `?q=` in sync in the background.
+ * while keeping the URL query parameter `?q=` in sync via the native History API
+ * without triggering Next.js server re-fetches.
  */
 export default function PublicListingsView({
   initialListings,
   initialQuery = "",
 }: PublicListingsViewProps) {
-  const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
-  const [, startTransition] = useTransition();
 
   // Instant in-memory keyword matching (0ms latency)
   const visibleListings = filterListings(initialListings, query);
@@ -34,13 +32,11 @@ export default function PublicListingsView({
     const trimmed = newTerm.trim();
     setQuery(trimmed);
 
-    // Sync URL in the background without blocking the UI
-    startTransition(() => {
-      const url = trimmed
-        ? `/listings?q=${encodeURIComponent(trimmed)}`
-        : "/listings";
-      router.replace(url, { scroll: false });
-    });
+    // Updates the address bar without triggering a Next.js server re-fetch
+    const url = trimmed
+      ? `/listings?q=${encodeURIComponent(trimmed)}`
+      : "/listings";
+    window.history.replaceState(null, "", url);
   };
 
   const handleClear = () => {
@@ -110,7 +106,7 @@ export default function PublicListingsView({
               <PublicListingCard key={listing.id} listing={listing} />
             ))}
           </div>
-        ) : (
+        ) : query ? (
           <div className="mx-auto flex max-w-md flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-200 bg-white/50 p-12 text-center dark:border-zinc-800 dark:bg-zinc-900/50">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
               <SearchX className="h-7 w-7" />
@@ -131,6 +127,19 @@ export default function PublicListingsView({
                 View all listings
               </button>
             </div>
+          </div>
+        ) : (
+          <div className="mx-auto flex max-w-md flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-200 bg-white/50 p-12 text-center dark:border-zinc-800 dark:bg-zinc-900/50">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500">
+              <SearchX className="h-7 w-7" />
+            </div>
+            <h3 className="mt-4 text-base font-bold text-zinc-900 dark:text-zinc-100">
+              No listings yet
+            </h3>
+            <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+              There are currently no available boarding houses or rooms listed.
+              Please check back soon!
+            </p>
           </div>
         )}
       </div>
