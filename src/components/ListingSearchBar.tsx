@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { Search, X } from "lucide-react";
 
 interface ListingSearchBarProps {
+  value?: string;
+  onSearch?: (term: string) => void;
+  onClear?: () => void;
   placeholder?: string;
   className?: string;
 }
@@ -13,48 +15,36 @@ interface ListingSearchBarProps {
  * Search bar for public listings (S2-04, #87).
  *
  * Allows renters and guests to search listings by city, street, university,
- * or workplace keyword. Updates the `?q=` URL search parameter on submit
- * or clear, while preserving any other existing query parameters.
+ * or workplace keyword. Dispatches immediate search and clear events.
  */
 export default function ListingSearchBar({
+  value = "",
+  onSearch,
+  onClear,
   placeholder = "Search by city, street, university (e.g. USC), or workplace (e.g. IT Park)...",
   className = "",
 }: ListingSearchBarProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const currentQuery = searchParams.get("q") ?? "";
+  const [term, setTerm] = useState(value);
+  const [prevValue, setPrevValue] = useState(value);
 
-  const [term, setTerm] = useState(currentQuery);
-  const [prevQuery, setPrevQuery] = useState(currentQuery);
-
-  // Sync state during render when URL search params change (e.g. back/forward navigation)
-  if (prevQuery !== currentQuery) {
-    setPrevQuery(currentQuery);
-    setTerm(currentQuery);
+  // Sync state if external value prop changes
+  if (prevValue !== value) {
+    setPrevValue(value);
+    setTerm(value);
   }
-
-  const updateSearch = (newTerm: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    const trimmed = newTerm.trim();
-
-    if (trimmed) {
-      params.set("q", trimmed);
-    } else {
-      params.delete("q");
-    }
-
-    const qs = params.toString();
-    router.push(qs ? `/listings?${qs}` : "/listings");
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    updateSearch(term);
+    onSearch?.(term);
   };
 
   const handleClear = () => {
     setTerm("");
-    updateSearch("");
+    if (onClear) {
+      onClear();
+    } else {
+      onSearch?.("");
+    }
   };
 
   return (
@@ -88,7 +78,7 @@ export default function ListingSearchBar({
             type="button"
             onClick={handleClear}
             aria-label="Clear search"
-            className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+            className="absolute inset-y-0 right-0 flex cursor-pointer items-center pr-3.5 text-zinc-400 transition-colors hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
           >
             <X className="h-4 w-4" />
           </button>
