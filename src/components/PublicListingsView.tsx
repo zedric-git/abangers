@@ -1,15 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { SearchX } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
-import { filterListings } from "@/lib/search-listings";
+import { filterListings, parseSearchQuery } from "@/lib/search-listings";
 import ListingSearchBar from "@/components/ListingSearchBar";
 import PublicListingCard from "@/components/PublicListingCard";
 
 interface PublicListingsViewProps {
   initialListings: ListingPreview[];
-  initialQuery?: string;
 }
 
 /**
@@ -18,19 +17,20 @@ interface PublicListingsViewProps {
  * Performs instant in-memory filtering across the preloaded public listings,
  * while keeping the URL query parameter `?q=` in sync via the native History API
  * without triggering Next.js server re-fetches.
+ * Reads search term directly from `useSearchParams` so browser Back/Forward
+ * restores the exact active search filter.
  */
 export default function PublicListingsView({
   initialListings,
-  initialQuery = "",
 }: PublicListingsViewProps) {
-  const [query, setQuery] = useState(initialQuery);
+  const searchParams = useSearchParams();
+  const query = parseSearchQuery(searchParams.get("q") ?? "");
 
   // Instant in-memory keyword matching (0ms latency)
   const visibleListings = filterListings(initialListings, query);
 
   const handleSearch = (newTerm: string) => {
     const trimmed = newTerm.trim();
-    setQuery(trimmed);
 
     // Updates the address bar without triggering a Next.js server re-fetch
     const url = trimmed

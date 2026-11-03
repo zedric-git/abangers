@@ -1,14 +1,9 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { AlertCircle, Home } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { dashboardFor, parseRole } from "@/lib/auth/post-login";
-import { parseSearchQuery } from "@/lib/search-listings";
-import type { ListingPreview } from "@/types/listing";
 import PublicListingsView from "@/components/PublicListingsView";
-
-interface ListingsPageProps {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
 
 export const metadata = {
   title: "Browse Listings | Abangers",
@@ -19,12 +14,7 @@ export const metadata = {
 const PUBLIC_LISTING_COLUMNS =
   "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, created_at";
 
-export default async function ListingsPage({
-  searchParams,
-}: ListingsPageProps) {
-  const resolvedParams = await searchParams;
-  const initialQuery = parseSearchQuery(resolvedParams);
-
+export default async function ListingsPage() {
   const supabase = await createClient();
 
   // Load public available listings and current user session in parallel
@@ -75,7 +65,7 @@ export default async function ListingsPage({
     }
   }
 
-  const listings = (rawListings ?? []) as ListingPreview[];
+  const listings = rawListings ?? [];
 
   return (
     <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 dark:bg-black dark:text-zinc-100">
@@ -115,10 +105,9 @@ export default async function ListingsPage({
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <PublicListingsView
-          initialListings={listings}
-          initialQuery={initialQuery}
-        />
+        <Suspense fallback={null}>
+          <PublicListingsView initialListings={listings} />
+        </Suspense>
       </main>
     </div>
   );
