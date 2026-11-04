@@ -13,3 +13,27 @@ import type { Database } from "@/types/database";
  * `listingRowToFormValues` (src/lib/validations/listing.ts).
  */
 export type Listing = Database["public"]["Tables"]["listings"]["Row"];
+
+/**
+ * The subset of columns sent to the public browse page (S2-04, #14).
+ * Excludes private or full details (contact_info, coordinates, house_rules)
+ * which are reserved for signed-in detail views (#19).
+ */
+export type ListingPreview = Pick<
+  Listing,
+  | "id"
+  | "title"
+  | "monthly_rent"
+  | "available_rooms"
+  | "total_rooms"
+  | "property_type"
+  | "occupancy_type"
+  | "allowed_gender"
+  | "address"
+  | "city"
+  | "description"
+  | "cover_image"
+  | "images"
+  | "availability_status"
+  | "created_at"
+>;
