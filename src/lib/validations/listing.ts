@@ -201,13 +201,3 @@ export function listingRowToFormValues(row: Listing): Partial<ListingInput> {
     availability_status: parseAvailabilityStatus(row.availability_status),
   };
 }
-
-/**
- * URL query parameters for public listing search (S2-04, #14).
- * Trims input and caps at 100 characters to prevent malformed queries.
- */
-export const listingSearchSchema = z.object({
-  q: z.string().trim().max(100, "Search query too long").optional().default(""),
-});
-
-export type ListingSearchInput = z.infer<typeof listingSearchSchema>;

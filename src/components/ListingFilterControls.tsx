@@ -141,7 +141,10 @@ export default function ListingFilterControls({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* 1. Max Rent Filter */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+            <label
+              htmlFor="filter-max-rent"
+              className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300"
+            >
               <Banknote className="h-3.5 w-3.5 text-zinc-400" />
               <span>Max Monthly Rent</span>
             </label>
@@ -154,6 +157,7 @@ export default function ListingFilterControls({
                   ₱
                 </span>
                 <input
+                  id="filter-max-rent"
                   type="number"
                   min={1}
                   step={100}
@@ -197,6 +201,8 @@ export default function ListingFilterControls({
                   <button
                     key={preset.value}
                     type="button"
+                    aria-pressed={isSelected}
+                    aria-label={preset.label}
                     onClick={() => {
                       if (isSelected) {
                         setCustomRentInput("");
@@ -221,7 +227,10 @@ export default function ListingFilterControls({
 
           {/* 2. Property Type Filter */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+            <label
+              htmlFor="filter-property-type"
+              className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300"
+            >
               <Building className="h-3.5 w-3.5 text-zinc-400" />
               <span>Property Type</span>
             </label>
@@ -235,7 +244,10 @@ export default function ListingFilterControls({
                   );
                 }}
               >
-                <SelectTrigger className="h-9 text-xs">
+                <SelectTrigger
+                  id="filter-property-type"
+                  className="h-9 text-xs"
+                >
                   <SelectValue placeholder="All Property Types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -252,7 +264,10 @@ export default function ListingFilterControls({
 
           {/* 3. Occupancy Type Filter */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+            <label
+              htmlFor="filter-occupancy"
+              className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300"
+            >
               <Users className="h-3.5 w-3.5 text-zinc-400" />
               <span>Room / Occupancy</span>
             </label>
@@ -266,7 +281,7 @@ export default function ListingFilterControls({
                   );
                 }}
               >
-                <SelectTrigger className="h-9 text-xs">
+                <SelectTrigger id="filter-occupancy" className="h-9 text-xs">
                   <SelectValue placeholder="All Room Types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -283,7 +298,10 @@ export default function ListingFilterControls({
 
           {/* 4. Allowed Gender Policy Filter */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+            <label
+              htmlFor="filter-gender"
+              className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300"
+            >
               <UserCheck className="h-3.5 w-3.5 text-zinc-400" />
               <span>Allowed Gender</span>
             </label>
@@ -297,7 +315,7 @@ export default function ListingFilterControls({
                   );
                 }}
               >
-                <SelectTrigger className="h-9 text-xs">
+                <SelectTrigger id="filter-gender" className="h-9 text-xs">
                   <SelectValue placeholder="All Genders" />
                 </SelectTrigger>
                 <SelectContent>
