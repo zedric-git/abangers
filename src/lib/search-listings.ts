@@ -1,5 +1,4 @@
 import type { Listing } from "@/types/listing";
-import { listingSearchSchema } from "@/lib/validations/listing";
 
 /**
  * The listing fields searched by keyword (S2-04, #88).
@@ -48,32 +47,4 @@ export function matchesListingSearch(
   }
 
   return tokens.every((token) => searchableText.includes(token));
-}
-
-/**
- * Filters an array of listings by keyword search query (S2-04, #88).
- */
-export function filterListings<T extends SearchableListing>(
-  listings: T[],
-  query: string,
-): T[] {
-  const trimmed = query.trim();
-  if (!trimmed) {
-    return listings;
-  }
-  return listings.filter((listing) => matchesListingSearch(listing, trimmed));
-}
-
-/**
- * Parses and sanitizes a search query string or URL search parameters object (S2-04, #88).
- * Falls back to an empty string on invalid or overly long input.
- */
-export function parseSearchQuery(searchParams: unknown): string {
-  const result = listingSearchSchema.safeParse(
-    typeof searchParams === "object" && searchParams !== null
-      ? searchParams
-      : { q: searchParams },
-  );
-
-  return result.success ? result.data.q : "";
 }

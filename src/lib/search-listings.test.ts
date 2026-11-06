@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  filterListings,
   matchesListingSearch,
-  parseSearchQuery,
   type SearchableListing,
 } from "./search-listings";
 
@@ -107,51 +105,5 @@ describe("matchesListingSearch (S2-04, #88)", () => {
 
   it("returns false when nothing matches", () => {
     expect(matchesListingSearch(sampleListings[0], "Davao City")).toBe(false);
-  });
-});
-
-describe("filterListings (S2-04, #88)", () => {
-  it("returns all listings when query is empty", () => {
-    const results = filterListings(sampleListings, "");
-    expect(results).toHaveLength(5);
-  });
-
-  it("filters listings matching the search term", () => {
-    const uscResults = filterListings(sampleListings, "USC");
-    expect(uscResults).toHaveLength(1);
-    expect(uscResults[0].title).toContain("USC");
-
-    const cebuCityResults = filterListings(sampleListings, "Cebu City");
-    expect(cebuCityResults).toHaveLength(4);
-
-    const mandaueResults = filterListings(sampleListings, "Mandaue");
-    expect(mandaueResults).toHaveLength(1);
-    expect(mandaueResults[0].city).toBe("Mandaue City");
-  });
-
-  it("returns an empty array when no listings match", () => {
-    const results = filterListings(sampleListings, "NonExistentPlace12345");
-    expect(results).toEqual([]);
-  });
-});
-
-describe("parseSearchQuery (S2-04, #88)", () => {
-  it("extracts and trims query from search params object", () => {
-    expect(parseSearchQuery({ q: "  IT Park  " })).toBe("IT Park");
-  });
-
-  it("handles string input directly", () => {
-    expect(parseSearchQuery("  USC  ")).toBe("USC");
-  });
-
-  it("falls back to empty string on missing or invalid params", () => {
-    expect(parseSearchQuery({})).toBe("");
-    expect(parseSearchQuery(null)).toBe("");
-    expect(parseSearchQuery(undefined)).toBe("");
-  });
-
-  it("falls back to empty string when query exceeds 100 characters", () => {
-    const tooLong = "x".repeat(101);
-    expect(parseSearchQuery({ q: tooLong })).toBe("");
   });
 });

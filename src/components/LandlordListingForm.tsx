@@ -16,7 +16,16 @@ import {
   Pencil,
   Send,
 } from "lucide-react";
-import { listingSchema, ListingInput } from "@/lib/validations/listing";
+import {
+  listingSchema,
+  ListingInput,
+  PROPERTY_TYPES,
+  OCCUPANCY_TYPES,
+  GENDER_POLICIES,
+  type PropertyType,
+  type OccupancyType,
+  type GenderPolicy,
+} from "@/lib/validations/listing";
 import ImageUploader from "@/components/ImageUploader";
 import ListingDetailView from "@/components/ListingDetailView";
 import ListingSaveErrorModal, {
@@ -39,18 +48,6 @@ import {
   formatHouseRules,
   STANDARD_HOUSE_RULES,
 } from "@/lib/house-rules";
-
-const PROPERTY_TYPES = [
-  "Boarding House",
-  "Apartment",
-  "Dormitory",
-  "House",
-  "Condo",
-];
-
-const OCCUPANCY_TYPES = ["Bedspace", "Single Room", "Shared Room", "Studio"];
-
-const GENDER_POLICIES = ["Any / Co-ed", "Male Only", "Female Only"];
 
 // 7 checklist categories from prototype specification
 const AMENITIES_OPTIONS = ["Has Parking"];
@@ -616,7 +613,9 @@ export default function LandlordListingForm({
                   <Select
                     value={propertyTypeValue}
                     onValueChange={(val) =>
-                      setValue("property_type", val, { shouldValidate: true })
+                      setValue("property_type", val as PropertyType, {
+                        shouldValidate: true,
+                      })
                     }
                   >
                     <SelectTrigger className="mt-1.5">
@@ -639,7 +638,9 @@ export default function LandlordListingForm({
                   <Select
                     value={occupancyTypeValue}
                     onValueChange={(val) =>
-                      setValue("occupancy_type", val, { shouldValidate: true })
+                      setValue("occupancy_type", val as OccupancyType, {
+                        shouldValidate: true,
+                      })
                     }
                   >
                     <SelectTrigger className="mt-1.5">
@@ -662,7 +663,9 @@ export default function LandlordListingForm({
                   <Select
                     value={allowedGenderValue}
                     onValueChange={(val) =>
-                      setValue("allowed_gender", val, { shouldValidate: true })
+                      setValue("allowed_gender", val as GenderPolicy, {
+                        shouldValidate: true,
+                      })
                     }
                   >
                     <SelectTrigger className="mt-1.5">

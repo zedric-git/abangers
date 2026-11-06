@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { Listing } from "@/types/listing";
 import {
   availabilityStatusSchema,
-  listingSearchSchema,
   listingRowToFormValues,
   listingSchema,
   parseAvailabilityStatus,
@@ -181,27 +180,5 @@ describe("listingRowToFormValues", () => {
     });
     expect(values.available_rooms).toBe(0);
     expect(values.availability_status).toBe("fully_occupied");
-  });
-});
-
-describe("listingSearchSchema (S2-04, #88)", () => {
-  it("defaults empty input to an empty search query", () => {
-    expect(listingSearchSchema.parse({})).toEqual({ q: "" });
-  });
-
-  it("trims whitespace from the search term", () => {
-    expect(listingSearchSchema.parse({ q: "  USC Talamban   " })).toEqual({
-      q: "USC Talamban",
-    });
-  });
-
-  it("rejects search terms longer than 100 characters", () => {
-    const tooLong = "a".repeat(101);
-    expect(listingSearchSchema.safeParse({ q: tooLong }).success).toBe(false);
-  });
-
-  it("accepts valid search queries up to 100 characters", () => {
-    const maxValid = "a".repeat(100);
-    expect(listingSearchSchema.safeParse({ q: maxValid }).success).toBe(true);
   });
 });
