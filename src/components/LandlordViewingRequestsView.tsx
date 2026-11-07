@@ -7,7 +7,6 @@ import {
   Search,
   CheckCircle2,
   XCircle,
-  AlertCircle,
   Building2,
   Settings,
   Calendar,
@@ -161,20 +160,34 @@ const initialRequests: ViewingRequest[] = [
   },
 ];
 
+const VIEWING_TABS = [
+  { value: "all", label: "All Requests" },
+  { value: "pending", label: "Pending" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "completed", label: "Completed" },
+  { value: "declined", label: "Declined" },
+] as const;
+
+type ViewingTab = (typeof VIEWING_TABS)[number]["value"];
+
 export default function LandlordViewingRequestsView() {
   const [requests, setRequests] = useState<ViewingRequest[]>(initialRequests);
-  const [activeTab, setActiveTab] = useState<
-    "pending" | "confirmed" | "completed" | "declined" | "availability"
-  >("pending");
+  const [activeTab, setActiveTab] = useState<ViewingTab | "availability">(
+    "all",
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [propertyFilter, setPropertyFilter] = useState("all");
 
-  const counts = {
+  const tabCounts = {
+    all: requests.length,
     pending: requests.filter((r) => r.status === "pending").length,
     confirmed: requests.filter((r) => r.status === "confirmed").length,
     completed: requests.filter((r) => r.status === "completed").length,
     declined: requests.filter((r) => r.status === "declined").length,
   };
+
+  const currentTabObj =
+    VIEWING_TABS.find((t) => t.value === activeTab) ?? VIEWING_TABS[0];
 
   const handleUpdateStatus = (
     id: string,
@@ -187,9 +200,11 @@ export default function LandlordViewingRequestsView() {
 
   const filtered = requests.filter((r) => {
     const matchesTab =
-      activeTab === "declined"
-        ? r.status === "declined"
-        : r.status === activeTab;
+      activeTab === "all" || activeTab === "availability"
+        ? true
+        : activeTab === "declined"
+          ? r.status === "declined"
+          : r.status === activeTab;
     const matchesProp =
       propertyFilter === "all" || r.propertyId === propertyFilter;
     const q = searchQuery.toLowerCase();
@@ -219,7 +234,7 @@ export default function LandlordViewingRequestsView() {
             </h1>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400"></span>
-              {counts.pending} Pending
+              {tabCounts.pending} Pending
             </span>
           </div>
         </div>
@@ -227,9 +242,7 @@ export default function LandlordViewingRequestsView() {
         <button
           type="button"
           onClick={() =>
-            setActiveTab(
-              activeTab === "availability" ? "pending" : "availability",
-            )
+            setActiveTab(activeTab === "availability" ? "all" : "availability")
           }
           className="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 text-xs font-semibold text-zinc-800 shadow-2xs transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
         >
@@ -240,94 +253,77 @@ export default function LandlordViewingRequestsView() {
         </button>
       </div>
 
-      {/* KPI Overview Strip */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-        <div
-          onClick={() => setActiveTab("pending")}
-          className={`cursor-pointer rounded-2xl border p-4 transition-all ${
-            activeTab === "pending"
-              ? "border-amber-500/50 bg-amber-50/50 ring-2 ring-amber-500/20 dark:bg-amber-950/20"
-              : "border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-              Pending
-            </span>
-            <AlertCircle className="h-4 w-4 text-amber-500" />
-          </div>
-          <div className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {counts.pending}
-          </div>
-          <span className="text-[11px] text-amber-600 dark:text-amber-400">
-            Needs response
+      {/* FILTER BY STATUS / METRIC & Search (Exact Match to Pic 2 / LandlordListingsView format) */}
+      <div className="space-y-3">
+        {/* Header & Viewing indicator */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+            FILTER BY STATUS / METRIC
+          </span>
+          <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+            Viewing: {currentTabObj.label} (
+            {tabCounts[activeTab === "availability" ? "all" : activeTab]})
           </span>
         </div>
 
-        <div
-          onClick={() => setActiveTab("confirmed")}
-          className={`cursor-pointer rounded-2xl border p-4 transition-all ${
-            activeTab === "confirmed"
-              ? "border-purple-500/50 bg-purple-50/50 ring-2 ring-purple-500/20 dark:bg-purple-950/20"
-              : "border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-              Confirmed
-            </span>
-            <CalendarCheck className="h-4 w-4 text-purple-500" />
-          </div>
-          <div className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {counts.confirmed}
-          </div>
-          <span className="text-[11px] text-purple-600 dark:text-purple-400">
-            Upcoming schedules
-          </span>
+        {/* 5 Pill Buttons spanning grid width */}
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+          {VIEWING_TABS.map(({ value, label }) => {
+            const isActive = activeTab === value;
+            const count = tabCounts[value];
+
+            const buttonStyle = isActive
+              ? "bg-purple-600 text-white shadow-xs"
+              : "border-2 border-purple-500/30 bg-white text-purple-700 hover:bg-purple-50 dark:border-purple-400/30 dark:bg-zinc-900 dark:text-purple-300 dark:hover:bg-purple-950/30";
+
+            const badgeStyle = isActive
+              ? "bg-white text-purple-700"
+              : "bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300";
+
+            return (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => setActiveTab(value)}
+                className={`inline-flex items-center justify-between gap-2 rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all sm:justify-center ${buttonStyle}`}
+              >
+                <span className="truncate">{label}</span>
+                <span
+                  className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-extrabold ${badgeStyle}`}
+                >
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <div
-          onClick={() => setActiveTab("completed")}
-          className={`cursor-pointer rounded-2xl border p-4 transition-all ${
-            activeTab === "completed"
-              ? "border-emerald-500/50 bg-emerald-50/50 ring-2 ring-emerald-500/20 dark:bg-emerald-950/20"
-              : "border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-              Completed
-            </span>
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+        {/* Search Bar & Property Filter */}
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+          <div className="relative w-full flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search renter name, property, or room..."
+              placeholder="Search renter name, property, or room..."
+              className="flex h-11 w-full rounded-xl border border-zinc-200 bg-white pr-4 pl-10 text-sm shadow-xs transition-colors placeholder:text-zinc-400 focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus-visible:ring-purple-400"
+            />
           </div>
-          <div className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {counts.completed}
-          </div>
-          <span className="text-[11px] text-emerald-600 dark:text-emerald-400">
-            Toured properties
-          </span>
-        </div>
 
-        <div
-          onClick={() => setActiveTab("declined")}
-          className={`cursor-pointer rounded-2xl border p-4 transition-all ${
-            activeTab === "declined"
-              ? "border-rose-500/50 bg-rose-50/50 ring-2 ring-rose-500/20 dark:bg-rose-950/20"
-              : "border-zinc-200 bg-white hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-              Declined
-            </span>
-            <XCircle className="h-4 w-4 text-rose-500" />
-          </div>
-          <div className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-            {counts.declined}
-          </div>
-          <span className="text-[11px] text-rose-600 dark:text-rose-400">
-            Archived
-          </span>
+          <select
+            value={propertyFilter}
+            onChange={(e) => setPropertyFilter(e.target.value)}
+            aria-label="Filter by property"
+            className="h-11 rounded-xl border border-zinc-200 bg-white px-3.5 text-xs font-medium text-zinc-700 shadow-xs focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:focus-visible:ring-purple-400"
+          >
+            <option value="all">All Properties</option>
+            <option value="PROP-1">Sampaloc Scholar Suites</option>
+            <option value="PROP-2">Katipunan Prime Studio</option>
+            <option value="PROP-3">Morayta Courtyard Dorm</option>
+          </select>
         </div>
       </div>
 
@@ -408,36 +404,8 @@ export default function LandlordViewingRequestsView() {
           </div>
         </div>
       ) : (
-        /* Requests List & Filters */
+        /* Requests List */
         <div className="space-y-4">
-          {/* Filter Bar */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="relative flex-1">
-              <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search renter name, property, or room..."
-                className="h-10 w-full rounded-xl border border-zinc-200 bg-white pr-4 pl-10 text-sm shadow-2xs focus:border-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <select
-                value={propertyFilter}
-                onChange={(e) => setPropertyFilter(e.target.value)}
-                className="h-10 rounded-xl border border-zinc-200 bg-white px-3.5 text-xs font-medium shadow-2xs focus:border-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
-              >
-                <option value="all">All Properties</option>
-                <option value="PROP-1">Sampaloc Scholar Suites</option>
-                <option value="PROP-2">Katipunan Prime Studio</option>
-                <option value="PROP-3">Morayta Courtyard Dorm</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Cards List */}
           {filtered.length > 0 ? (
             <div className="space-y-3.5">
               {filtered.map((req) => (
