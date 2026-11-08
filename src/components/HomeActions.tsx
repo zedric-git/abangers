@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import LandlordAuthModal from "@/components/LandlordAuthModal";
+import type { SignUpRole } from "@/lib/validations/auth";
 
 /**
  * The home page's buttons, and the login / sign-up popup they open. A
@@ -16,6 +17,7 @@ import LandlordAuthModal from "@/components/LandlordAuthModal";
 export default function HomeActions() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"login" | "signup">("signup");
+  const [modalRole, setModalRole] = useState<SignUpRole>("landlord");
 
   return (
     <div className="flex w-full flex-col gap-4">
@@ -28,6 +30,7 @@ export default function HomeActions() {
 
       <button
         onClick={() => {
+          setModalRole("landlord");
           setModalMode("signup");
           setIsModalOpen(true);
         }}
@@ -49,7 +52,7 @@ export default function HomeActions() {
       </div>
 
       {/*
-        Landlord Auth Modal — only mounted while open, so each open starts
+        Auth Modal — only mounted while open, so each open starts
         fresh on `modalMode` (e.g. "post my rental property" always shows
         sign-up, even if the user switched to login last time).
       */}
@@ -58,6 +61,7 @@ export default function HomeActions() {
           isOpen
           onClose={() => setIsModalOpen(false)}
           initialMode={modalMode}
+          initialRole={modalRole}
         />
       )}
     </div>
