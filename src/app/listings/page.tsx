@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { dashboardFor, parseRole } from "@/lib/auth/post-login";
 import PublicListingsView from "@/components/PublicListingsView";
 import HeaderAuthButtons from "@/components/HeaderAuthButtons";
+import { MISSING_PUBLIC_LISTING_NOTE } from "@/lib/fetch-listing";
+import { MISSING_LISTING_NOTICE } from "@/lib/listing-lookup";
 
 export const metadata = {
   title: "Browse Listings | Abangers",
@@ -15,7 +17,14 @@ export const metadata = {
 const PUBLIC_LISTING_COLUMNS =
   "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, amenities, utilities, room_features, bathroom_features, kitchen_features, laundry_features, safety_features, house_rules, created_at";
 
-export default async function ListingsPage() {
+export default async function ListingsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ notice?: string }>;
+}) {
+  const { notice } = (await searchParams) ?? {};
+  const showMissingListingNote = notice === MISSING_LISTING_NOTICE;
+
   const supabase = await createClient();
 
   // Load public available listings and current user session in parallel
@@ -102,6 +111,16 @@ export default async function ListingsPage() {
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 pt-3 pb-10 sm:px-6 sm:pt-4 sm:pb-12 lg:px-8">
+        {showMissingListingNote && (
+          <div
+            role="status"
+            className="mb-5 flex items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <p>{MISSING_PUBLIC_LISTING_NOTE}</p>
+          </div>
+        )}
+
         <Suspense fallback={null}>
           <PublicListingsView
             initialListings={listings}
