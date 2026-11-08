@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { SearchX } from "lucide-react";
+import { SearchX, Sparkles } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
 import {
   filterListings,
@@ -157,17 +157,25 @@ export default function PublicListingsView({
   return (
     <>
       {/* Hero, Search & Filters Section */}
-      <div className="mx-auto max-w-4xl text-center">
-        <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950 sm:text-4xl dark:text-zinc-50">
-          Find Your Next Home in Cebu
+      <div className="mx-auto max-w-5xl pt-2 pb-6 text-center sm:pt-4 sm:pb-8 lg:max-w-6xl">
+        <div className="mb-3.5 inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3.5 py-1 text-xs font-semibold text-purple-700 shadow-2xs dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300">
+          <Sparkles className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+          <span>Verified Boarding Houses & Rooms in Cebu</span>
+        </div>
+
+        <h1 className="text-4xl font-extrabold tracking-tight text-zinc-950 sm:text-5xl lg:text-6xl dark:text-zinc-50">
+          Find Your Next Home in{" "}
+          <span className="bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+            Cebu
+          </span>
         </h1>
-        <p className="mt-2 text-sm text-zinc-500 sm:text-base dark:text-zinc-400">
+        <p className="mx-auto mt-3 max-w-2xl text-base text-zinc-600 sm:text-lg dark:text-zinc-400">
           Search boarding houses, bedspaces, and rooms near your university or
           workplace.
         </p>
 
         {/* Search Input Bar */}
-        <div className="mt-6">
+        <div className="mt-8">
           <ListingSearchBar
             value={filters.q}
             onSearch={handleSearch}
@@ -176,7 +184,7 @@ export default function PublicListingsView({
         </div>
 
         {/* Core Property Attribute Filters Toolbar */}
-        <div className="mt-4 text-left">
+        <div className="mt-5 text-left">
           <ListingFilterControls
             filters={filters}
             onFilterChange={handleFilterChange}
