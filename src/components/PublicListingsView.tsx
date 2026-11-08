@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { SearchX } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
@@ -14,9 +15,13 @@ import {
 import ListingSearchBar from "@/components/ListingSearchBar";
 import ListingFilterControls from "@/components/ListingFilterControls";
 import PublicListingCard from "@/components/PublicListingCard";
+import FavoriteButton from "@/components/FavoriteButton";
+import LandlordAuthModal from "@/components/LandlordAuthModal";
 
 interface PublicListingsViewProps {
   initialListings: ListingPreview[];
+  userRole?: string | null;
+  favoritedListingIds?: string[];
 }
 
 /**
@@ -29,7 +34,16 @@ interface PublicListingsViewProps {
  */
 export default function PublicListingsView({
   initialListings,
+  userRole = null,
+  favoritedListingIds = [],
 }: PublicListingsViewProps) {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
+  const savedSet = new Set(favoritedListingIds);
+
+  const handleRequireAuth = () => {
+    setIsAuthModalOpen(true);
+  };
   const searchParams = useSearchParams();
   const filters = parseListingFilterParams(searchParams);
 
@@ -174,7 +188,18 @@ export default function PublicListingsView({
         {visibleListings.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:gap-8">
             {visibleListings.map((listing) => (
-              <PublicListingCard key={listing.id} listing={listing} />
+              <PublicListingCard
+                key={listing.id}
+                listing={listing}
+                action={
+                  <FavoriteButton
+                    listingId={listing.id}
+                    initialFavorited={savedSet.has(listing.id)}
+                    userRole={userRole}
+                    onRequireAuth={handleRequireAuth}
+                  />
+                }
+              />
             ))}
           </div>
         ) : hasAnyFilterOrSearch ? (
@@ -214,6 +239,16 @@ export default function PublicListingsView({
           </div>
         )}
       </div>
+
+      {/* Guest Login/Sign-up Modal (#86 & #96) */}
+      {isAuthModalOpen && (
+        <LandlordAuthModal
+          isOpen
+          onClose={() => setIsAuthModalOpen(false)}
+          initialMode="signup"
+          initialRole="renter"
+        />
+      )}
     </>
   );
 }

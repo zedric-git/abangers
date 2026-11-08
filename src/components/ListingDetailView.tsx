@@ -28,9 +28,16 @@ interface ListingDetailViewProps {
   // in, and saved rows can have empty optional columns.
   listing: Partial<ListingInput>;
   isPreview?: boolean;
+  /**
+   * Optional action slot (e.g. FavoriteButton on public detail page, S2-08 #96).
+   */
+  action?: React.ReactNode;
 }
 
-export default function ListingDetailView({ listing }: ListingDetailViewProps) {
+export default function ListingDetailView({
+  listing,
+  action,
+}: ListingDetailViewProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<string>(
     listing.cover_image || listing.images?.[0] || "",
   );
@@ -154,16 +161,20 @@ export default function ListingDetailView({ listing }: ListingDetailViewProps) {
 
       {/* Title, Badges & Address Header */}
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-lg bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">
-            {listing.property_type || "Boarding House"}
-          </span>
-          <span className="rounded-lg bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-            {listing.occupancy_type || "Bedspace"}
-          </span>
-          <span className="rounded-lg bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300">
-            {listing.allowed_gender || "Any / Co-ed"}
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-lg bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">
+              {listing.property_type || "Boarding House"}
+            </span>
+            <span className="rounded-lg bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+              {listing.occupancy_type || "Bedspace"}
+            </span>
+            <span className="rounded-lg bg-indigo-100 px-3 py-1 text-xs font-semibold text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300">
+              {listing.allowed_gender || "Any / Co-ed"}
+            </span>
+          </div>
+
+          {action && <div className="shrink-0">{action}</div>}
         </div>
 
         <h1 className="text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl dark:text-zinc-50">
