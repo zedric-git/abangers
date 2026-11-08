@@ -20,10 +20,9 @@ export type AvailabilityStatus = z.infer<typeof availabilityStatusSchema>;
  * Shared property types used by both landlord forms and public filters (S2-05, #15).
  */
 export const PROPERTY_TYPES = [
-  "Dormitory",
   "Boarding House",
   "Apartment",
-  "Studio",
+  "Dormitory",
   "House",
   "Condo",
 ] as const;
@@ -37,9 +36,8 @@ export type PropertyType = z.infer<typeof propertyTypeSchema>;
  */
 export const OCCUPANCY_TYPES = [
   "Bedspace",
-  "Shared Room",
-  "Private Room",
   "Single Room",
+  "Shared Room",
   "Studio",
 ] as const;
 
@@ -52,9 +50,8 @@ export type OccupancyType = z.infer<typeof occupancyTypeSchema>;
  */
 export const GENDER_POLICIES = [
   "Any / Co-ed",
-  "Any Gender",
-  "Female Only",
   "Male Only",
+  "Female Only",
 ] as const;
 
 export const genderPolicySchema = z.enum(GENDER_POLICIES);

@@ -9,66 +9,39 @@ describe("listingFilterParamsSchema", () => {
     const result = listingFilterParamsSchema.parse({});
     expect(result).toEqual({
       q: "",
-      min_rent: undefined,
       max_rent: undefined,
       property_type: undefined,
       occupancy: undefined,
       gender: undefined,
-      near: undefined,
-      distance: undefined,
-      parking: undefined,
-      utilities: undefined,
-      room_features: undefined,
-      bathroom: undefined,
-      kitchen: undefined,
-      laundry: undefined,
-      safety: undefined,
-      house_rules: undefined,
     });
   });
 
-  it("trims search query and parses valid numbers and arrays", () => {
+  it("trims search query and parses valid numbers", () => {
     const result = listingFilterParamsSchema.parse({
       q: "  USC Main  ",
-      min_rent: "2500",
       max_rent: "4500",
       property_type: "Apartment",
       occupancy: "Single Room",
       gender: "Female Only",
-      parking: true,
-      utilities: ["Wi-Fi Included"],
-      room_features: ["Air Conditioning"],
-      house_rules: ["No Curfew"],
     });
     expect(result).toEqual({
       q: "USC Main",
-      min_rent: 2500,
       max_rent: 4500,
       property_type: "Apartment",
       occupancy: "Single Room",
       gender: "Female Only",
-      near: undefined,
-      distance: undefined,
-      parking: true,
-      utilities: ["Wi-Fi Included"],
-      room_features: ["Air Conditioning"],
-      bathroom: undefined,
-      kitchen: undefined,
-      laundry: undefined,
-      safety: undefined,
-      house_rules: ["No Curfew"],
     });
   });
 
-  it("safely ignores invalid max_rent and min_rent", () => {
+  it("safely ignores invalid max_rent (e.g. text or non-positive numbers)", () => {
     expect(
       listingFilterParamsSchema.parse({ max_rent: "abc" }).max_rent,
     ).toBeUndefined();
     expect(
-      listingFilterParamsSchema.parse({ min_rent: "-500" }).min_rent,
+      listingFilterParamsSchema.parse({ max_rent: "-500" }).max_rent,
     ).toBeUndefined();
     expect(
-      listingFilterParamsSchema.parse({ min_rent: "0" }).min_rent,
+      listingFilterParamsSchema.parse({ max_rent: "0" }).max_rent,
     ).toBeUndefined();
   });
 
@@ -91,28 +64,17 @@ describe("parseListingFilterParams", () => {
     expect(parseListingFilterParams("invalid")).toEqual({ q: "" });
   });
 
-  it("handles URLSearchParams instances with arrays and comma-separated values", () => {
+  it("handles URLSearchParams instances", () => {
     const params = new URLSearchParams(
-      "q=Banilad&min_rent=2500&max_rent=6000&property_type=Boarding+House&occupancy=Bedspace&gender=Male+Only&parking=true&utilities=Wi-Fi+Included%2CWater+Included&house_rules=No+Curfew",
+      "q=Banilad&max_rent=6000&property_type=Boarding+House&occupancy=Bedspace&gender=Male+Only",
     );
     const parsed = parseListingFilterParams(params);
     expect(parsed).toEqual({
       q: "Banilad",
-      min_rent: 2500,
       max_rent: 6000,
       property_type: "Boarding House",
       occupancy: "Bedspace",
       gender: "Male Only",
-      near: undefined,
-      distance: undefined,
-      parking: true,
-      utilities: ["Wi-Fi Included", "Water Included"],
-      room_features: undefined,
-      bathroom: undefined,
-      kitchen: undefined,
-      laundry: undefined,
-      safety: undefined,
-      house_rules: ["No Curfew"],
     });
   });
 
@@ -121,11 +83,9 @@ describe("parseListingFilterParams", () => {
       q: ["Lahug"],
       max_rent: ["8000"],
       property_type: ["Condo"],
-      room_features: ["Air Conditioning", "Table/Desk"],
     });
     expect(parsed.q).toBe("Lahug");
     expect(parsed.max_rent).toBe(8000);
     expect(parsed.property_type).toBe("Condo");
-    expect(parsed.room_features).toEqual(["Air Conditioning", "Table/Desk"]);
   });
 });

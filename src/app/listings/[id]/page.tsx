@@ -86,7 +86,13 @@ export default async function ListingDetailPage({
   }
 
   const { listing, formValues } = lookup;
-  const subtitle = `${listing.property_type || "Boarding House"} • ${listing.occupancy_type || "Bedspace"} • ${listing.allowed_gender || "Any / Co-ed"}`;
+  const subtitle = [
+    listing.property_type,
+    listing.occupancy_type,
+    listing.allowed_gender,
+  ]
+    .filter(Boolean)
+    .join(" • ");
 
   return (
     <div className="bg-background min-h-dvh px-4 py-6 sm:px-6 md:px-8 md:py-8">
@@ -107,9 +113,11 @@ export default async function ListingDetailPage({
               <h2 className="text-sm font-bold text-purple-950 dark:text-purple-100">
                 {listing.title}
               </h2>
-              <p className="text-xs text-purple-700 dark:text-purple-300">
-                {subtitle}
-              </p>
+              {subtitle && (
+                <p className="text-xs text-purple-700 dark:text-purple-300">
+                  {subtitle}
+                </p>
+              )}
             </div>
           </div>
         </div>

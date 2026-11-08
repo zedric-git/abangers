@@ -26,24 +26,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                if (localStorage.getItem('theme') === 'dark') {
-                  localStorage.removeItem('theme');
-                }
-                document.documentElement.classList.remove('dark');
-                document.documentElement.classList.add('light');
-              } catch (e) {}
-            `,
-          }}
-        />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
-          forcedTheme="light"
-          enableSystem={false}
+          enableSystem
           disableTransitionOnChange={false}
         >
           {children}

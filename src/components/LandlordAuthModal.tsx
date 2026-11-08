@@ -230,14 +230,14 @@ export default function LandlordAuthModal({
           {/* Title & Subtitle — DialogTitle names the dialog for screen readers */}
           <div className="mb-4 space-y-1">
             <DialogTitle className="text-xl font-bold tracking-tight text-zinc-900 sm:text-2xl dark:text-zinc-50">
-              {promptTitle ||
-                (isLoginMode ? "Welcome back" : "Create an account")}
+              {isLoginMode
+                ? "Welcome back"
+                : promptTitle || "Create an account"}
             </DialogTitle>
             <DialogDescription className="text-xs text-zinc-500 sm:text-sm dark:text-zinc-400">
-              {promptDescription ||
-                (isLoginMode
-                  ? "Sign in to access your account"
-                  : "Join Abangers as a renter or landlord")}
+              {isLoginMode
+                ? "Sign in to access your account"
+                : promptDescription || "Join Abangers as a renter or landlord"}
             </DialogDescription>
           </div>
 
