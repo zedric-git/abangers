@@ -255,26 +255,26 @@ export default function LandlordAuthModal({
 
           {/* Form */}
           {/* noValidate: the shared Zod schemas show the messages, not the browser */}
-          <form onSubmit={handleSubmit} noValidate className="space-y-3">
+          <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
             {!isLoginMode && (
               <>
-                <fieldset className="m-0 mb-3.5 space-y-1.5 border-0 p-0">
-                  <legend className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                <fieldset className="m-0 mb-5 space-y-2 border-0 p-0">
+                  <legend className="text-xs font-semibold tracking-wide text-zinc-600 uppercase dark:text-zinc-400">
                     I am a
                   </legend>
-                  <div className="grid grid-cols-2 gap-1.5 rounded-2xl border border-zinc-200/80 bg-zinc-100/90 p-1.5 dark:border-zinc-800 dark:bg-zinc-800/60">
+                  <div className="grid grid-cols-2 gap-2 rounded-2xl border border-zinc-200/90 bg-zinc-100/90 p-1.5 shadow-2xs dark:border-zinc-800 dark:bg-zinc-800/80">
                     <button
                       type="button"
                       aria-pressed={role === "renter"}
                       onClick={() => setRole("renter")}
                       className={cn(
-                        "flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl text-xs font-bold transition-all",
+                        "flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all sm:h-11.5",
                         role === "renter"
-                          ? "bg-purple-600 text-white shadow-xs"
-                          : "text-zinc-600 hover:bg-white/60 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-700/50 dark:hover:text-zinc-100",
+                          ? "bg-purple-600 font-bold text-white shadow-sm ring-2 ring-purple-600/25 dark:bg-purple-600 dark:text-white dark:ring-purple-500/40"
+                          : "text-zinc-600 hover:bg-white/80 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-700/60 dark:hover:text-zinc-100",
                       )}
                     >
-                      <User className="h-3.5 w-3.5" />
+                      <User className="h-4 w-4" />
                       <span>Renter</span>
                     </button>
                     <button
@@ -282,19 +282,19 @@ export default function LandlordAuthModal({
                       aria-pressed={role === "landlord"}
                       onClick={() => setRole("landlord")}
                       className={cn(
-                        "flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-xl text-xs font-bold transition-all",
+                        "flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all sm:h-11.5",
                         role === "landlord"
-                          ? "bg-purple-600 text-white shadow-xs"
-                          : "text-zinc-600 hover:bg-white/60 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-700/50 dark:hover:text-zinc-100",
+                          ? "bg-purple-600 font-bold text-white shadow-sm ring-2 ring-purple-600/25 dark:bg-purple-600 dark:text-white dark:ring-purple-500/40"
+                          : "text-zinc-600 hover:bg-white/80 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-700/60 dark:hover:text-zinc-100",
                       )}
                     >
-                      <Building className="h-3.5 w-3.5" />
+                      <Building className="h-4 w-4" />
                       <span>Landlord</span>
                     </button>
                   </div>
                 </fieldset>
 
-                <div className="space-y-1">
+                <div className="!mt-5 space-y-1">
                   <input
                     type="text"
                     placeholder="Full Name"
