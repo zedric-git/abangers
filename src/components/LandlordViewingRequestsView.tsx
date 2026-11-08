@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Clock,
   Search,
@@ -8,6 +8,11 @@ import {
   XCircle,
   Building2,
   AlertCircle,
+  Phone,
+  Mail,
+  ChevronLeft,
+  ChevronRight,
+  X,
 } from "lucide-react";
 import {
   canMarkCompleted,
@@ -23,6 +28,8 @@ export interface ViewingRequest {
   renterRole: string;
   renterPhone: string;
   renterEmail: string;
+  attendeesCount: number;
+  companionNote?: string;
   propertyId: string;
   propertyTitle: string;
   propertyAddress: string;
@@ -44,6 +51,8 @@ const initialRequests: ViewingRequest[] = [
     renterRole: "3rd Year BS Nursing • UST",
     renterPhone: "+63 917 842 1109",
     renterEmail: "mariaclara.santos@ust.edu.ph",
+    attendeesCount: 2,
+    companionNote: "Mother will accompany",
     propertyId: "PROP-1",
     propertyTitle: "Sampaloc Scholar Suites",
     propertyAddress: "842 España Blvd, Sampaloc, Manila",
@@ -64,6 +73,8 @@ const initialRequests: ViewingRequest[] = [
     renterRole: "Software Engineer • BGC / Hybrid",
     renterPhone: "+63 918 339 4021",
     renterEmail: "joshua.dc@gmail.com",
+    attendeesCount: 1,
+    companionNote: "Solo inspection",
     propertyId: "PROP-2",
     propertyTitle: "Katipunan Prime Studio",
     propertyAddress: "123 Katipunan Ave, Loyola Heights, QC",
@@ -84,6 +95,8 @@ const initialRequests: ViewingRequest[] = [
     renterRole: "BS Architecture • UP Diliman",
     renterPhone: "+63 995 214 8832",
     renterEmail: "amvillanueva@up.edu.ph",
+    attendeesCount: 2,
+    companionNote: "Classmate joining",
     propertyId: "PROP-2",
     propertyTitle: "Katipunan Prime Studio",
     propertyAddress: "123 Katipunan Ave, Loyola Heights, QC",
@@ -103,6 +116,8 @@ const initialRequests: ViewingRequest[] = [
     renterRole: "Accountancy Intern • SGV",
     renterPhone: "+63 920 551 2290",
     renterEmail: "rafael.tan@outlook.com",
+    attendeesCount: 1,
+    companionNote: "Solo visit",
     propertyId: "PROP-1",
     propertyTitle: "Sampaloc Scholar Suites",
     propertyAddress: "842 España Blvd, Sampaloc, Manila",
@@ -123,6 +138,8 @@ const initialRequests: ViewingRequest[] = [
     renterRole: "Medical Intern • FEU-NRMF",
     renterPhone: "+63 927 618 9043",
     renterEmail: "bea.mendoza@feu.edu.ph",
+    attendeesCount: 1,
+    companionNote: "Solo visit",
     propertyId: "PROP-3",
     propertyTitle: "Morayta Courtyard Dorm",
     propertyAddress: "455 Morayta St, Sampaloc, Manila",
@@ -142,6 +159,8 @@ const initialRequests: ViewingRequest[] = [
     renterRole: "Civil Engineering Grad • CIT-U",
     renterPhone: "+63 939 123 7765",
     renterEmail: "cpaul.ramos@gmail.com",
+    attendeesCount: 1,
+    companionNote: "Solo visit",
     propertyId: "PROP-1",
     propertyTitle: "Sampaloc Scholar Suites",
     propertyAddress: "842 España Blvd, Sampaloc, Manila",
@@ -170,6 +189,9 @@ export default function LandlordViewingRequestsView() {
   const [activeTab, setActiveTab] = useState<ViewingTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [propertyFilter, setPropertyFilter] = useState("all");
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
+    null,
+  );
   const [completingRequest, setCompletingRequest] =
     useState<ViewingRequest | null>(null);
 
@@ -211,6 +233,37 @@ export default function LandlordViewingRequestsView() {
       r.propertyTitle.toLowerCase().includes(q) ||
       r.roomLabel.toLowerCase().includes(q);
     return matchesTab && matchesProp && matchesSearch;
+  });
+
+  const selectedRequest =
+    requests.find((r) => r.id === selectedRequestId) ?? null;
+  const currentFilteredIndex = selectedRequest
+    ? filtered.findIndex((r) => r.id === selectedRequest.id)
+    : -1;
+
+  const navigateRenter = (direction: number) => {
+    if (filtered.length === 0 || currentFilteredIndex === -1) return;
+    let nextIndex = currentFilteredIndex + direction;
+    if (nextIndex < 0) nextIndex = filtered.length - 1;
+    if (nextIndex >= filtered.length) nextIndex = 0;
+    setSelectedRequestId(filtered[nextIndex].id);
+  };
+
+  // Close drawer on Escape key and navigate with Left/Right arrows
+  useEffect(() => {
+    if (!selectedRequestId) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedRequestId(null);
+      } else if (e.key === "ArrowLeft") {
+        navigateRenter(-1);
+      } else if (e.key === "ArrowRight") {
+        navigateRenter(1);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   });
 
   return (
@@ -328,7 +381,12 @@ export default function LandlordViewingRequestsView() {
             {filtered.map((req) => (
               <div
                 key={req.id}
-                className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xs transition-all hover:border-purple-200 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+                onClick={() => setSelectedRequestId(req.id)}
+                className={`cursor-pointer rounded-2xl border bg-white p-5 shadow-2xs transition-all hover:border-purple-300 dark:bg-zinc-900 ${
+                  selectedRequestId === req.id
+                    ? "border-purple-500 ring-2 ring-purple-500/20 dark:border-purple-500"
+                    : "border-zinc-200 hover:border-purple-200 dark:border-zinc-800 dark:hover:border-zinc-700"
+                }`}
               >
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   {/* Renter & Property Details */}
@@ -368,8 +426,11 @@ export default function LandlordViewingRequestsView() {
                     </div>
                   </div>
 
-                  {/* Actions and Status */}
-                  <div className="flex items-center gap-2.5 self-end lg:self-center">
+                  {/* Actions and Status (stop propagation so card click doesn't trigger) */}
+                  <div
+                    className="flex items-center gap-2.5 self-end lg:self-center"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {req.status === "pending" && (
                       <>
                         <button
@@ -440,6 +501,229 @@ export default function LandlordViewingRequestsView() {
           </div>
         )}
       </div>
+
+      {/* Slide-Over Dossier Drawer */}
+      {selectedRequest && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="backdrop-blur-2xs fixed inset-0 z-40 bg-black/40 transition-opacity"
+            onClick={() => setSelectedRequestId(null)}
+          />
+
+          {/* Drawer Container */}
+          <aside
+            aria-label="Viewing request details"
+            className="fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col justify-between border-l border-zinc-200 bg-white shadow-2xl transition-transform duration-200 ease-in-out dark:border-zinc-800 dark:bg-zinc-900"
+          >
+            {/* Header with Navigation Stepper & Close */}
+            <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-800/50">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => navigateRenter(-1)}
+                  title="Previous Renter (←)"
+                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200 bg-white text-xs font-bold text-zinc-700 shadow-2xs hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="px-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
+                  {currentFilteredIndex + 1} of {filtered.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigateRenter(1)}
+                  title="Next Renter (→)"
+                  className="flex h-8 w-8 items-center justify-center rounded-xl border border-zinc-200 bg-white text-xs font-bold text-zinc-700 shadow-2xs hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-bold text-purple-700 uppercase dark:bg-purple-950/60 dark:text-purple-300">
+                  Viewing Dossier
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRequestId(null)}
+                  title="Close (Esc)"
+                  className="flex h-8 w-8 items-center justify-center rounded-xl text-zinc-500 hover:bg-zinc-200 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Scrollable Dossier Body */}
+            <div className="flex-1 space-y-4 overflow-y-auto p-5 text-xs">
+              {/* Renter Identity Card */}
+              <div className="flex items-start gap-3.5 rounded-2xl border border-purple-200/50 bg-purple-50/60 p-4 dark:border-purple-800/40 dark:bg-purple-950/40">
+                <div
+                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-bold text-white shadow-xs ${selectedRequest.avatarColor}`}
+                >
+                  {selectedRequest.renterAvatar}
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-50">
+                    {selectedRequest.renterName}
+                  </h3>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-300">
+                    {selectedRequest.renterRole}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                    <span className="flex items-center gap-1 font-semibold text-zinc-800 dark:text-zinc-200">
+                      <Phone className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                      {selectedRequest.renterPhone}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Mail className="h-3 w-3 text-zinc-400" />
+                      {selectedRequest.renterEmail}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scheduled Time & Attendees */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="space-y-1 rounded-xl bg-zinc-100/70 p-3 dark:bg-zinc-800/60">
+                  <span className="text-[10px] font-bold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
+                    Scheduled Visit
+                  </span>
+                  <p className="text-xs font-bold text-purple-700 dark:text-purple-300">
+                    {selectedRequest.requestedDate}
+                  </p>
+                  <p className="text-[11px] font-semibold text-zinc-700 dark:text-zinc-300">
+                    {selectedRequest.requestedTime}
+                  </p>
+                </div>
+
+                <div className="space-y-1 rounded-xl bg-zinc-100/70 p-3 dark:bg-zinc-800/60">
+                  <span className="text-[10px] font-bold tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
+                    Attendees
+                  </span>
+                  <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+                    {selectedRequest.attendeesCount}{" "}
+                    {selectedRequest.attendeesCount > 1 ? "Persons" : "Person"}
+                  </p>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    {selectedRequest.companionNote || "Solo inspection"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Target Property & Unit */}
+              <div className="space-y-1.5 rounded-xl border border-zinc-200 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-900">
+                <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+                  Target Listing & Room
+                </span>
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                      {selectedRequest.propertyTitle}
+                    </h4>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      {selectedRequest.roomLabel}
+                    </p>
+                    <p className="text-[11px] text-zinc-400">
+                      {selectedRequest.propertyAddress}
+                    </p>
+                  </div>
+                  <span className="text-sm font-bold text-purple-600 dark:text-purple-400">
+                    ₱{selectedRequest.monthlyRent.toLocaleString()}
+                    <span className="text-[11px] font-normal text-zinc-400">
+                      /mo
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              {/* Renter Note */}
+              {selectedRequest.notes && (
+                <div className="space-y-1 rounded-xl border border-amber-200/60 bg-amber-50/70 p-3.5 text-amber-900 dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-200">
+                  <span className="text-[10px] font-bold tracking-wider uppercase">
+                    Message from Renter
+                  </span>
+                  <p className="text-xs leading-relaxed italic">
+                    &ldquo;{selectedRequest.notes}&rdquo;
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Sticky Actions Footer */}
+            <div className="flex items-center gap-2 border-t border-zinc-200 bg-zinc-50/90 p-4 dark:border-zinc-800 dark:bg-zinc-800/80">
+              {selectedRequest.status === "pending" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleUpdateStatus(selectedRequest.id, "confirmed");
+                      setSelectedRequestId(null);
+                    }}
+                    className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-purple-600 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-700"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Confirm Slot
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleUpdateStatus(selectedRequest.id, "declined");
+                      setSelectedRequestId(null);
+                    }}
+                    className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-4 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                  >
+                    <XCircle className="h-4 w-4 text-rose-500" />
+                    Decline
+                  </button>
+                </>
+              )}
+
+              {selectedRequest.status === "confirmed" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCompletingRequest(selectedRequest);
+                      setSelectedRequestId(null);
+                    }}
+                    className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 text-xs font-bold text-white shadow-xs transition-colors hover:bg-emerald-700"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Mark Completed
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleUpdateStatus(selectedRequest.id, "declined");
+                      setSelectedRequestId(null);
+                    }}
+                    className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-4 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                  >
+                    <XCircle className="h-4 w-4 text-rose-500" />
+                    Decline
+                  </button>
+                </>
+              )}
+
+              {selectedRequest.status === "completed" && (
+                <div className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Viewing Completed
+                </div>
+              )}
+
+              {selectedRequest.status === "declined" && (
+                <div className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-xs font-bold text-rose-700 dark:text-rose-400">
+                  <XCircle className="h-4 w-4" />
+                  Request Declined
+                </div>
+              )}
+            </div>
+          </aside>
+        </>
+      )}
 
       {/* Confirm Completed Modal (#122: Confirmation step to prevent misclicks) */}
       {completingRequest && (
