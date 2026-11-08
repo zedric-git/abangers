@@ -253,6 +253,76 @@ export type Database = {
         };
         Relationships: [];
       };
+      viewing_requests: {
+        Row: {
+          attendees: number;
+          created_at: string;
+          decline_reason: string | null;
+          end_time: string;
+          id: string;
+          landlord_id: string;
+          listing_id: string;
+          message: string | null;
+          renter_id: string;
+          start_time: string;
+          status: string;
+          updated_at: string;
+          viewing_date: string;
+        };
+        Insert: {
+          attendees?: number;
+          created_at?: string;
+          decline_reason?: string | null;
+          end_time: string;
+          id?: string;
+          landlord_id: string;
+          listing_id: string;
+          message?: string | null;
+          renter_id: string;
+          start_time: string;
+          status?: string;
+          updated_at?: string;
+          viewing_date: string;
+        };
+        Update: {
+          attendees?: number;
+          created_at?: string;
+          decline_reason?: string | null;
+          end_time?: string;
+          id?: string;
+          landlord_id?: string;
+          listing_id?: string;
+          message?: string | null;
+          renter_id?: string;
+          start_time?: string;
+          status?: string;
+          updated_at?: string;
+          viewing_date?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "viewing_requests_landlord_id_fkey";
+            columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "viewing_requests_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "listings";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "viewing_requests_renter_id_fkey";
+            columns: ["renter_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
