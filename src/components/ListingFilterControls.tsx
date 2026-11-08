@@ -10,6 +10,9 @@ import {
   UserCheck,
   Banknote,
   ChevronDown,
+  ChevronUp,
+  MapPin,
+  Check,
 } from "lucide-react";
 import {
   PROPERTY_TYPES,
@@ -19,7 +22,17 @@ import {
   type OccupancyType,
   type GenderPolicy,
 } from "@/lib/validations/listing";
-import type { ListingFilterParams } from "@/lib/validations/listing-filters";
+import {
+  type ListingFilterParams,
+  FILTER_DISTANCE_OPTIONS,
+  FILTER_UTILITIES_OPTIONS,
+  FILTER_ROOM_FEATURES_OPTIONS,
+  FILTER_BATHROOM_OPTIONS,
+  FILTER_KITCHEN_OPTIONS,
+  FILTER_LAUNDRY_OPTIONS,
+  FILTER_SAFETY_OPTIONS,
+  FILTER_HOUSE_RULES_OPTIONS,
+} from "@/lib/validations/listing-filters";
 import { countActiveAttributeFilters } from "@/lib/filter-listings";
 import {
   Select,
@@ -47,14 +60,7 @@ const RENT_BUDGET_PRESETS = [
 ];
 
 /**
- * Filter controls for public listing discovery (S2-05, #15, #89).
- *
- * Provides responsive controls for:
- * - Maximum rent (quick presets + custom input)
- * - Property type
- * - Room / occupancy type
- * - Allowed gender policy
- * - Active filter badges with one-click dismiss and "Reset all"
+ * Discovery filter controls matching .Abangers UI content specification (S2-05, #15, #89, #90).
  */
 export default function ListingFilterControls({
   filters,
@@ -63,33 +69,62 @@ export default function ListingFilterControls({
   className = "",
 }: ListingFilterControlsProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [customRentInput, setCustomRentInput] = useState(
+  const [isMoreFiltersOpen, setIsMoreFiltersOpen] = useState(false);
+
+  const [minRentInput, setMinRentInput] = useState(
+    filters.min_rent ? String(filters.min_rent) : "",
+  );
+  const [maxRentInput, setMaxRentInput] = useState(
     filters.max_rent ? String(filters.max_rent) : "",
   );
-  const [prevMaxRent, setPrevMaxRent] = useState(filters.max_rent);
+  const [nearInput, setNearInput] = useState(filters.near || "");
 
-  // Synchronize custom input text if max_rent is cleared externally (e.g. Reset all, remove badge)
+  // Sync inputs with external resets or updates
+  const [prevMinRent, setPrevMinRent] = useState(filters.min_rent);
+  if (prevMinRent !== filters.min_rent) {
+    setPrevMinRent(filters.min_rent);
+    setMinRentInput(filters.min_rent ? String(filters.min_rent) : "");
+  }
+
+  const [prevMaxRent, setPrevMaxRent] = useState(filters.max_rent);
   if (prevMaxRent !== filters.max_rent) {
     setPrevMaxRent(filters.max_rent);
-    setCustomRentInput(filters.max_rent ? String(filters.max_rent) : "");
+    setMaxRentInput(filters.max_rent ? String(filters.max_rent) : "");
+  }
+
+  const [prevNear, setPrevNear] = useState(filters.near);
+  if (prevNear !== filters.near) {
+    setPrevNear(filters.near);
+    setNearInput(filters.near || "");
   }
 
   const activeCount = countActiveAttributeFilters(filters);
 
-  const handleCustomRentSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = customRentInput.trim();
-    if (!trimmed) {
-      onFilterChange("max_rent", undefined);
-      return;
-    }
-    const num = Number(trimmed);
-    if (Number.isFinite(num) && num > 0) {
-      onFilterChange("max_rent", num);
+  const toggleArrayItem = (
+    key:
+      | "utilities"
+      | "room_features"
+      | "bathroom"
+      | "kitchen"
+      | "laundry"
+      | "safety"
+      | "house_rules",
+    item: string,
+  ) => {
+    const current = filters[key] || [];
+    if (current.includes(item)) {
+      const updated = current.filter((i) => i !== item);
+      onFilterChange(key, updated.length > 0 ? updated : undefined);
     } else {
-      setCustomRentInput("");
-      onFilterChange("max_rent", undefined);
+      onFilterChange(key, [...current, item]);
     }
+  };
+
+  const handleResetAll = () => {
+    setMinRentInput("");
+    setMaxRentInput("");
+    setNearInput("");
+    onResetFilters();
   };
 
   return (
@@ -120,40 +155,64 @@ export default function ListingFilterControls({
         {activeCount > 0 && (
           <button
             type="button"
-            onClick={() => {
-              setCustomRentInput("");
-              onResetFilters();
-            }}
+            onClick={handleResetAll}
             className="text-xs font-medium text-purple-600 hover:text-purple-700 hover:underline dark:text-purple-400 dark:hover:text-purple-300"
           >
-            Reset all
+            Clear Filters
           </button>
         )}
       </div>
 
-      {/* Main Filter Toolbar (Always visible on sm+, expandable on mobile) */}
+      {/* Main Filter Toolbar */}
       <div
         id="mobile-filters-panel"
         className={`${
           isMobileOpen ? "block" : "hidden"
         } mt-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs sm:mt-0 sm:block dark:border-zinc-800 dark:bg-zinc-900/70`}
       >
+        {/* Row 1: Primary Discovery Controls */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {/* 1. Max Rent Filter */}
+          {/* 1. Rent Range (Min - Max) */}
           <div>
             <label
-              htmlFor="filter-max-rent"
+              htmlFor="filter-min-rent"
               className="flex items-center gap-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300"
             >
               <Banknote className="h-3.5 w-3.5 text-zinc-400" />
-              <span>Max Monthly Rent</span>
+              <span>Rent</span>
             </label>
-            <form
-              onSubmit={handleCustomRentSubmit}
-              className="mt-1.5 flex gap-1.5"
-            >
+            <div className="mt-1.5 flex items-center gap-1.5">
               <div className="relative flex-1">
-                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-xs text-zinc-400">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-xs text-zinc-400">
+                  ₱
+                </span>
+                <input
+                  id="filter-min-rent"
+                  type="number"
+                  min={1}
+                  step={100}
+                  placeholder="Min (₱2,500)"
+                  value={minRentInput}
+                  onChange={(e) => {
+                    setMinRentInput(e.target.value);
+                    const val = e.target.value.trim();
+                    if (!val) {
+                      onFilterChange("min_rent", undefined);
+                    } else {
+                      const num = Number(val);
+                      if (Number.isFinite(num) && num > 0) {
+                        onFilterChange("min_rent", num);
+                      }
+                    }
+                  }}
+                  className="h-9 w-full rounded-xl border border-zinc-200 bg-white pr-2 pl-5 text-center text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+                />
+              </div>
+
+              <span className="text-xs font-bold text-zinc-400">-</span>
+
+              <div className="relative flex-1">
+                <span className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-2.5 text-xs text-zinc-400">
                   ₱
                 </span>
                 <input
@@ -161,10 +220,10 @@ export default function ListingFilterControls({
                   type="number"
                   min={1}
                   step={100}
-                  placeholder="Any budget"
-                  value={customRentInput}
+                  placeholder="Max (₱5,000)"
+                  value={maxRentInput}
                   onChange={(e) => {
-                    setCustomRentInput(e.target.value);
+                    setMaxRentInput(e.target.value);
                     const val = e.target.value.trim();
                     if (!val) {
                       onFilterChange("max_rent", undefined);
@@ -175,23 +234,10 @@ export default function ListingFilterControls({
                       }
                     }
                   }}
-                  className="h-9 w-full rounded-xl border border-zinc-200 bg-white pr-7 pl-6 text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+                  className="h-9 w-full rounded-xl border border-zinc-200 bg-white pr-2 pl-5 text-center text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-purple-600 focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500"
                 />
-                {filters.max_rent !== undefined && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCustomRentInput("");
-                      onFilterChange("max_rent", undefined);
-                    }}
-                    className="absolute inset-y-0 right-0 flex items-center pr-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-                    aria-label="Clear max rent filter"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                )}
               </div>
-            </form>
+            </div>
 
             {/* Quick Preset Pills */}
             <div className="mt-2 flex flex-wrap gap-1">
@@ -205,16 +251,16 @@ export default function ListingFilterControls({
                     aria-label={preset.label}
                     onClick={() => {
                       if (isSelected) {
-                        setCustomRentInput("");
+                        setMaxRentInput("");
                         onFilterChange("max_rent", undefined);
                       } else {
-                        setCustomRentInput(String(preset.value));
+                        setMaxRentInput(String(preset.value));
                         onFilterChange("max_rent", preset.value);
                       }
                     }}
-                    className={`rounded-lg px-2 py-0.5 text-[10px] font-medium transition-colors ${
+                    className={`cursor-pointer rounded-lg px-2 py-0.5 text-[10px] font-medium transition-colors ${
                       isSelected
-                        ? "bg-purple-600 text-white dark:bg-purple-600"
+                        ? "bg-purple-600 text-white"
                         : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                     }`}
                   >
@@ -225,7 +271,7 @@ export default function ListingFilterControls({
             </div>
           </div>
 
-          {/* 2. Property Type Filter */}
+          {/* 2. Property Type */}
           <div>
             <label
               htmlFor="filter-property-type"
@@ -262,7 +308,7 @@ export default function ListingFilterControls({
             </div>
           </div>
 
-          {/* 3. Occupancy Type Filter */}
+          {/* 3. Room / Occupancy Type */}
           <div>
             <label
               htmlFor="filter-occupancy"
@@ -296,7 +342,7 @@ export default function ListingFilterControls({
             </div>
           </div>
 
-          {/* 4. Allowed Gender Policy Filter */}
+          {/* 4. Allowed Gender Policy */}
           <div>
             <label
               htmlFor="filter-gender"
@@ -331,6 +377,306 @@ export default function ListingFilterControls({
           </div>
         </div>
 
+        {/* Toggle Button for More Filters */}
+        <div className="mt-3.5 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+          <button
+            type="button"
+            onClick={() => setIsMoreFiltersOpen((prev) => !prev)}
+            className="dark:bg-zinc-850 inline-flex cursor-pointer items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3.5 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:border-purple-300 hover:bg-purple-50/70 hover:text-purple-700 dark:border-zinc-800 dark:text-zinc-300 dark:hover:border-purple-800 dark:hover:bg-purple-950/30 dark:hover:text-purple-300"
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>
+              {isMoreFiltersOpen
+                ? "Hide Detailed Filters"
+                : "More Filters (Location, Utilities, Amenities, Rules)"}
+            </span>
+            {isMoreFiltersOpen ? (
+              <ChevronUp className="h-3.5 w-3.5 text-zinc-400" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 text-zinc-400" />
+            )}
+          </button>
+        </div>
+
+        {/* Expandable Section: Full .Abangers UI Filter Content */}
+        {isMoreFiltersOpen && (
+          <div className="mt-4 space-y-4 rounded-xl border border-zinc-200/80 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-950/40">
+            {/* 1. Location & Amenities */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <label
+                  htmlFor="filter-near"
+                  className="flex items-center gap-1.5 text-xs font-bold text-zinc-800 dark:text-zinc-200"
+                >
+                  <MapPin className="h-3.5 w-3.5 text-zinc-400" />
+                  <span>Location Near</span>
+                </label>
+                <input
+                  id="filter-near"
+                  type="text"
+                  placeholder="University, street, landmark..."
+                  value={nearInput}
+                  onChange={(e) => {
+                    setNearInput(e.target.value);
+                    const val = e.target.value.trim();
+                    onFilterChange("near", val || undefined);
+                  }}
+                  className="mt-1.5 h-9 w-full rounded-xl border border-zinc-200 bg-white px-3 text-xs text-zinc-900 placeholder:text-zinc-400 focus:border-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="filter-distance"
+                  className="block text-xs font-bold text-zinc-800 dark:text-zinc-200"
+                >
+                  Within Distance
+                </label>
+                <div className="mt-1.5">
+                  <Select
+                    value={filters.distance ?? "all"}
+                    onValueChange={(val) => {
+                      onFilterChange(
+                        "distance",
+                        val === "all" ? undefined : val,
+                      );
+                    }}
+                  >
+                    <SelectTrigger id="filter-distance" className="h-9 text-xs">
+                      <SelectValue placeholder="Select distance" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Any distance</SelectItem>
+                      {FILTER_DISTANCE_OPTIONS.map((dist) => (
+                        <SelectItem key={dist} value={dist}>
+                          {dist}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                  Amenities
+                </label>
+                <div className="mt-2.5">
+                  <label className="inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(filters.parking)}
+                      onChange={(e) =>
+                        onFilterChange(
+                          "parking",
+                          e.target.checked ? true : undefined,
+                        )
+                      }
+                      className="h-4 w-4 rounded border-zinc-300 text-purple-600 accent-purple-600"
+                    />
+                    <span>Parking</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Utilities Included */}
+            <div>
+              <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                Utilities Included
+              </span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {FILTER_UTILITIES_OPTIONS.map((item) => {
+                  const active = filters.utilities?.includes(item);
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => toggleArrayItem("utilities", item)}
+                      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                        active
+                          ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
+                          : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                      }`}
+                    >
+                      {active && <Check className="h-3 w-3 text-purple-600" />}
+                      <span>{item}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. Room Features */}
+            <div>
+              <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                Room Features
+              </span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {FILTER_ROOM_FEATURES_OPTIONS.map((item) => {
+                  const active = filters.room_features?.includes(item);
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => toggleArrayItem("room_features", item)}
+                      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                        active
+                          ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
+                          : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                      }`}
+                    >
+                      {active && <Check className="h-3 w-3 text-purple-600" />}
+                      <span>{item}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 4. Bathroom & Kitchen & Laundry Grid */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                  Bathroom
+                </span>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {FILTER_BATHROOM_OPTIONS.map((item) => {
+                    const active = filters.bathroom?.includes(item);
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => toggleArrayItem("bathroom", item)}
+                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+                          active
+                            ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                        }`}
+                      >
+                        {active && (
+                          <Check className="h-3 w-3 text-purple-600" />
+                        )}
+                        <span>{item}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                  Kitchen & Food
+                </span>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {FILTER_KITCHEN_OPTIONS.map((item) => {
+                    const active = filters.kitchen?.includes(item);
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => toggleArrayItem("kitchen", item)}
+                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+                          active
+                            ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                        }`}
+                      >
+                        {active && (
+                          <Check className="h-3 w-3 text-purple-600" />
+                        )}
+                        <span>{item}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                  Laundry
+                </span>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {FILTER_LAUNDRY_OPTIONS.map((item) => {
+                    const active = filters.laundry?.includes(item);
+                    return (
+                      <button
+                        key={item}
+                        type="button"
+                        onClick={() => toggleArrayItem("laundry", item)}
+                        className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all ${
+                          active
+                            ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                        }`}
+                      >
+                        {active && (
+                          <Check className="h-3 w-3 text-purple-600" />
+                        )}
+                        <span>{item}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Safety & Security */}
+            <div>
+              <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                Safety & Security
+              </span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {FILTER_SAFETY_OPTIONS.map((item) => {
+                  const active = filters.safety?.includes(item);
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => toggleArrayItem("safety", item)}
+                      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                        active
+                          ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
+                          : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                      }`}
+                    >
+                      {active && <Check className="h-3 w-3 text-purple-600" />}
+                      <span>{item}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 6. House Rules */}
+            <div>
+              <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                House Rules
+              </span>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {FILTER_HOUSE_RULES_OPTIONS.map((item) => {
+                  const active = filters.house_rules?.includes(item);
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => toggleArrayItem("house_rules", item)}
+                      className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-all ${
+                        active
+                          ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/60 dark:text-purple-300"
+                          : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+                      }`}
+                    >
+                      {active && <Check className="h-3 w-3 text-purple-600" />}
+                      <span>{item}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Active Filter Badges Bar */}
         {activeCount > 0 && (
           <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800/80">
@@ -338,16 +684,33 @@ export default function ListingFilterControls({
               Active filters:
             </span>
 
+            {filters.min_rent !== undefined && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+                ≥ ₱{filters.min_rent.toLocaleString()}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMinRentInput("");
+                    onFilterChange("min_rent", undefined);
+                  }}
+                  className="cursor-pointer rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
+                  aria-label="Remove min rent filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+
             {filters.max_rent !== undefined && (
               <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
                 ≤ ₱{filters.max_rent.toLocaleString()}
                 <button
                   type="button"
                   onClick={() => {
-                    setCustomRentInput("");
+                    setMaxRentInput("");
                     onFilterChange("max_rent", undefined);
                   }}
-                  className="rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
+                  className="cursor-pointer rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
                   aria-label="Remove max rent filter"
                 >
                   <X className="h-3 w-3" />
@@ -361,7 +724,7 @@ export default function ListingFilterControls({
                 <button
                   type="button"
                   onClick={() => onFilterChange("property_type", undefined)}
-                  className="rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
+                  className="cursor-pointer rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
                   aria-label={`Remove property type ${filters.property_type} filter`}
                 >
                   <X className="h-3 w-3" />
@@ -375,7 +738,7 @@ export default function ListingFilterControls({
                 <button
                   type="button"
                   onClick={() => onFilterChange("occupancy", undefined)}
-                  className="rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
+                  className="cursor-pointer rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
                   aria-label={`Remove occupancy type ${filters.occupancy} filter`}
                 >
                   <X className="h-3 w-3" />
@@ -389,7 +752,7 @@ export default function ListingFilterControls({
                 <button
                   type="button"
                   onClick={() => onFilterChange("gender", undefined)}
-                  className="rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
+                  className="cursor-pointer rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
                   aria-label={`Remove gender policy ${filters.gender} filter`}
                 >
                   <X className="h-3 w-3" />
@@ -397,16 +760,87 @@ export default function ListingFilterControls({
               </span>
             )}
 
+            {filters.near && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+                Near: {filters.near}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNearInput("");
+                    onFilterChange("near", undefined);
+                  }}
+                  className="cursor-pointer rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
+                  aria-label="Remove near location filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+
+            {filters.distance && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+                {filters.distance}
+                <button
+                  type="button"
+                  onClick={() => onFilterChange("distance", undefined)}
+                  className="cursor-pointer rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
+                  aria-label="Remove distance filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+
+            {filters.parking && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
+                Parking
+                <button
+                  type="button"
+                  onClick={() => onFilterChange("parking", undefined)}
+                  className="cursor-pointer rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
+                  aria-label="Remove parking filter"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            )}
+
+            {(
+              [
+                "utilities",
+                "room_features",
+                "bathroom",
+                "kitchen",
+                "laundry",
+                "safety",
+                "house_rules",
+              ] as const
+            ).flatMap((key) =>
+              (filters[key] || []).map((val) => (
+                <span
+                  key={`${key}-${val}`}
+                  className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300"
+                >
+                  {val}
+                  <button
+                    type="button"
+                    onClick={() => toggleArrayItem(key, val)}
+                    className="cursor-pointer rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
+                    aria-label={`Remove filter ${val}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              )),
+            )}
+
             <button
               type="button"
-              onClick={() => {
-                setCustomRentInput("");
-                onResetFilters();
-              }}
-              className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+              onClick={handleResetAll}
+              className="ml-auto inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
             >
               <RotateCcw className="h-3 w-3" />
-              Reset all
+              Clear Filters
             </button>
           </div>
         )}

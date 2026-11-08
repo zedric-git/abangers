@@ -4,6 +4,7 @@ import { AlertCircle, Home } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { dashboardFor, parseRole } from "@/lib/auth/post-login";
 import PublicListingsView from "@/components/PublicListingsView";
+import HeaderAuthButtons from "@/components/HeaderAuthButtons";
 
 export const metadata = {
   title: "Browse Listings | Abangers",
@@ -12,7 +13,7 @@ export const metadata = {
 };
 
 const PUBLIC_LISTING_COLUMNS =
-  "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, created_at";
+  "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, amenities, utilities, room_features, bathroom_features, kitchen_features, laundry_features, safety_features, house_rules, created_at";
 
 export default async function ListingsPage() {
   const supabase = await createClient();
@@ -87,18 +88,14 @@ export default async function ListingsPage() {
           <nav className="flex items-center gap-3">
             <Link
               href="/"
-              className="rounded-xl px-3.5 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
+              className="rounded-xl px-3.5 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
             >
               Home
             </Link>
-            {dashboardPath && (
-              <Link
-                href={dashboardPath}
-                className="rounded-xl bg-purple-50 px-3.5 py-2 text-sm font-semibold text-purple-700 transition-colors hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/50"
-              >
-                My Dashboard
-              </Link>
-            )}
+            <HeaderAuthButtons
+              isAuthenticated={Boolean(authData?.user)}
+              dashboardPath={dashboardPath}
+            />
           </nav>
         </div>
       </header>
@@ -106,7 +103,10 @@ export default async function ListingsPage() {
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <Suspense fallback={null}>
-          <PublicListingsView initialListings={listings} />
+          <PublicListingsView
+            initialListings={listings}
+            isAuthenticated={Boolean(authData?.user)}
+          />
         </Suspense>
       </main>
     </div>

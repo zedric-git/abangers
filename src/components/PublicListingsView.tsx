@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { SearchX } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
@@ -14,13 +15,15 @@ import {
 import ListingSearchBar from "@/components/ListingSearchBar";
 import ListingFilterControls from "@/components/ListingFilterControls";
 import PublicListingCard from "@/components/PublicListingCard";
+import LandlordAuthModal from "@/components/LandlordAuthModal";
 
 interface PublicListingsViewProps {
   initialListings: ListingPreview[];
+  isAuthenticated?: boolean;
 }
 
 /**
- * Interactive public listings view with search and core property attribute filters (S2-04, S2-05, #14, #15).
+ * Interactive public listings view with search and property attribute filters (S2-04, S2-05, #14, #15).
  *
  * Performs instant in-memory filtering across preloaded public listings,
  * syncing query and filter parameters in the URL via the native History API
@@ -29,7 +32,17 @@ interface PublicListingsViewProps {
  */
 export default function PublicListingsView({
   initialListings,
+  isAuthenticated = false,
 }: PublicListingsViewProps) {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [selectedListing, setSelectedListing] = useState<ListingPreview | null>(
+    null,
+  );
+
+  const handleRequireAuth = (listing: ListingPreview) => {
+    setSelectedListing(listing);
+    setIsAuthModalOpen(true);
+  };
   const searchParams = useSearchParams();
   const filters = parseListingFilterParams(searchParams);
 
@@ -44,12 +57,37 @@ export default function PublicListingsView({
 
     const params = new URLSearchParams();
     if (next.q) params.set("q", next.q);
-    if (next.max_rent !== undefined) {
+    if (next.min_rent !== undefined)
+      params.set("min_rent", String(next.min_rent));
+    if (next.max_rent !== undefined)
       params.set("max_rent", String(next.max_rent));
-    }
     if (next.property_type) params.set("property_type", next.property_type);
     if (next.occupancy) params.set("occupancy", next.occupancy);
     if (next.gender) params.set("gender", next.gender);
+    if (next.near) params.set("near", next.near);
+    if (next.distance) params.set("distance", next.distance);
+    if (next.parking) params.set("parking", "true");
+    if (next.utilities && next.utilities.length > 0) {
+      params.set("utilities", next.utilities.join(","));
+    }
+    if (next.room_features && next.room_features.length > 0) {
+      params.set("room_features", next.room_features.join(","));
+    }
+    if (next.bathroom && next.bathroom.length > 0) {
+      params.set("bathroom", next.bathroom.join(","));
+    }
+    if (next.kitchen && next.kitchen.length > 0) {
+      params.set("kitchen", next.kitchen.join(","));
+    }
+    if (next.laundry && next.laundry.length > 0) {
+      params.set("laundry", next.laundry.join(","));
+    }
+    if (next.safety && next.safety.length > 0) {
+      params.set("safety", next.safety.join(","));
+    }
+    if (next.house_rules && next.house_rules.length > 0) {
+      params.set("house_rules", next.house_rules.join(","));
+    }
 
     const queryString = params.toString();
     const url = queryString ? `/listings?${queryString}` : "/listings";
@@ -73,20 +111,42 @@ export default function PublicListingsView({
 
   const handleResetFilters = () => {
     updateUrl({
+      min_rent: undefined,
       max_rent: undefined,
       property_type: undefined,
       occupancy: undefined,
       gender: undefined,
+      near: undefined,
+      distance: undefined,
+      parking: undefined,
+      utilities: undefined,
+      room_features: undefined,
+      bathroom: undefined,
+      kitchen: undefined,
+      laundry: undefined,
+      safety: undefined,
+      house_rules: undefined,
     });
   };
 
   const handleClearAll = () => {
     updateUrl({
       q: "",
+      min_rent: undefined,
       max_rent: undefined,
       property_type: undefined,
       occupancy: undefined,
       gender: undefined,
+      near: undefined,
+      distance: undefined,
+      parking: undefined,
+      utilities: undefined,
+      room_features: undefined,
+      bathroom: undefined,
+      kitchen: undefined,
+      laundry: undefined,
+      safety: undefined,
+      house_rules: undefined,
     });
   };
 
@@ -174,7 +234,11 @@ export default function PublicListingsView({
         {visibleListings.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:gap-8">
             {visibleListings.map((listing) => (
-              <PublicListingCard key={listing.id} listing={listing} />
+              <PublicListingCard
+                key={listing.id}
+                listing={listing}
+                onRequireAuth={isAuthenticated ? undefined : handleRequireAuth}
+              />
             ))}
           </div>
         ) : hasAnyFilterOrSearch ? (
@@ -214,6 +278,26 @@ export default function PublicListingsView({
           </div>
         )}
       </div>
+
+      {/* Guest Login/Sign-up Modal (#86) */}
+      <LandlordAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setSelectedListing(null);
+        }}
+        initialMode="signup"
+        initialRole="renter"
+        promptTitle="Create an account to view details"
+        promptDescription={
+          selectedListing
+            ? `Sign up or log in to view full photos, rules, and contact information for "${selectedListing.title}".`
+            : "Sign up or log in to view complete listing details, photos, and landlord contact information."
+        }
+        redirectTo={
+          selectedListing ? `/listings/${selectedListing.id}` : undefined
+        }
+      />
     </>
   );
 }
