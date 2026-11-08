@@ -9,8 +9,11 @@
 --    - Renter can view, insert, and delete only their own rows (auth.uid() = renter_id).
 --    - Role enforcement (Rule 1): the user's profile must have role = 'renter'.
 --    - Landlords and unauthenticated visitors cannot read, insert, or delete favorites.
+--
+-- SAFE TO RE-RUN: "if not exists" for the table and index, and each policy
+-- is dropped "if exists" before it is created.
 
-create table public.favorites (
+create table if not exists public.favorites (
   renter_id  uuid not null references public.profiles(id) on delete cascade,
   listing_id uuid not null references public.listings(id) on delete cascade,
   created_at timestamp with time zone default now() not null,
@@ -18,7 +21,7 @@ create table public.favorites (
 );
 
 -- Index for reverse lookup and fast cascade deletes on listing removal.
-create index favorites_listing_id_idx on public.favorites(listing_id);
+create index if not exists favorites_listing_id_idx on public.favorites(listing_id);
 
 -- Explicit grants: only authenticated users can select, insert, or delete (Rule 1).
 grant select, insert, delete on table public.favorites to authenticated;
@@ -27,6 +30,7 @@ grant select, insert, delete on table public.favorites to authenticated;
 alter table public.favorites enable row level security;
 
 -- Policy: Renters can view only their own favorites.
+drop policy if exists "renters can view own favorites" on public.favorites;
 create policy "renters can view own favorites"
   on public.favorites for select
   to authenticated
@@ -40,6 +44,7 @@ create policy "renters can view own favorites"
   );
 
 -- Policy: Renters can insert only their own favorites.
+drop policy if exists "renters can insert own favorites" on public.favorites;
 create policy "renters can insert own favorites"
   on public.favorites for insert
   to authenticated
@@ -53,6 +58,7 @@ create policy "renters can insert own favorites"
   );
 
 -- Policy: Renters can delete only their own favorites.
+drop policy if exists "renters can delete own favorites" on public.favorites;
 create policy "renters can delete own favorites"
   on public.favorites for delete
   to authenticated
