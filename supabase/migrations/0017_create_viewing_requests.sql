@@ -105,9 +105,11 @@ create table if not exists public.viewing_requests (
 
 
 -- ── 2. The landlord comes from the listing ──────────────────────────
--- landlord_id is always the listing's landlord. The app doesn't need to
--- send it, and whatever it sends is replaced, so a renter can't file a
--- request under another landlord or get around the slot lock.
+-- landlord_id is always the listing's landlord. The generated types
+-- (src/types/database.ts) still make the app send one, because the
+-- column can't be empty, so the app sends the listing's landlord_id.
+-- Whatever it sends is replaced here, so a renter can't file a request
+-- under another landlord or get around the slot lock.
 --
 -- Runs as the caller (not security definer), so it only finds listings
 -- the caller can read, which today is every listing (0001). Once listing

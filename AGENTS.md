@@ -183,8 +183,10 @@ https://github.com/users/zedric-git/projects/3
   before it starts. Anything else is `42501`, and nobody can delete a
   request. So filter an update by the status you expect
   (`.eq("status", "pending")`), and treat "no row back" as "it changed
-  in the meantime". Another trigger copies `landlord_id` from the
-  listing, so don't send it. A pending or confirmed request holds the
+  in the meantime". The generated types make `landlord_id` required on
+  insert, so send the listing's landlord: another trigger replaces
+  whatever comes in with the listing's own `landlord_id`, so a wrong one
+  can't stick. A pending or confirmed request holds the
   landlord's date and start time, and a renter can't have two for one
   listing (`23505`, and the message names the index). "Started" means
   `viewing_date + start_time` on the Philippine clock

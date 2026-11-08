@@ -51,8 +51,10 @@ export function timeToSeconds(time: string): number {
 const timeSchema = z.string().regex(TIME_PATTERN, "Choose a time");
 
 /**
- * What the renter sends. There's no renter_id or status: the server
- * action takes the renter from the session, and a new request is always
+ * What the renter sends. There's no renter_id, landlord_id or status:
+ * the server action takes the renter from the session and the landlord
+ * from the listing it loads (the generated insert type needs one, and
+ * 0017's trigger replaces it anyway), and a new request is always
  * pending (0017). Whether the slot has started, and whether it's inside
  * the landlord's hours, need the clock and the landlord's availability,
  * so the database (0017) and #109's action check those.
