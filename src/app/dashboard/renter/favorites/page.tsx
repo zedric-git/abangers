@@ -20,11 +20,14 @@ export default function RenterFavoritesPage() {
         </div>
         <h2 className="mt-4 text-base font-semibold">No favorites saved yet</h2>
         <p className="text-muted-foreground mx-auto mt-1.5 max-w-sm text-sm">
-          Browse through available boarding houses and click the heart icon on
-          any listing to bookmark it.
+          Saving listings to your favorites is coming soon. In the meantime, you
+          can browse available boarding houses and rooms.
         </p>
         <div className="mt-6">
-          <Button asChild>
+          <Button
+            asChild
+            className="bg-purple-600 text-white shadow-xs hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-500"
+          >
             <Link href="/listings">
               <Search className="mr-2 h-4 w-4" />
               Find a Place
