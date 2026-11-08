@@ -3,14 +3,14 @@
  * Supabase, signed in as the seed accounts: CI's throwaway one on every
  * PR, and the SHARED project after a database merge or when run by hand.
  *
- * Checks the policies in supabase/migrations/0015_create_favorites.sql:
+ * Checks the policies in supabase/migrations/0016_create_favorites.sql:
  * - Renters can view, insert, and delete their own favorites.
  * - Renter A cannot view, insert-as, or delete Renter B's favorites.
  * - Landlords cannot insert or view favorites (role enforcement).
  * - Anonymous visitors cannot view or insert favorites.
  *
  * SAFE ON SHARED DATA: tests operate on test-specific listing bookmarks
- * and clean them up in afterEach/finally blocks.
+ * and clean them up in finally blocks.
  *
  * Run with: npm run test:db   (needs .env.local and seed data loaded)
  */
@@ -29,7 +29,7 @@ import {
 const LISTING_1 = "a1b2c3d4-0000-4000-8000-000000000001";
 const LISTING_2 = "a1b2c3d4-0000-4000-8000-000000000002";
 
-describe("public.favorites RLS policies (0015 / #95)", () => {
+describe("public.favorites RLS policies (0016 / #95)", () => {
   let renterAClient: SupabaseClient;
   let renterAId: string;
   let renterBClient: SupabaseClient;
@@ -62,38 +62,66 @@ describe("public.favorites RLS policies (0015 / #95)", () => {
 
   afterAll(async () => {
     // Teardown test rows.
-    await renterAClient?.from("favorites").delete().eq("renter_id", renterAId);
-    await renterBClient?.from("favorites").delete().eq("renter_id", renterBId);
+    try {
+      await renterAClient
+        ?.from("favorites")
+        .delete()
+        .eq("renter_id", renterAId);
+    } catch {}
+    try {
+      await renterBClient
+        ?.from("favorites")
+        .delete()
+        .eq("renter_id", renterBId);
+    } catch {}
   });
 
   it("allows a renter to insert and select their own favorite", async () => {
-    const { error: insertError } = await renterAClient
-      .from("favorites")
-      .insert({
-        renter_id: renterAId,
-        listing_id: LISTING_1,
-      });
-    expect(insertError).toBeNull();
+    try {
+      const { error: insertError } = await renterAClient
+        .from("favorites")
+        .insert({
+          renter_id: renterAId,
+          listing_id: LISTING_1,
+        });
+      expect(insertError).toBeNull();
 
-    const { data, error: selectError } = await renterAClient
-      .from("favorites")
-      .select("*")
-      .eq("renter_id", renterAId);
+      const { data, error: selectError } = await renterAClient
+        .from("favorites")
+        .select("*")
+        .eq("renter_id", renterAId);
 
-    expect(selectError).toBeNull();
-    expect(data).toHaveLength(1);
-    expect(data?.[0].listing_id).toBe(LISTING_1);
+      expect(selectError).toBeNull();
+      expect(data).toHaveLength(1);
+      expect(data?.[0].listing_id).toBe(LISTING_1);
+    } finally {
+      await renterAClient
+        .from("favorites")
+        .delete()
+        .match({ renter_id: renterAId, listing_id: LISTING_1 });
+    }
   });
 
   it("prevents Renter B from viewing Renter A's favorites", async () => {
-    const { data, error } = await renterBClient
-      .from("favorites")
-      .select("*")
-      .eq("renter_id", renterAId);
+    await renterAClient.from("favorites").insert({
+      renter_id: renterAId,
+      listing_id: LISTING_1,
+    });
+    try {
+      const { data, error } = await renterBClient
+        .from("favorites")
+        .select("*")
+        .eq("renter_id", renterAId);
 
-    expect(error).toBeNull();
-    // RLS filters out rows owned by another renter.
-    expect(data).toHaveLength(0);
+      expect(error).toBeNull();
+      // RLS filters out rows owned by another renter.
+      expect(data).toHaveLength(0);
+    } finally {
+      await renterAClient
+        .from("favorites")
+        .delete()
+        .match({ renter_id: renterAId, listing_id: LISTING_1 });
+    }
   });
 
   it("prevents Renter B from inserting a favorite under Renter A's id", async () => {
@@ -107,19 +135,30 @@ describe("public.favorites RLS policies (0015 / #95)", () => {
   });
 
   it("prevents Renter B from deleting Renter A's favorite", async () => {
-    const { error } = await renterBClient
-      .from("favorites")
-      .delete()
-      .match({ renter_id: renterAId, listing_id: LISTING_1 });
+    await renterAClient.from("favorites").insert({
+      renter_id: renterAId,
+      listing_id: LISTING_1,
+    });
+    try {
+      const { error } = await renterBClient
+        .from("favorites")
+        .delete()
+        .match({ renter_id: renterAId, listing_id: LISTING_1 });
 
-    expect(error).toBeNull();
+      expect(error).toBeNull();
 
-    // Verify Renter A's favorite still exists.
-    const { data } = await renterAClient
-      .from("favorites")
-      .select("*")
-      .eq("listing_id", LISTING_1);
-    expect(data).toHaveLength(1);
+      // Verify Renter A's favorite still exists.
+      const { data } = await renterAClient
+        .from("favorites")
+        .select("*")
+        .eq("listing_id", LISTING_1);
+      expect(data).toHaveLength(1);
+    } finally {
+      await renterAClient
+        .from("favorites")
+        .delete()
+        .match({ renter_id: renterAId, listing_id: LISTING_1 });
+    }
   });
 
   it("prevents a landlord from inserting a favorite", async () => {
@@ -152,17 +191,28 @@ describe("public.favorites RLS policies (0015 / #95)", () => {
   });
 
   it("allows a renter to delete their own favorite", async () => {
-    const { error: deleteError } = await renterAClient
-      .from("favorites")
-      .delete()
-      .match({ renter_id: renterAId, listing_id: LISTING_1 });
+    await renterAClient.from("favorites").insert({
+      renter_id: renterAId,
+      listing_id: LISTING_1,
+    });
+    try {
+      const { error: deleteError } = await renterAClient
+        .from("favorites")
+        .delete()
+        .match({ renter_id: renterAId, listing_id: LISTING_1 });
 
-    expect(deleteError).toBeNull();
+      expect(deleteError).toBeNull();
 
-    const { data } = await renterAClient
-      .from("favorites")
-      .select("*")
-      .eq("listing_id", LISTING_1);
-    expect(data).toHaveLength(0);
+      const { data } = await renterAClient
+        .from("favorites")
+        .select("*")
+        .eq("listing_id", LISTING_1);
+      expect(data).toHaveLength(0);
+    } finally {
+      await renterAClient
+        .from("favorites")
+        .delete()
+        .match({ renter_id: renterAId, listing_id: LISTING_1 });
+    }
   });
 });
