@@ -174,6 +174,27 @@ https://github.com/users/zedric-git/projects/3
   after it (`src/components/PhMobileNumberInput.tsx`), but save it as
   `09` + 9 digits (`09171234567`), which is what the schema and the
   policy check; `src/lib/ph-mobile-number.ts` converts between the two.
+- **Viewing requests (`viewing_requests`, #107) change only in ways a
+  trigger allows.** A renter sends a request as `pending`. After that
+  only its `status` and `decline_reason` can change, and the trigger in
+  `0017_create_viewing_requests.sql` lets the landlord confirm or
+  decline a pending request and mark a confirmed one completed once it
+  has started, and lets the renter cancel a pending or confirmed one
+  before it starts. Anything else is `42501`, and nobody can delete a
+  request. So filter an update by the status you expect
+  (`.eq("status", "pending")`), and treat "no row back" as "it changed
+  in the meantime". Another trigger copies `landlord_id` from the
+  listing, so don't send it. A pending or confirmed request holds the
+  landlord's date and start time, and a renter can't have two for one
+  listing (`23505`, and the message names the index). "Started" means
+  `viewing_date + start_time` on the Philippine clock
+  (`now() at time zone 'Asia/Manila'`), never the server's UTC `now()`,
+  so compare the same way in app code. Two foreign keys point at
+  `profiles`, so a join names the one it wants
+  (`profiles!viewing_requests_renter_id_fkey`). The seed has seven
+  requests with fixed ids, one in each status, on landlord1's and
+  landlord2's listings, dated from the day it runs. Running it again
+  resets them and deletes the seed renters' other requests.
 - **Storage errors arrive as HTTP 400 — read `error.statusCode`, not
   `error.status`.** Supabase Storage answers every refused request with
   status 400 and puts the real code in the response body, which
@@ -597,7 +618,7 @@ entry in the PR that closes it.
   merge. Run by hand, they use `.env.local` and the seed data, so they
   hit the **shared** project. Any new table's RLS policies should get a
   test here; DB tests must leave shared data unchanged. They sign in as
-  the seed accounts about 45 times per run, so the shared project's
+  the seed accounts about 50 times per run, so the shared project's
   sign-in rate limit (dashboard → Authentication → Rate Limits,
   "sign-ups and sign-ins" per 5 minutes) must allow that, or they fail
   with "Request rate limit reached".
