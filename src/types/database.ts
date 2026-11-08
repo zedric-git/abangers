@@ -14,6 +14,39 @@ export type Database = {
   };
   public: {
     Tables: {
+      favorites: {
+        Row: {
+          created_at: string;
+          listing_id: string;
+          renter_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          listing_id: string;
+          renter_id: string;
+        };
+        Update: {
+          created_at?: string;
+          listing_id?: string;
+          renter_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "favorites_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "listings";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "favorites_renter_id_fkey";
+            columns: ["renter_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       landlord_verifications: {
         Row: {
           consent_given_at: string;
