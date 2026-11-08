@@ -2,11 +2,18 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { SearchX, Sparkles } from "lucide-react";
+import {
+  SearchX,
+  Sparkles,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
 import {
   filterListings,
   hasActiveAttributeFilters,
+  countActiveAttributeFilters,
 } from "@/lib/filter-listings";
 import {
   parseListingFilterParams,
@@ -38,6 +45,7 @@ export default function PublicListingsView({
   const [selectedListing, setSelectedListing] = useState<ListingPreview | null>(
     null,
   );
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   const handleRequireAuth = (listing: ListingPreview) => {
     setSelectedListing(listing);
@@ -45,6 +53,7 @@ export default function PublicListingsView({
   };
   const searchParams = useSearchParams();
   const filters = parseListingFilterParams(searchParams);
+  const activeFilterCount = countActiveAttributeFilters(filters);
 
   // Instant in-memory filtering (0ms latency)
   const visibleListings = filterListings(initialListings, filters);
@@ -174,21 +183,56 @@ export default function PublicListingsView({
           workplace.
         </p>
 
-        {/* Search Input Bar */}
+        {/* Search Input Bar with Filter Button beside Search */}
         <div className="mt-3.5 sm:mt-4">
           <ListingSearchBar
             value={filters.q}
             onSearch={handleSearch}
             onClear={handleClearSearch}
+            filterButton={
+              <button
+                type="button"
+                onClick={() => setIsFiltersOpen((prev) => !prev)}
+                className={`inline-flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-2xl border px-3.5 text-xs font-semibold shadow-2xs transition-all sm:h-12 sm:px-4 sm:text-sm ${
+                  isFiltersOpen
+                    ? "border-purple-600 bg-purple-600 text-white shadow-xs"
+                    : "border-zinc-200 bg-white text-zinc-700 hover:border-purple-300 hover:bg-purple-50/70 hover:text-purple-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-purple-800 dark:hover:bg-purple-950/20"
+                }`}
+                aria-expanded={isFiltersOpen}
+                aria-controls="filters-expanded-panel"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span
+                    className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
+                      isFiltersOpen
+                        ? "bg-white text-purple-700"
+                        : "bg-purple-600 text-white"
+                    }`}
+                  >
+                    {activeFilterCount}
+                  </span>
+                )}
+                {isFiltersOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-zinc-400" />
+                )}
+              </button>
+            }
           />
         </div>
 
         {/* Collapsible Property Attribute Filters Toolbar */}
-        <div className="mt-2.5 text-left sm:mt-3">
+        <div className="text-left">
           <ListingFilterControls
             filters={filters}
+            isOpen={isFiltersOpen}
+            onToggleOpen={() => setIsFiltersOpen((prev) => !prev)}
             onFilterChange={handleFilterChange}
             onResetFilters={handleResetFilters}
+            hideToggleButton
           />
         </div>
       </div>

@@ -9,6 +9,7 @@ interface ListingSearchBarProps {
   onClear?: () => void;
   placeholder?: string;
   className?: string;
+  filterButton?: React.ReactNode;
 }
 
 /**
@@ -16,6 +17,7 @@ interface ListingSearchBarProps {
  *
  * Allows renters and guests to search listings by city, street, university,
  * or workplace keyword. Dispatches immediate search and clear events.
+ * Supports rendering a filter button directly beside the search submit button.
  */
 export default function ListingSearchBar({
   value = "",
@@ -23,6 +25,7 @@ export default function ListingSearchBar({
   onClear,
   placeholder = "Search by city, street, university (e.g. USC), or workplace (e.g. IT Park)...",
   className = "",
+  filterButton,
 }: ListingSearchBarProps) {
   const [term, setTerm] = useState(value);
   const [prevValue, setPrevValue] = useState(value);
@@ -87,10 +90,12 @@ export default function ListingSearchBar({
 
       <button
         type="submit"
-        className="flex h-11 shrink-0 cursor-pointer items-center justify-center rounded-2xl bg-purple-600 px-5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-purple-700 active:bg-purple-800 sm:h-12 sm:px-6 dark:bg-purple-600 dark:hover:bg-purple-700"
+        className="flex h-11 shrink-0 cursor-pointer items-center justify-center rounded-2xl bg-purple-600 px-4 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-purple-700 active:bg-purple-800 sm:h-12 sm:px-6 sm:text-sm dark:bg-purple-600 dark:hover:bg-purple-700"
       >
         Search
       </button>
+
+      {filterButton}
     </form>
   );
 }

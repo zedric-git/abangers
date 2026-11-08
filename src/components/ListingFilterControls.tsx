@@ -50,6 +50,9 @@ interface ListingFilterControlsProps {
   ) => void;
   onResetFilters: () => void;
   className?: string;
+  isOpen?: boolean;
+  onToggleOpen?: () => void;
+  hideToggleButton?: boolean;
 }
 
 const RENT_BUDGET_PRESETS = [
@@ -67,9 +70,22 @@ export default function ListingFilterControls({
   onFilterChange,
   onResetFilters,
   className = "",
+  isOpen: externalIsOpen,
+  onToggleOpen,
+  hideToggleButton = false,
 }: ListingFilterControlsProps) {
-  // Closed by default so listings immediately appear above the fold
-  const [isOpen, setIsOpen] = useState(false);
+  // Controlled or uncontrolled open state
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isControlled = typeof externalIsOpen === "boolean";
+  const isOpen = isControlled ? externalIsOpen : internalIsOpen;
+
+  const toggleOpen = () => {
+    if (onToggleOpen) {
+      onToggleOpen();
+    } else {
+      setInternalIsOpen((prev) => !prev);
+    }
+  };
   const [isMoreFiltersOpen, setIsMoreFiltersOpen] = useState(false);
 
   const [minRentInput, setMinRentInput] = useState(
@@ -285,56 +301,68 @@ export default function ListingFilterControls({
 
   return (
     <div className={`w-full ${className}`}>
-      {/* 1. Sleek Filters Toggle Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={() => setIsOpen((prev) => !prev)}
-          className={`inline-flex cursor-pointer items-center gap-2.5 rounded-2xl border px-4 py-2.5 text-xs font-semibold shadow-2xs transition-all sm:text-sm ${
-            isOpen
-              ? "border-purple-600 bg-purple-600 text-white shadow-xs"
-              : "border-zinc-200 bg-white text-zinc-700 hover:border-purple-300 hover:bg-purple-50/70 hover:text-purple-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-purple-800 dark:hover:bg-purple-950/20"
-          }`}
-          aria-expanded={isOpen}
-          aria-controls="filters-expanded-panel"
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-          <span>{isOpen ? "Hide Filters" : "Filters"}</span>
-          {activeCount > 0 && (
-            <span
-              className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
-                isOpen ? "bg-white text-purple-700" : "bg-purple-600 text-white"
-              }`}
-            >
-              {activeCount}
-            </span>
-          )}
-          {isOpen ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4 text-zinc-400" />
-          )}
-        </button>
-
-        {activeCount > 0 && (
+      {/* 1. Sleek Filters Toggle Bar (omitted if rendered externally beside search button) */}
+      {!hideToggleButton && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <button
             type="button"
-            onClick={handleResetAll}
-            className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 hover:underline sm:text-sm dark:text-purple-400 dark:hover:text-purple-300"
+            onClick={toggleOpen}
+            className={`inline-flex cursor-pointer items-center gap-2.5 rounded-2xl border px-4 py-2.5 text-xs font-semibold shadow-2xs transition-all sm:text-sm ${
+              isOpen
+                ? "border-purple-600 bg-purple-600 text-white shadow-xs"
+                : "border-zinc-200 bg-white text-zinc-700 hover:border-purple-300 hover:bg-purple-50/70 hover:text-purple-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-purple-800 dark:hover:bg-purple-950/20"
+            }`}
+            aria-expanded={isOpen}
+            aria-controls="filters-expanded-panel"
           >
-            <RotateCcw className="h-3.5 w-3.5" />
-            <span>Clear Filters ({activeCount})</span>
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>{isOpen ? "Hide Filters" : "Filters"}</span>
+            {activeCount > 0 && (
+              <span
+                className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
+                  isOpen
+                    ? "bg-white text-purple-700"
+                    : "bg-purple-600 text-white"
+                }`}
+              >
+                {activeCount}
+              </span>
+            )}
+            {isOpen ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-zinc-400" />
+            )}
           </button>
-        )}
-      </div>
+
+          {activeCount > 0 && (
+            <button
+              type="button"
+              onClick={handleResetAll}
+              className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 hover:underline sm:text-sm dark:text-purple-400 dark:hover:text-purple-300"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>Clear Filters ({activeCount})</span>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 2. Always-Visible Active Badges (When Filter Panel is Closed) */}
       {!isOpen && activeCount > 0 && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-zinc-200/80 bg-white/80 p-3 shadow-2xs backdrop-blur-xs dark:border-zinc-800 dark:bg-zinc-900/60">
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 rounded-2xl border border-zinc-200/80 bg-white/80 p-3 shadow-2xs backdrop-blur-xs dark:border-zinc-800 dark:bg-zinc-900/60">
           <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-            Active:
+            Active filters:
           </span>
           {renderActiveBadgePills()}
+          <button
+            type="button"
+            onClick={handleResetAll}
+            className="ml-auto inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 hover:underline dark:text-purple-400 dark:hover:text-purple-300"
+          >
+            <RotateCcw className="h-3 w-3" />
+            <span>Reset filters</span>
+          </button>
         </div>
       )}
 
@@ -342,8 +370,43 @@ export default function ListingFilterControls({
       {isOpen && (
         <div
           id="filters-expanded-panel"
-          className="mt-3.5 rounded-3xl border border-zinc-200/90 bg-white p-5 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900/80"
+          className="mt-2.5 rounded-3xl border border-zinc-200/90 bg-white p-5 shadow-sm sm:p-6 dark:border-zinc-800 dark:bg-zinc-900/80"
         >
+          {/* Inner Header Bar */}
+          <div className="mb-4 flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <span className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                All Property Filters
+              </span>
+              {activeCount > 0 && (
+                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-purple-600 px-1.5 text-[11px] font-bold text-white">
+                  {activeCount}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              {activeCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleResetAll}
+                  className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 hover:underline dark:text-purple-400 dark:hover:text-purple-300"
+                >
+                  <RotateCcw className="h-3 w-3" />
+                  <span>Reset all</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={toggleOpen}
+                className="inline-flex cursor-pointer items-center gap-1 rounded-xl border border-zinc-200 bg-zinc-50 px-2.5 py-1 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                aria-label="Close filters panel"
+              >
+                <span>Hide</span>
+                <ChevronUp className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
           {/* Row 1: Primary Discovery Controls */}
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {/* 1. Rent Range (Min - Max) */}
