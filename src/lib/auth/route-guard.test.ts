@@ -7,6 +7,7 @@ describe("isGuardedPath", () => {
     expect(isGuardedPath("/dashboard/landlord")).toBe(true);
     expect(isGuardedPath("/dashboard/renter/saved")).toBe(true);
     expect(isGuardedPath("/profile-setup")).toBe(true);
+    expect(isGuardedPath("/renter/profile-setup")).toBe(true);
   });
 
   it("leaves other pages alone", () => {
@@ -15,6 +16,7 @@ describe("isGuardedPath", () => {
     // Only whole path segments count.
     expect(isGuardedPath("/dashboards")).toBe(false);
     expect(isGuardedPath("/profile-setup-help")).toBe(false);
+    expect(isGuardedPath("/renter/profile-setup-help")).toBe(false);
   });
 });
 
@@ -44,6 +46,40 @@ describe("guardRedirect", () => {
 
     it("sends a user with no usable role to the home page", () => {
       expect(guardRedirect("/profile-setup", true, null)).toBe("/");
+    });
+  });
+
+  describe("/renter/profile-setup (S2-01)", () => {
+    it("sends a signed-out visitor to the home page", () => {
+      expect(guardRedirect("/renter/profile-setup", false, null)).toBe("/");
+    });
+
+    it("lets in an incomplete renter", () => {
+      expect(
+        guardRedirect("/renter/profile-setup", true, "/renter/profile-setup"),
+      ).toBeNull();
+    });
+
+    it("sends a complete renter to their dashboard", () => {
+      expect(
+        guardRedirect("/renter/profile-setup", true, "/dashboard/renter"),
+      ).toBe("/dashboard/renter");
+    });
+
+    it("sends a landlord to the landlord dashboard", () => {
+      expect(
+        guardRedirect("/renter/profile-setup", true, "/dashboard/landlord"),
+      ).toBe("/dashboard/landlord");
+    });
+
+    it("sends an admin to the admin dashboard", () => {
+      expect(
+        guardRedirect("/renter/profile-setup", true, "/dashboard/admin"),
+      ).toBe("/dashboard/admin");
+    });
+
+    it("sends a user with no usable role to the home page", () => {
+      expect(guardRedirect("/renter/profile-setup", true, null)).toBe("/");
     });
   });
 
@@ -87,6 +123,12 @@ describe("guardRedirect", () => {
       expect(guardRedirect("/dashboard/landlord", true, "/profile-setup")).toBe(
         "/profile-setup",
       );
+    });
+
+    it("sends an incomplete renter to renter profile setup (S2-01)", () => {
+      expect(
+        guardRedirect("/dashboard/renter", true, "/renter/profile-setup"),
+      ).toBe("/renter/profile-setup");
     });
 
     it("sends a user with no usable role to the home page", () => {
@@ -135,6 +177,9 @@ describe("guardRedirect", () => {
       expect(guardRedirect("/profile-setup", true, "/dashboard/admin")).toBe(
         "/dashboard/admin",
       );
+      expect(
+        guardRedirect("/renter/profile-setup", true, "/dashboard/admin"),
+      ).toBe("/dashboard/admin");
     });
   });
 });

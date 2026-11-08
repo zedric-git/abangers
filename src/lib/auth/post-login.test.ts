@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { decidePostLoginRoute } from "./post-login";
+import { decidePostLoginRoute, pathForRole } from "./post-login";
 
 describe("decidePostLoginRoute", () => {
   it("uses the profiles row when it exists", () => {
@@ -51,5 +51,22 @@ describe("decidePostLoginRoute", () => {
       kind: "error",
     });
     expect(decidePostLoginRoute(undefined, "")).toEqual({ kind: "error" });
+  });
+});
+
+describe("pathForRole (S2-01)", () => {
+  it("sends incomplete renters to /renter/profile-setup", () => {
+    expect(pathForRole("renter", false)).toBe("/renter/profile-setup");
+    expect(pathForRole("renter", undefined)).toBe("/renter/profile-setup");
+  });
+
+  it("sends complete renters to /dashboard/renter", () => {
+    expect(pathForRole("renter", true)).toBe("/dashboard/renter");
+  });
+
+  it("sends landlords and admins to their dashboards", () => {
+    expect(pathForRole("landlord", false)).toBe("/dashboard/landlord");
+    expect(pathForRole("landlord", true)).toBe("/dashboard/landlord");
+    expect(pathForRole("admin", false)).toBe("/dashboard/admin");
   });
 });

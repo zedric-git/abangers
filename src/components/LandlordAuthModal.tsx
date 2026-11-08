@@ -17,18 +17,22 @@ import {
   loginSchema,
   mapAuthError,
   signUpSchema,
+  type SignUpRole,
 } from "@/lib/validations/auth";
 import { resolvePostLoginPath } from "@/lib/auth/post-login";
 import { signUpWithProfile } from "@/lib/auth/sign-up";
+import { cn } from "@/lib/utils";
 
 interface LandlordAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialMode?: "login" | "signup";
+  initialRole?: SignUpRole;
 }
 
 /**
- * The landlord login / sign-up popup, opened from the home page.
+ * The login / sign-up popup, opened from the home page.
+ * Supports both renters and landlords (S2-01).
  *
  * Built on shadcn's Dialog (#245): Escape and a click outside close it,
  * Tab stays inside it, screen readers announce it as a dialog named by
@@ -39,6 +43,7 @@ export default function LandlordAuthModal({
   isOpen,
   onClose,
   initialMode = "signup",
+  initialRole = "landlord",
 }: LandlordAuthModalProps) {
   const router = useRouter();
   const supabase = createClient();
@@ -46,6 +51,7 @@ export default function LandlordAuthModal({
   const openerRef = useRef<HTMLElement | null>(null);
 
   const [isLoginMode, setIsLoginMode] = useState(initialMode === "login");
+  const [role, setRole] = useState<SignUpRole>(initialRole);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -72,7 +78,7 @@ export default function LandlordAuthModal({
           email,
           password,
           confirmPassword,
-          role: "landlord",
+          role,
         });
 
     if (result.success) {
@@ -122,13 +128,13 @@ export default function LandlordAuthModal({
           onClose();
         }
       } else {
-        // Sign Up (Landlord) — shared flow, including the
+        // Sign Up (Renter or Landlord) — shared flow, including the
         // already-registered-email check (src/lib/auth/sign-up.ts).
         const result = await signUpWithProfile(supabase, {
           email,
           password,
           fullName,
-          role: "landlord",
+          role,
         });
 
         if (!result.ok) {
@@ -137,8 +143,10 @@ export default function LandlordAuthModal({
         }
 
         if (result.kind === "signed-in") {
-          // New landlords fill in their contact details first.
-          router.push("/profile-setup");
+          // Direct new users through their role-specific profile setup
+          router.push(
+            role === "landlord" ? "/profile-setup" : "/renter/profile-setup",
+          );
           onClose();
         } else {
           setSuccess(
@@ -210,8 +218,8 @@ export default function LandlordAuthModal({
             </DialogTitle>
             <DialogDescription className="text-sm text-zinc-500 dark:text-zinc-400">
               {isLoginMode
-                ? "Sign in to manage your listings"
-                : "Start listing your properties today"}
+                ? "Sign in to access your account"
+                : "Join Abangers as a renter or landlord"}
             </DialogDescription>
           </div>
 
@@ -231,18 +239,54 @@ export default function LandlordAuthModal({
           {/* noValidate: the shared Zod schemas show the messages, not the browser */}
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             {!isLoginMode && (
-              <div className="space-y-1.5">
-                <input
-                  type="text"
-                  placeholder="Full Name"
-                  autoComplete="name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  aria-invalid={!!fieldErrors.fullName}
-                  className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
-                />
-                <FieldError message={fieldErrors.fullName} />
-              </div>
+              <>
+                <fieldset className="m-0 space-y-1.5 border-0 p-0">
+                  <legend className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    I am a
+                  </legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      aria-pressed={role === "renter"}
+                      onClick={() => setRole("renter")}
+                      className={cn(
+                        "flex h-10 items-center justify-center rounded-xl border text-xs font-semibold transition-colors",
+                        role === "renter"
+                          ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/40 dark:text-purple-300"
+                          : "border-zinc-200 bg-zinc-50/50 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400 dark:hover:bg-zinc-800",
+                      )}
+                    >
+                      Renter
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={role === "landlord"}
+                      onClick={() => setRole("landlord")}
+                      className={cn(
+                        "flex h-10 items-center justify-center rounded-xl border text-xs font-semibold transition-colors",
+                        role === "landlord"
+                          ? "border-purple-600 bg-purple-50 text-purple-700 dark:border-purple-500 dark:bg-purple-950/40 dark:text-purple-300"
+                          : "border-zinc-200 bg-zinc-50/50 text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400 dark:hover:bg-zinc-800",
+                      )}
+                    >
+                      Landlord
+                    </button>
+                  </div>
+                </fieldset>
+
+                <div className="space-y-1.5">
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    autoComplete="name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    aria-invalid={!!fieldErrors.fullName}
+                    className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
+                  />
+                  <FieldError message={fieldErrors.fullName} />
+                </div>
+              </>
             )}
 
             <div className="space-y-1.5">
