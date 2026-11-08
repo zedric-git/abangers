@@ -157,8 +157,8 @@ export default function PublicListingsView({
   return (
     <>
       {/* Hero, Search & Filters Section */}
-      <div className="mx-auto max-w-5xl pt-2 pb-6 text-center sm:pt-4 sm:pb-8 lg:max-w-6xl">
-        <div className="mb-3.5 inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3.5 py-1 text-xs font-semibold text-purple-700 shadow-2xs dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300">
+      <div className="mx-auto max-w-5xl pt-2 pb-4 text-center sm:pt-4 sm:pb-6 lg:max-w-6xl">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-200 bg-purple-50 px-3.5 py-1 text-xs font-semibold text-purple-700 shadow-2xs sm:mb-3.5 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300">
           <Sparkles className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
           <span>Verified Boarding Houses & Rooms in Cebu</span>
         </div>
@@ -169,13 +169,13 @@ export default function PublicListingsView({
             Cebu
           </span>
         </h1>
-        <p className="mx-auto mt-3 max-w-2xl text-base text-zinc-600 sm:text-lg dark:text-zinc-400">
+        <p className="mx-auto mt-2.5 max-w-2xl text-base text-zinc-600 sm:text-lg dark:text-zinc-400">
           Search boarding houses, bedspaces, and rooms near your university or
           workplace.
         </p>
 
         {/* Search Input Bar */}
-        <div className="mt-8">
+        <div className="mt-6 sm:mt-7">
           <ListingSearchBar
             value={filters.q}
             onSearch={handleSearch}
@@ -183,8 +183,8 @@ export default function PublicListingsView({
           />
         </div>
 
-        {/* Core Property Attribute Filters Toolbar */}
-        <div className="mt-5 text-left">
+        {/* Collapsible Property Attribute Filters Toolbar */}
+        <div className="mt-4 text-left">
           <ListingFilterControls
             filters={filters}
             onFilterChange={handleFilterChange}
@@ -194,7 +194,7 @@ export default function PublicListingsView({
       </div>
 
       {/* Results Counter & Active Query Feedback */}
-      <div className="mt-10 flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 pb-4 dark:border-zinc-800">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 pb-4 sm:mt-8 dark:border-zinc-800">
         <div>
           <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
             {hasAnyFilterOrSearch ? (
@@ -238,7 +238,7 @@ export default function PublicListingsView({
       </div>
 
       {/* Listings Grid or Empty State */}
-      <div className="mt-8">
+      <div className="mt-6 sm:mt-8">
         {visibleListings.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:gap-8">
             {visibleListings.map((listing) => (
