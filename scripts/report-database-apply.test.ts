@@ -166,6 +166,9 @@ describe("buildReport", () => {
       },
     });
     expect(report).toContain("Authentication → Rate Limits");
+    // Password sign-ins count against "token refreshes" (#290).
+    expect(report).toContain('Raise "token refreshes"');
+    expect(report).not.toContain("sign-ups and sign-ins");
     expect(report).not.toContain("behaves differently");
   });
 });

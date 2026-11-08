@@ -621,9 +621,13 @@ entry in the PR that closes it.
   hit the **shared** project. Any new table's RLS policies should get a
   test here; DB tests must leave shared data unchanged. They sign in as
   the seed accounts about 50 times per run, so the shared project's
-  sign-in rate limit (dashboard → Authentication → Rate Limits,
-  "sign-ups and sign-ins" per 5 minutes) must allow that, or they fail
-  with "Request rate limit reached".
+  limit on password sign-ins must allow that, or they fail with
+  "Request rate limit reached". In the dashboard (Authentication → Rate
+  Limits) that limit is "token refreshes", not "sign-ups and sign-ins",
+  which covers sign-ups, magic links, password resets and user updates.
+  It allows 30 sign-ins at once from one address, then the setting ÷ 300
+  more per second. The shared project has it at 900; the default, 150,
+  failed #289's apply.
 - `npm run lint` — ESLint
 - `npm run format` — Prettier (auto-runs on commit via Husky)
 - `npm run format:check` — Prettier check only
