@@ -1,4 +1,4 @@
--- Abangers — Migration 0015: Create favorites table with RLS and explicit grants (S2-08.1, #95)
+-- Abangers — Migration 0016: Create favorites table with RLS and explicit grants (S2-08.1, #95)
 --
 -- A junction table recording which listings a renter has saved to Favorites.
 --
