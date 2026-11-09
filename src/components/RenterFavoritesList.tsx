@@ -94,7 +94,7 @@ export default function RenterFavoritesList({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Filter saved boarding houses..."
+            placeholder="Search saved places by name, city, or address..."
             className="h-10 w-full rounded-2xl border border-zinc-200 bg-white pr-9 pl-10 text-xs shadow-2xs focus:border-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
           />
           {searchQuery && (
