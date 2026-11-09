@@ -2,11 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Heart, Search } from "lucide-react";
+import { Heart, Search, X } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
 import PublicListingCard from "@/components/PublicListingCard";
 import FavoriteButton from "@/components/FavoriteButton";
-import { Button } from "@/components/ui/button";
 
 interface RenterFavoritesListProps {
   initialListings: ListingPreview[];
@@ -15,14 +14,19 @@ interface RenterFavoritesListProps {
 /**
  * Interactive list view for a renter's saved favorites (S2-09.1 #98, S2-09.2 #99).
  *
- * Displays saved listings with photo, title, location, price, and availability.
- * Flags listings that are fully occupied with a warning banner and muted styling (#99).
- * Removes listings smoothly from the grid when unfavorited without a page reload (#98).
+ * Implements the prototype layout and visual hierarchy from .Abangers UI:
+ * - Breadcrumb 'Renter / Favorites' and 'Saved Favorites' title with pill badge
+ * - 'Find More Places' action button leading to /listings
+ * - In-place search filter for quickly finding saved boarding houses
+ * - Responsive grid of saved listing cards with occupied status warning (#99)
+ * - Smooth instant removal when unfavorited without full page reload (#98)
+ * - Informative empty state with 'Start Browsing Places' call-to-action
  */
 export default function RenterFavoritesList({
   initialListings,
 }: RenterFavoritesListProps) {
   const [listings, setListings] = useState<ListingPreview[]>(initialListings);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleToggle = (listing: ListingPreview, nextState: boolean) => {
     if (!nextState) {
@@ -37,58 +41,114 @@ export default function RenterFavoritesList({
     }
   };
 
-  const countLabel =
-    listings.length === 1 ? "1 saved place" : `${listings.length} saved places`;
+  const filteredListings = listings.filter((item) => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      item.title.toLowerCase().includes(q) ||
+      (item.city && item.city.toLowerCase().includes(q)) ||
+      item.address.toLowerCase().includes(q) ||
+      (item.property_type && item.property_type.toLowerCase().includes(q))
+    );
+  });
+
+  const countBadgeLabel =
+    listings.length === 1 ? "1 Saved" : `${listings.length} Saved`;
 
   return (
-    <div className="space-y-6">
-      {/* Header with Title and Real-time Count */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="w-full space-y-6">
+      {/* Header matching .Abangers UI prototype */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Favorites
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Keep track of boarding houses and dorms you are interested in.
-          </p>
+          <div className="flex items-center gap-1.5 text-xs font-medium">
+            <span className="text-zinc-400 dark:text-zinc-500">Renter</span>
+            <span className="text-zinc-400 dark:text-zinc-500">/</span>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">
+              Favorites
+            </span>
+          </div>
+          <div className="mt-1 flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
+              Saved Favorites
+            </h1>
+            <span className="inline-flex items-center rounded-full bg-rose-500/10 px-2.5 py-0.5 text-xs font-bold text-rose-600 dark:bg-rose-950/40 dark:text-rose-400">
+              {countBadgeLabel}
+            </span>
+          </div>
         </div>
-        {listings.length > 0 && (
-          <span className="inline-flex w-fit items-center rounded-full bg-purple-50 px-3 py-1 text-xs font-semibold text-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
-            {countLabel}
-          </span>
-        )}
+
+        <Link
+          href="/listings"
+          className="inline-flex h-10 items-center gap-2 self-start rounded-xl bg-purple-600 px-4 text-xs font-semibold text-white shadow-xs hover:bg-purple-700 sm:self-auto"
+        >
+          <Search className="h-4 w-4" />
+          Find More Places
+        </Link>
       </div>
 
-      {/* Empty State */}
+      {/* In-place search filter (from .Abangers UI) */}
+      {listings.length > 0 && (
+        <div className="relative">
+          <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Filter saved boarding houses..."
+            className="h-10 w-full rounded-2xl border border-zinc-200 bg-white pr-9 pl-10 text-xs shadow-2xs focus:border-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              aria-label="Clear filter"
+              className="absolute top-1/2 right-3 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Favorites Content: Empty State vs Filtered Empty vs Grid */}
       {listings.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-300 p-8 text-center dark:border-zinc-700">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-500 dark:bg-rose-950/40">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 dark:bg-rose-950/50">
             <Heart className="h-6 w-6" />
           </div>
-          <h2 className="mt-4 text-base font-semibold">
-            No favorites saved yet
+          <h2 className="mt-4 text-base font-bold text-zinc-900 dark:text-zinc-100">
+            No saved favorites yet
           </h2>
-          <p className="text-muted-foreground mx-auto mt-1.5 max-w-sm text-sm">
-            You haven&apos;t saved any boarding houses or dorms to your
-            favorites yet. Browse listings to find and save your preferred
-            places.
+          <p className="mx-auto mt-1 max-w-sm text-xs text-zinc-500 dark:text-zinc-400">
+            Click the heart icon on any property in Find a Place to bookmark it
+            for later.
           </p>
-          <div className="mt-6">
-            <Button
-              asChild
-              className="bg-purple-600 text-white shadow-xs hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-500"
+          <div className="mt-5">
+            <Link
+              href="/listings"
+              className="inline-flex h-10 items-center gap-2 rounded-xl bg-purple-600 px-5 text-xs font-semibold text-white shadow-xs hover:bg-purple-700"
             >
-              <Link href="/listings">
-                <Search className="mr-2 h-4 w-4" />
-                Find a Place
-              </Link>
-            </Button>
+              <Search className="h-4 w-4" />
+              Start Browsing Places
+            </Link>
           </div>
         </div>
+      ) : filteredListings.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-zinc-200 p-8 text-center dark:border-zinc-800">
+          <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            No saved places match &ldquo;{searchQuery}&rdquo;
+          </p>
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            className="mt-3 text-xs font-semibold text-purple-600 hover:underline dark:text-purple-400"
+          >
+            Clear filter
+          </button>
+        </div>
       ) : (
-        /* Favorites Grid */
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {listings.map((listing) => (
+          {filteredListings.map((listing) => (
             <PublicListingCard
               key={listing.id}
               listing={listing}
