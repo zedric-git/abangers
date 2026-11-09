@@ -16,8 +16,6 @@ export type Listing = Database["public"]["Tables"]["listings"]["Row"];
 
 /**
  * The subset of columns sent to the public browse page (S2-04, #14).
- * Excludes private or full details (contact_info, coordinates, house_rules)
- * which are reserved for signed-in detail views (#19).
  */
 export type ListingPreview = Pick<
   Listing,
@@ -36,4 +34,20 @@ export type ListingPreview = Pick<
   | "images"
   | "availability_status"
   | "created_at"
->;
+> &
+  Partial<
+    Pick<
+      Listing,
+      | "amenities"
+      | "utilities"
+      | "room_features"
+      | "bathroom_features"
+      | "kitchen_features"
+      | "laundry_features"
+      | "safety_features"
+      | "house_rules"
+      | "contact_info"
+      | "latitude"
+      | "longitude"
+    >
+  >;
