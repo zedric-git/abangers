@@ -19,6 +19,10 @@ interface FavoriteButtonProps {
    */
   onRequireAuth?: () => void;
   /**
+   * Optional callback when favorite state toggles (used for optimistic list updates, #98).
+   */
+  onToggle?: (nextState: boolean) => void;
+  /**
    * Visual variant:
    * - "card": floating circular glassmorphic button for listing preview cards
    * - "detail": pill button with "Save" / "Saved" label for detail pages
@@ -41,6 +45,7 @@ export default function FavoriteButton({
   initialFavorited = false,
   userRole = null,
   onRequireAuth,
+  onToggle,
   variant = "card",
   className,
 }: FavoriteButtonProps) {
@@ -73,6 +78,7 @@ export default function FavoriteButton({
     // Optimistic UI update
     setIsFavorited(nextState);
     setIsPending(true);
+    onToggle?.(nextState);
 
     try {
       const supabase = createClient();
@@ -83,10 +89,12 @@ export default function FavoriteButton({
       if (!result.ok) {
         // Rollback on failure
         setIsFavorited(previousState);
+        onToggle?.(previousState);
       }
     } catch {
       // Rollback on unexpected error
       setIsFavorited(previousState);
+      onToggle?.(previousState);
     } finally {
       setIsPending(false);
     }

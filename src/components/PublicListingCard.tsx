@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Building, MapPin, Users } from "lucide-react";
+import { AlertCircle, Building, MapPin, Users } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
 import { listingStatusView } from "@/lib/listing-status-view";
+import { cn } from "@/lib/utils";
 
 interface PublicListingCardProps {
   listing: ListingPreview;
@@ -10,6 +11,11 @@ interface PublicListingCardProps {
    * Optional action button slot in top corner (e.g. favorite toggle from #96).
    */
   action?: React.ReactNode;
+  /**
+   * Visually flag if the listing is occupied/unavailable with an alert banner
+   * and subtle muted overlay (S2-09.2, #99).
+   */
+  flagOccupied?: boolean;
 }
 
 /**
@@ -21,12 +27,21 @@ interface PublicListingCardProps {
 export default function PublicListingCard({
   listing,
   action,
+  flagOccupied = false,
 }: PublicListingCardProps) {
   const coverPhoto = listing.cover_image || listing.images?.[0] || "";
   const statusView = listingStatusView(listing.availability_status);
+  const isOccupied = statusView.group === "occupied";
+  const showOccupiedFlag = flagOccupied && isOccupied;
 
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
+    <article
+      className={cn(
+        "group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700",
+        showOccupiedFlag &&
+          "border-rose-200/70 opacity-90 dark:border-rose-950/50 dark:opacity-85",
+      )}
+    >
       {/* Clickable Overlay Link */}
       <Link
         href={`/listings/${listing.id}`}
@@ -67,6 +82,14 @@ export default function PublicListingCard({
 
       {/* Content */}
       <div className="flex flex-1 flex-col p-4 sm:p-5">
+        {/* Occupancy Warning Banner (S2-09.2, #99) */}
+        {showOccupiedFlag && (
+          <div className="mb-3 flex items-center gap-1.5 rounded-lg bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-600 dark:text-rose-400" />
+            <span>This property is currently full.</span>
+          </div>
+        )}
+
         {/* Price & Occupancy */}
         <div className="flex items-baseline justify-between gap-2">
           <div className="flex items-baseline gap-1">
