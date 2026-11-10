@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { Home, AlertTriangle, RefreshCw } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PublicListingsView from "@/components/PublicListingsView";
 import ListingsNavbarActions from "@/components/ListingsNavbarActions";
+import ListingsNavbarBrand from "@/components/ListingsNavbarBrand";
 import type { ListingPreview } from "@/types/listing";
 import { parseListingFilterParams } from "@/lib/validations/listing-filters";
 
@@ -65,15 +66,7 @@ export default async function PublicListingsPage({
       {/* Top Navigation Bar (3rd Pic: Abangers logo on left, Home + Sign-in + Log-in on right) */}
       <header className="sticky top-0 z-30 shrink-0 border-b border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-          <Link
-            href="/"
-            className="flex items-center gap-2.5 text-lg font-bold tracking-tight transition-opacity hover:opacity-85"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-600 text-white shadow-sm shadow-purple-500/20">
-              <Home className="h-4.5 w-4.5" />
-            </div>
-            <span>Abangers</span>
-          </Link>
+          <ListingsNavbarBrand />
 
           <ListingsNavbarActions dashboardPath={dashboardPath} />
         </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import LandlordAuthModal from "@/components/LandlordAuthModal";
+import { logOut } from "@/lib/auth/log-out";
 
 interface ListingsNavbarActionsProps {
   dashboardPath?: string | null;
@@ -19,6 +20,11 @@ export default function ListingsNavbarActions({
     setAuthModalOpen(true);
   };
 
+  const handleHomeClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    await logOut();
+  };
+
   return (
     <>
       <nav
@@ -27,6 +33,7 @@ export default function ListingsNavbarActions({
       >
         <Link
           href="/"
+          onClick={handleHomeClick}
           className="rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 sm:text-sm dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
         >
           Home

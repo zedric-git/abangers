@@ -1,28 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import LandlordAuthModal from "@/components/LandlordAuthModal";
 import type { SignUpRole } from "@/lib/validations/auth";
+import { createClient } from "@/lib/supabase/client";
 
 /**
  * The home page's buttons, and the login / sign-up popup they open. A
  * Client Component because the popup's open/closed state lives here; the
  * home page itself stays a Server Component.
  *
- * The buttons are the same whether you're signed in or not (#271): a
- * signed-in user who logs in again from the popup just switches to that
- * account's session.
+ * Navigating to Home automatically logs out any active session to protect
+ * the user's account and keep the landing & public listings in guest mode.
  */
 export default function HomeActions() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"login" | "signup">("signup");
   const [modalRole, setModalRole] = useState<SignUpRole>("landlord");
 
+  // Automatically sign out any active session on the home page so the account
+  // is protected and browsing remains guest-only until explicit login.
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.signOut().catch(() => {});
+
+    const handleNavigation = () => {
+      supabase.auth.signOut().catch(() => {});
+    };
+
+    window.addEventListener("popstate", handleNavigation);
+    window.addEventListener("pageshow", handleNavigation);
+
+    return () => {
+      window.removeEventListener("popstate", handleNavigation);
+      window.removeEventListener("pageshow", handleNavigation);
+    };
+  }, []);
+
+  const handleRentClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+    } catch {
+      // Ignore network errors on sign-out
+    } finally {
+      window.location.replace("/listings");
+    }
+  };
+
   return (
     <div className="flex w-full flex-col gap-4">
       <Link
         href="/listings"
+        onClick={handleRentClick}
         className="flex h-12 w-full items-center justify-center rounded-lg bg-purple-600 px-6 font-medium text-white transition-colors hover:bg-purple-700 active:bg-purple-800"
       >
         {"I'm looking for a place to rent"}
