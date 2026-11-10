@@ -204,7 +204,7 @@ export default function LandlordAuthModal({
             event.preventDefault();
             openerRef.current?.focus();
           }}
-          className="fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2.5rem)] w-[calc(100%-2rem)] max-w-[440px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-zinc-100 bg-white p-6 text-left shadow-2xl outline-none sm:p-7 dark:border-zinc-800 dark:bg-zinc-900"
+          className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-zinc-100 bg-white p-6 text-left shadow-2xl outline-none dark:border-zinc-800 dark:bg-zinc-900"
         >
           {/* Logo / Branding */}
           <div className="mb-4 flex items-center gap-2">
@@ -246,7 +246,7 @@ export default function LandlordAuthModal({
 
           {/* Form */}
           {/* noValidate: the shared Zod schemas show the messages, not the browser */}
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-2.5">
             {!isLoginMode && (
               <div className="flex rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
                 <button
@@ -282,7 +282,7 @@ export default function LandlordAuthModal({
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   aria-invalid={!!fieldErrors.fullName}
-                  className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
+                  className="h-10.5 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
                 />
                 <FieldError message={fieldErrors.fullName} />
               </div>
@@ -296,7 +296,7 @@ export default function LandlordAuthModal({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 aria-invalid={!!fieldErrors.email}
-                className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
+                className="h-10.5 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
               />
               <FieldError message={fieldErrors.email} />
             </div>
@@ -312,7 +312,7 @@ export default function LandlordAuthModal({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   aria-invalid={!!fieldErrors.password}
-                  className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pr-10 pl-4 text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
+                  className="h-10.5 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pr-10 pl-3.5 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
                 />
                 <button
                   type="button"
@@ -341,7 +341,7 @@ export default function LandlordAuthModal({
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     aria-invalid={!!fieldErrors.confirmPassword}
-                    className="h-12 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pr-10 pl-4 text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
+                    className="h-10.5 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pr-10 pl-3.5 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
                   />
                   <button
                     type="button"
@@ -367,7 +367,7 @@ export default function LandlordAuthModal({
             <button
               type="submit"
               disabled={loading}
-              className="flex h-12 w-full items-center justify-center rounded-xl bg-purple-700 font-medium text-white transition-colors hover:bg-purple-800 active:bg-purple-900 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-700 dark:active:bg-purple-800"
+              className="flex h-11 w-full items-center justify-center rounded-xl bg-purple-700 text-sm font-semibold text-white transition-colors hover:bg-purple-800 active:bg-purple-900 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-700 dark:active:bg-purple-800"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -380,7 +380,7 @@ export default function LandlordAuthModal({
           </form>
 
           {/* Footer toggle */}
-          <div className="mt-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+          <div className="mt-4 text-center text-xs text-zinc-500 sm:text-sm dark:text-zinc-400">
             {isLoginMode ? (
               <>
                 {"Don't have an account? "}

@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Home, Building2, LogOut, Map } from "lucide-react";
+import { Home, Building2, LogOut } from "lucide-react";
 import type { Listing } from "@/types/listing";
 import PublicListingCard from "@/components/PublicListingCard";
 import LandlordAuthModal from "@/components/LandlordAuthModal";
@@ -47,22 +46,6 @@ export default function PublicListingsView({
     setPromptTitle("Join Abangers to View Details");
     setPromptDescription(
       "Join Abangers to use further features and view details.",
-    );
-    setModalMode("signup");
-    setIsAuthModalOpen(true);
-  };
-
-  const handleViewInMaps = () => {
-    // If the visitor is logged in, navigate straight to their dashboard
-    if (dashboardPath) {
-      router.push(dashboardPath);
-      return;
-    }
-
-    // Guest Flow: Prompt with login/sign-up modal
-    setPromptTitle("Join Abangers to View Map");
-    setPromptDescription(
-      "Join Abangers to use further features and explore the map.",
     );
     setModalMode("signup");
     setIsAuthModalOpen(true);
@@ -206,45 +189,6 @@ export default function PublicListingsView({
           </div>
         )}
       </main>
-
-      {/* Floating Google Maps Style Thumbnail Switcher */}
-      <div
-        style={{ zIndex: 1001 }}
-        className="fixed right-6 bottom-6 z-30 md:right-8"
-      >
-        <button
-          type="button"
-          onClick={handleViewInMaps}
-          title="View in Maps"
-          className="group relative flex h-[80px] w-[88px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-white bg-zinc-900 shadow-2xl ring-1 shadow-black/35 ring-black/10 transition-all duration-300 ease-out hover:h-[160px] hover:w-[176px] hover:shadow-2xl hover:ring-2 hover:shadow-purple-500/25 hover:ring-purple-500/50 active:scale-95 dark:border-zinc-700"
-        >
-          {/* Background image preview */}
-          <Image
-            src="/maps/philippines.png"
-            alt="Map View preview"
-            fill
-            sizes="(max-width: 768px) 180px, 180px"
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
-            unoptimized
-          />
-
-          {/* Vignette overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent transition-opacity group-hover:opacity-90" />
-
-          {/* Content: Map Icon & Label */}
-          <div className="relative z-10 flex flex-col items-center justify-center gap-1.5 px-2 text-center text-white drop-shadow-md transition-transform duration-300 group-hover:scale-110">
-            <Map className="h-6 w-6 stroke-[2.2] text-white transition-all duration-300 group-hover:h-8 group-hover:w-8 group-hover:text-purple-300" />
-            <div className="flex flex-col leading-none">
-              <span className="text-[11px] font-extrabold tracking-wider uppercase transition-all duration-300 group-hover:text-xs">
-                View in
-              </span>
-              <span className="text-[12px] font-extrabold tracking-wider uppercase transition-all duration-300 group-hover:text-sm">
-                Maps
-              </span>
-            </div>
-          </div>
-        </button>
-      </div>
 
       {/* Guest Login / Sign Up Modal (Issue #86) */}
       {isAuthModalOpen && (
