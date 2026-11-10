@@ -36,96 +36,62 @@ interface RenterFindPlaceMapProps {
 // Default center: Cebu City
 const DEFAULT_CENTER: [number, number] = [10.3157, 123.8854];
 
-function createPricePinIcon(
-  monthlyRent: number,
-  isSelected: boolean,
-  isAvailable: boolean,
-) {
-  const formattedPrice = `₱${monthlyRent.toLocaleString("en-PH")}`;
-  const bgColor = isSelected ? "#7c3aed" : isAvailable ? "#18181b" : "#71717a";
-  const borderColor = isSelected ? "#f5f3ff" : "#ffffff";
-  const scale = isSelected ? "scale(1.12)" : "scale(1)";
-  const shadow = isSelected
-    ? "0 8px 20px rgba(124, 58, 237, 0.45)"
-    : "0 4px 12px rgba(0, 0, 0, 0.25)";
+// Custom Google Maps / Airbnb style price badge marker matching .Abangers UI & Pic 2
+function createPriceMarkerIcon(price: number) {
+  const formatted =
+    price >= 1000
+      ? `₱${(price / 1000).toFixed(price % 1000 === 0 ? 0 : 1)}k`
+      : `₱${price}`;
 
   return L.divIcon({
-    className: "abangers-price-pin",
+    className: "custom-renter-map-price-pin",
     html: `
       <div style="
         display: inline-flex;
         align-items: center;
-        gap: 5px;
-        padding: 5px 10px;
-        background-color: ${bgColor};
-        color: #ffffff;
+        justify-content: center;
+        padding: 4px 8px;
+        background-color: #6c5ce7;
+        color: white;
         font-family: ui-sans-serif, system-ui, sans-serif;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 800;
         border-radius: 9999px;
-        border: 2.5px solid ${borderColor};
-        box-shadow: ${shadow};
-        white-space: nowrap;
-        transform: ${scale};
-        transition: transform 0.15s ease, background-color 0.15s ease;
+        border: 2px solid white;
+        box-shadow: 0 4px 12px rgba(108, 92, 231, 0.45);
         cursor: pointer;
+        white-space: nowrap;
+        transform: translate(-50%, -50%);
+        transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s ease;
       ">
-        <span style="
-          width: 7px;
-          height: 7px;
-          border-radius: 9999px;
-          background-color: ${isAvailable ? "#10b981" : "#f43f5e"};
-          display: inline-block;
-        "></span>
-        <span>${formattedPrice}</span>
+        ${formatted}
       </div>
     `,
-    iconSize: [90, 32],
-    iconAnchor: [45, 16],
+    iconSize: [40, 24],
+    iconAnchor: [0, 0],
     popupAnchor: [0, -18],
   });
 }
 
-function MapBoundsUpdater({
-  listings,
-  selectedId,
-}: {
-  listings: MapPinItem[];
-  selectedId?: string | null;
-}) {
+function MapBoundsUpdater({ listings }: { listings: MapPinItem[] }) {
   const map = useMap();
 
   useEffect(() => {
-    if (selectedId) {
-      const target = listings.find((l) => l.id === selectedId);
-      if (target) {
-        map.flyTo([target.latitude, target.longitude], 16, {
-          animate: true,
-          duration: 0.8,
-        });
-        return;
-      }
-    }
-
     if (listings.length === 1) {
-      map.flyTo([listings[0].latitude, listings[0].longitude], 15, {
-        animate: true,
-        duration: 0.8,
-      });
+      map.setView([listings[0].latitude, listings[0].longitude], 15);
     } else if (listings.length > 1) {
       const bounds = L.latLngBounds(
         listings.map((l) => [l.latitude, l.longitude] as [number, number]),
       );
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
     }
-  }, [listings, selectedId, map]);
+  }, [listings, map]);
 
   return null;
 }
 
 export default function RenterFindPlaceMap({
   listings,
-  selectedId,
   onSelectListing,
   onViewDetails,
   onToggleView,
@@ -176,16 +142,10 @@ export default function RenterFindPlaceMap({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <MapBoundsUpdater listings={listings} selectedId={selectedId} />
+        <MapBoundsUpdater listings={listings} />
 
         {listings.map((listing) => {
-          const isSelected = selectedId === listing.id;
-          const isAvailable = listing.availableRooms > 0;
-          const icon = createPricePinIcon(
-            listing.monthlyRent,
-            isSelected,
-            isAvailable,
-          );
+          const icon = createPriceMarkerIcon(listing.monthlyRent);
 
           return (
             <Marker
@@ -198,6 +158,11 @@ export default function RenterFindPlaceMap({
             >
               <Popup
                 className="renter-map-popup font-sans"
+                autoPan={true}
+                autoPanPaddingTopLeft={[20, 90]}
+                autoPanPaddingBottomRight={[20, 20]}
+                autoPanPadding={[20, 90]}
+                closeButton={true}
                 maxWidth={280}
                 minWidth={224}
               >

@@ -9,6 +9,7 @@ import {
   Search,
   SlidersHorizontal,
   MapPin,
+  Map,
   ShieldCheck,
   Building2,
   X,
@@ -1599,27 +1600,32 @@ export default function PublicListingsView({
             type="button"
             onClick={() => setViewMode("map")}
             title="View in Maps"
-            className="group relative flex h-[88px] w-[88px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-white bg-zinc-900 shadow-2xl ring-1 shadow-black/35 ring-black/10 transition-all duration-300 ease-out hover:scale-105 active:scale-95 dark:border-zinc-700"
+            className="group relative flex h-[80px] w-[88px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-white bg-zinc-900 shadow-2xl ring-1 shadow-black/35 ring-black/10 transition-all duration-300 ease-out hover:h-[160px] hover:w-[176px] hover:shadow-2xl hover:ring-2 hover:shadow-purple-500/25 hover:ring-purple-500/50 active:scale-95 dark:border-zinc-700"
           >
             {/* Background image preview - Philippines default or chosen location */}
             <Image
               src={getMapThumbnailPhoto(locationNear || searchQuery)}
               alt="Map View preview"
               fill
-              sizes="88px"
+              sizes="(max-width: 768px) 180px, 180px"
               className="object-cover transition-transform duration-500 group-hover:scale-105"
               unoptimized
             />
 
             {/* Vignette overlay */}
-            <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent transition-opacity group-hover:opacity-80" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/25 to-transparent transition-opacity group-hover:opacity-90" />
 
-            {/* Center white pill with single-line whitespace-nowrap text */}
-            <div className="absolute inset-0 flex items-center justify-center p-1">
-              <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200/60 bg-white/95 px-2.5 py-1 text-[10px] font-bold whitespace-nowrap text-zinc-900 shadow-md backdrop-blur-xs">
-                <MapPin className="h-3 w-3 shrink-0 text-purple-600" />
-                <span className="whitespace-nowrap">View in Maps</span>
-              </span>
+            {/* Bottom Badge - Text stays fixed at normal size, matches Pic 1 */}
+            <div className="absolute right-2.5 bottom-2.5 left-2.5 z-10 flex items-center justify-center gap-1.5 px-1">
+              <Map className="h-4 w-4 shrink-0 text-white drop-shadow-xs" />
+              <div className="flex flex-col text-left leading-tight">
+                <span className="text-[10px] font-extrabold tracking-tight text-white drop-shadow-xs">
+                  View in
+                </span>
+                <span className="text-[10px] font-extrabold tracking-tight text-white drop-shadow-xs">
+                  Maps
+                </span>
+              </div>
             </div>
           </button>
         </div>
