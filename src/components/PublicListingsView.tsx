@@ -1297,34 +1297,6 @@ export default function PublicListingsView({
               : "custom-scrollbar overflow-y-auto overscroll-contain"
           }`}
         >
-          {/* Status & Toggle Bar: Matches Attachment 1 & 2 from .Abangers UI */}
-          {viewMode === "grid" && (
-            <div
-              id="filter-status-banner"
-              className="flex shrink-0 items-center justify-between rounded-2xl border border-zinc-200 bg-white p-3 shadow-2xs dark:border-zinc-800 dark:bg-zinc-900"
-            >
-              <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                {!isFilterPanelOpen
-                  ? "filters hidden. showing all matches"
-                  : activeFilterCount > 0
-                    ? `Filters active (${activeFilterCount}). Showing ${filteredListings.length} ${filteredListings.length === 1 ? "match" : "matches"}`
-                    : `Showing all matches (${filteredListings.length})`}
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsFilterPanelOpen((prev) => !prev)}
-                className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-bold text-purple-600 hover:underline dark:text-purple-400"
-              >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                <span>
-                  {isFilterPanelOpen
-                    ? "Hide Filters Panel"
-                    : "Open Filters Panel"}
-                </span>
-              </button>
-            </div>
-          )}
-
           {/* MAIN CONTENT: MAP VIEW OR CARDS GRID */}
           {viewMode === "map" ? (
             <div className="relative isolate z-0 min-h-0 w-full flex-1 overflow-hidden rounded-3xl border border-zinc-200 dark:border-zinc-800">
