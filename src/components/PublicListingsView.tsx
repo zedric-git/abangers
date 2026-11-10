@@ -22,6 +22,7 @@ interface PublicListingsViewProps {
   initialListings: ListingPreview[];
   userRole?: string | null;
   favoritedListingIds?: string[];
+  isAuthenticated?: boolean;
 }
 
 /**
@@ -36,14 +37,22 @@ export default function PublicListingsView({
   initialListings,
   userRole = null,
   favoritedListingIds = [],
+  isAuthenticated = false,
 }: PublicListingsViewProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [selectedListing, setSelectedListing] = useState<ListingPreview | null>(
+    null,
+  );
 
   const savedSet = new Set(favoritedListingIds);
 
-  const handleRequireAuth = () => {
+  const handleRequireAuth = (listing?: ListingPreview) => {
+    if (listing) {
+      setSelectedListing(listing);
+    }
     setIsAuthModalOpen(true);
   };
+
   const searchParams = useSearchParams();
   const filters = parseListingFilterParams(searchParams);
 
@@ -196,9 +205,10 @@ export default function PublicListingsView({
                     listingId={listing.id}
                     initialFavorited={savedSet.has(listing.id)}
                     userRole={userRole}
-                    onRequireAuth={handleRequireAuth}
+                    onRequireAuth={() => handleRequireAuth(listing)}
                   />
                 }
+                onRequireAuth={isAuthenticated ? undefined : handleRequireAuth}
               />
             ))}
           </div>
@@ -244,9 +254,21 @@ export default function PublicListingsView({
       {isAuthModalOpen && (
         <LandlordAuthModal
           isOpen
-          onClose={() => setIsAuthModalOpen(false)}
+          onClose={() => {
+            setIsAuthModalOpen(false);
+            setSelectedListing(null);
+          }}
           initialMode="signup"
           initialRole="renter"
+          promptTitle="Create an account to view details"
+          promptDescription={
+            selectedListing
+              ? `Sign up or log in to view full photos, rules, and contact information for "${selectedListing.title}".`
+              : "Sign up or log in to view complete listing details, photos, and landlord contact information."
+          }
+          redirectTo={
+            selectedListing ? `/listings/${selectedListing.id}` : undefined
+          }
         />
       )}
     </>

@@ -5,6 +5,9 @@ import { createClient } from "@/lib/supabase/server";
 import { dashboardFor, parseRole } from "@/lib/auth/post-login";
 import PublicListingsView from "@/components/PublicListingsView";
 import { getFavoritedListingIds } from "@/lib/favorites";
+import HeaderAuthButtons from "@/components/HeaderAuthButtons";
+import { MISSING_PUBLIC_LISTING_NOTE } from "@/lib/fetch-listing";
+import { MISSING_LISTING_NOTICE } from "@/lib/listing-lookup";
 
 export const metadata = {
   title: "Browse Listings | Abangers",
@@ -15,7 +18,14 @@ export const metadata = {
 const PUBLIC_LISTING_COLUMNS =
   "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, created_at";
 
-export default async function ListingsPage() {
+export default async function ListingsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ notice?: string }>;
+}) {
+  const { notice } = (await searchParams) ?? {};
+  const showMissingListingNote = notice === MISSING_LISTING_NOTICE;
+
   const supabase = await createClient();
 
   // Load public available listings and current user session in parallel
@@ -81,45 +91,52 @@ export default async function ListingsPage() {
     <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 dark:bg-black dark:text-zinc-100">
       {/* Top Header / Navigation */}
       <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/80 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/80">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
           <Link
             href="/"
-            className="flex items-center gap-2.5 transition-opacity hover:opacity-90"
+            className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-90 sm:gap-2.5"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-600 text-white shadow-xs">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-600 text-white shadow-xs">
               <Home className="h-5 w-5" />
             </div>
-            <span className="text-lg font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
+            <span className="text-base font-bold tracking-tight text-zinc-950 sm:text-lg dark:text-zinc-50">
               Abangers
             </span>
           </Link>
 
-          <nav className="flex items-center gap-3">
+          <nav className="flex items-center gap-1.5 sm:gap-3">
             <Link
               href="/"
-              className="rounded-xl px-3.5 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
+              className="rounded-xl px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 sm:px-3.5 sm:py-2 sm:text-sm dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
             >
               Home
             </Link>
-            {dashboardPath && (
-              <Link
-                href={dashboardPath}
-                className="rounded-xl bg-purple-50 px-3.5 py-2 text-sm font-semibold text-purple-700 transition-colors hover:bg-purple-100 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/50"
-              >
-                My Dashboard
-              </Link>
-            )}
+            <HeaderAuthButtons
+              isAuthenticated={Boolean(authData?.user)}
+              dashboardPath={dashboardPath}
+            />
           </nav>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+        {showMissingListingNote && (
+          <div
+            role="status"
+            className="mb-5 flex items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <p>{MISSING_PUBLIC_LISTING_NOTE}</p>
+          </div>
+        )}
+
         <Suspense fallback={null}>
           <PublicListingsView
             initialListings={listings}
             userRole={userRole}
             favoritedListingIds={favoritedListingIds}
+            isAuthenticated={Boolean(authData?.user)}
           />
         </Suspense>
       </main>
