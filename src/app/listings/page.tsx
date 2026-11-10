@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AlertTriangle, RefreshCw, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PublicListingsView from "@/components/PublicListingsView";
@@ -50,6 +51,11 @@ export default async function PublicListingsPage({
 
     userRole = profile?.role ?? "renter";
     favoritedIds = Array.from(savedSet);
+
+    // If an authenticated renter navigates to /listings, redirect to their dashboard view
+    if (userRole === "renter") {
+      redirect("/dashboard/renter");
+    }
 
     if (profile?.role === "landlord") {
       dashboardPath = "/dashboard/landlord";

@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertCircle, ArrowLeft, Building } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import ListingDetailView from "@/components/ListingDetailView";
 import SignedInOnly from "@/components/SignedInOnly";
+import FavoriteButton from "@/components/FavoriteButton";
 import { LISTING_LOAD_ERROR_MESSAGE } from "@/lib/listing-lookup";
 import {
   fetchListingById,
   MISSING_PUBLIC_LISTING_REDIRECT_PATH,
 } from "@/lib/fetch-listing";
-import FavoriteButton from "@/components/FavoriteButton";
 
 export default async function ListingDetailPage({
   params,
@@ -25,6 +25,16 @@ export default async function ListingDetailPage({
 
   if (!user) {
     redirect("/");
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.role === "renter") {
+    redirect(`/dashboard/renter/listings/${id}`);
   }
 
   const lookup = await fetchListingById(supabase, id);
@@ -95,16 +105,8 @@ export default async function ListingDetailPage({
     .filter(Boolean)
     .join(" • ");
 
-  let userRole: string | null = null;
+  const userRole = profile?.role ?? null;
   let isFavorited = false;
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  userRole = profile?.role ?? null;
 
   if (userRole === "renter") {
     const { data: fav } = await supabase
@@ -128,34 +130,43 @@ export default async function ListingDetailPage({
 
         {/* Property Overview Banner */}
         <div className="rounded-2xl border border-purple-200 bg-purple-50/95 p-4 shadow-xs backdrop-blur-md sm:p-5 dark:border-purple-900/50 dark:bg-purple-950/90">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-700 text-white dark:bg-purple-600">
-              <Building className="h-5 w-5" />
-            </div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-sm font-bold text-purple-950 dark:text-purple-100">
+              <h2 className="text-base font-bold text-purple-950 sm:text-lg dark:text-purple-100">
                 {listing.title}
               </h2>
               {subtitle && (
-                <p className="text-xs text-purple-700 dark:text-purple-300">
+                <p className="mt-0.5 text-xs text-purple-700 sm:text-sm dark:text-purple-300">
                   {subtitle}
                 </p>
               )}
             </div>
-          </div>
-        </div>
 
-        {/* Reusable Listing Detail View (#93) with Favorite Action (#96) */}
-        <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
-          <ListingDetailView
-            listing={formValues}
-            action={
+            {/* Favorite Button (S2-08, #96) — hidden from landlords/admins */}
+            {userRole === "renter" && (
               <FavoriteButton
                 listingId={listing.id}
                 initialFavorited={isFavorited}
                 userRole={userRole}
                 variant="detail"
               />
+            )}
+          </div>
+        </div>
+
+        {/* Reusable Listing Detail View (#93) */}
+        <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
+          <ListingDetailView
+            listing={formValues}
+            action={
+              userRole === "renter" ? (
+                <FavoriteButton
+                  listingId={listing.id}
+                  initialFavorited={isFavorited}
+                  userRole={userRole}
+                  variant="card"
+                />
+              ) : null
             }
           />
         </div>
