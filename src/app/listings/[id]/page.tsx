@@ -7,7 +7,9 @@ import {
   LISTING_LOAD_ERROR_MESSAGE,
   lookupListing,
 } from "@/lib/listing-lookup";
+import type { Listing } from "@/types/listing";
 import { listingRowToFormValues } from "@/lib/validations/listing";
+import FavoriteButton from "@/components/FavoriteButton";
 
 export default async function ListingDetailPage({
   params,
@@ -19,7 +21,7 @@ export default async function ListingDetailPage({
 
   // maybeSingle, not single: "no such listing" is no row, not an error, so
   // it can't be mixed up with a query that failed (#244).
-  const lookup = lookupListing(
+  const lookup = lookupListing<Listing>(
     await supabase.from("listings").select("*").eq("id", id).maybeSingle(),
   );
 
@@ -49,6 +51,34 @@ export default async function ListingDetailPage({
 
   const { listing } = lookup;
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let userRole: string | null = null;
+  let isFavorited = false;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    userRole = profile?.role ?? null;
+
+    if (userRole === "renter") {
+      const { data: fav } = await supabase
+        .from("favorites")
+        .select("listing_id")
+        .eq("renter_id", user.id)
+        .eq("listing_id", listing.id)
+        .maybeSingle();
+
+      isFavorited = Boolean(fav);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-zinc-50 px-4 py-8 sm:px-6 lg:px-8 dark:bg-black">
       <div className="mx-auto max-w-4xl space-y-6">
@@ -62,7 +92,17 @@ export default async function ListingDetailPage({
         </Link>
 
         {/* Reusable Public Listing Detail View */}
-        <ListingDetailView listing={listingRowToFormValues(listing)} />
+        <ListingDetailView
+          listing={listingRowToFormValues(listing)}
+          action={
+            <FavoriteButton
+              listingId={listing.id}
+              initialFavorited={isFavorited}
+              userRole={userRole}
+              variant="detail"
+            />
+          }
+        />
       </div>
     </div>
   );

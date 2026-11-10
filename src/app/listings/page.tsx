@@ -4,6 +4,7 @@ import { AlertCircle, Home } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { dashboardFor, parseRole } from "@/lib/auth/post-login";
 import PublicListingsView from "@/components/PublicListingsView";
+import { getFavoritedListingIds } from "@/lib/favorites";
 
 export const metadata = {
   title: "Browse Listings | Abangers",
@@ -52,6 +53,9 @@ export default async function ListingsPage() {
 
   // Look up dashboard link if signed in (#14)
   let dashboardPath: string | null = null;
+  let userRole: string | null = null;
+  let favoritedListingIds: string[] = [];
+
   if (authData?.user) {
     const { data: profile } = await supabase
       .from("profiles")
@@ -62,6 +66,12 @@ export default async function ListingsPage() {
     const role = parseRole(profile?.role);
     if (role) {
       dashboardPath = dashboardFor(role);
+      userRole = role;
+    }
+
+    if (role === "renter") {
+      const savedSet = await getFavoritedListingIds(supabase);
+      favoritedListingIds = Array.from(savedSet);
     }
   }
 
@@ -106,7 +116,11 @@ export default async function ListingsPage() {
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         <Suspense fallback={null}>
-          <PublicListingsView initialListings={listings} />
+          <PublicListingsView
+            initialListings={listings}
+            userRole={userRole}
+            favoritedListingIds={favoritedListingIds}
+          />
         </Suspense>
       </main>
     </div>
