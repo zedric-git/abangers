@@ -80,7 +80,7 @@ export default async function PublicListingsPage({
       </header>
 
       {/* Main Content: Natural document scrolling down the page */}
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         {/* Error state if database query fails (distinct from 0 listings) */}
         {error ? (
           <div className="mx-auto mt-8 max-w-lg rounded-2xl border border-rose-200 bg-rose-50/70 p-6 text-center dark:border-rose-900/60 dark:bg-rose-950/30">
@@ -115,6 +115,22 @@ export default async function PublicListingsPage({
           />
         )}
       </main>
+
+      {/* Grounded site footer */}
+      <footer className="mt-auto border-t border-zinc-200/80 bg-white/70 py-6 text-center text-xs text-zinc-500 backdrop-blur-xs dark:border-zinc-800 dark:bg-zinc-950/70 dark:text-zinc-400">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 sm:flex-row sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2 font-medium">
+            <span className="font-bold text-zinc-800 dark:text-zinc-200">
+              Abangers
+            </span>
+            <span>•</span>
+            <span>Boarding House Finder in Cebu</span>
+          </div>
+          <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+            &copy; {new Date().getFullYear()} Abangers. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

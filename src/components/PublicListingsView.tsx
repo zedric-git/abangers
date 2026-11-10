@@ -14,6 +14,7 @@ import {
   X,
   RotateCcw,
   Eye,
+  Check,
   PanelLeft,
   ChevronDown,
   LayoutGrid,
@@ -729,7 +730,7 @@ export default function PublicListingsView({
   ]);
 
   return (
-    <div className="relative space-y-6 pb-20">
+    <div className="relative space-y-6 pb-6 sm:pb-8">
       {/* Top Heading:
           - "public" variant (2nd Pic): "Find Your Next Home in Cebu" centered hero
           - "dashboard" variant (1st Pic): "Renter / Find a Place" dashboard header */}
@@ -835,9 +836,10 @@ export default function PublicListingsView({
             aria-label="Property filters"
             className="w-full shrink-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:w-80 lg:max-w-80 lg:min-w-80 lg:self-start"
           >
-            <div className="custom-scrollbar max-h-full space-y-4 overflow-y-auto overscroll-contain rounded-3xl border border-zinc-200/90 bg-white p-5 pr-3 shadow-xs lg:max-h-[calc(100vh-7rem)] dark:border-zinc-800 dark:bg-zinc-900">
-              {/* Panel Header with Collapse Icon */}
-              <div className="flex items-center justify-between border-b border-zinc-200/80 pb-3.5 dark:border-zinc-800">
+            {/* Outer Card: owns rounded-3xl border and clips inner content cleanly */}
+            <div className="flex max-h-full flex-col overflow-hidden rounded-3xl border border-zinc-200/90 bg-white shadow-xs lg:max-h-[calc(100vh-7rem)] dark:border-zinc-800 dark:bg-zinc-900">
+              {/* Panel Header with Title, Count, Reset, and Collapse Icon (Pinned at top of card) */}
+              <div className="flex shrink-0 items-center justify-between border-b border-zinc-200/80 px-5 py-3.5 dark:border-zinc-800">
                 <div className="flex items-center gap-2">
                   <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-50">
                     Filters
@@ -848,18 +850,30 @@ export default function PublicListingsView({
                     </span>
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsFilterPanelOpen(false)}
-                  title="Hide Filters"
-                  aria-label="Hide Filters"
-                  className="cursor-pointer rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
-                >
-                  <PanelLeft className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  {activeFilterCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={clearAllFilters}
+                      className="cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-purple-600 transition-colors hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/40"
+                    >
+                      Reset
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsFilterPanelOpen(false)}
+                    title="Hide Filters"
+                    aria-label="Hide Filters"
+                    className="cursor-pointer rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                  >
+                    <PanelLeft className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
-              <div className="mt-4 space-y-5">
+              {/* Scrollable Filter Body: scrolls smoothly inside the card, never cutting rounded corners */}
+              <div className="custom-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-4 pr-3.5">
                 {/* Rent Section */}
                 <div>
                   <p className="mb-2 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
@@ -1590,6 +1604,26 @@ export default function PublicListingsView({
                   </article>
                 );
               })}
+            </div>
+          )}
+
+          {/* Clean end-of-results indicator when listings are found */}
+          {filteredListings.length > 0 && (
+            <div className="mt-10 flex flex-col items-center justify-center gap-1.5 border-t border-zinc-200/80 pt-8 pb-4 text-center dark:border-zinc-800">
+              <div className="inline-flex items-center gap-2 rounded-full border border-purple-200/70 bg-purple-50/60 px-3.5 py-1 text-xs font-semibold text-purple-700 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300">
+                <Check className="h-3.5 w-3.5 stroke-[2.5]" />
+                <span>
+                  Showing all {filteredListings.length}{" "}
+                  {filteredListings.length === 1
+                    ? "boarding house"
+                    : "boarding houses"}{" "}
+                  in Cebu
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                You&apos;ve reached the end of the results. Try adjusting your
+                filters if you haven&apos;t found what you need.
+              </p>
             </div>
           )}
         </div>
