@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import {
+  Settings,
   Clock,
   Search,
   CheckCircle2,
@@ -20,6 +21,7 @@ import {
   canTransitionViewingStatus,
   type ViewingStatus,
 } from "@/lib/viewing-status";
+import { ViewingAvailabilityForm } from "./ViewingAvailabilityForm";
 import {
   DECLINE_REASON_MAX_LENGTH,
   declineViewingSchema,
@@ -227,6 +229,7 @@ export default function LandlordViewingRequestsView({
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
     null,
   );
+  const [showAvailability, setShowAvailability] = useState(false);
   const [completingRequest, setCompletingRequest] =
     useState<ViewingRequest | null>(null);
 
@@ -354,266 +357,283 @@ export default function LandlordViewingRequestsView({
             </span>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setShowAvailability((prev) => !prev)}
+          className="inline-flex h-10 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-4 text-xs font-semibold text-zinc-800 shadow-2xs transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+        >
+          <Settings className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+          <span>
+            {showAvailability ? "Back to Requests" : "Configure Viewing Slots"}
+          </span>
+        </button>
       </div>
 
-      {/* FILTER BY STATUS / METRIC & Search */}
-      <div className="space-y-3">
-        {/* Header & Viewing indicator */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
-            FILTER BY STATUS / METRIC
-          </span>
-          <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
-            Viewing: {currentTabObj.label} ({tabCounts[activeTab]})
-          </span>
-        </div>
-
-        {/* 6 Pill Buttons spanning grid width (#20 includes Cancelled) */}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">
-          {VIEWING_TABS.map((tab) => {
-            const isSelected = activeTab === tab.value;
-            const count = tabCounts[tab.value];
-
-            return (
-              <button
-                key={tab.value}
-                type="button"
-                onClick={() => setActiveTab(tab.value)}
-                className={`flex h-11 items-center justify-center gap-2 rounded-2xl px-3 text-xs font-semibold transition-all ${
-                  isSelected
-                    ? "bg-purple-600 text-white shadow-xs"
-                    : "border-2 border-purple-500/30 bg-white text-purple-700 hover:border-purple-500/50 hover:bg-purple-50/50 dark:border-purple-500/30 dark:bg-zinc-900 dark:text-purple-300 dark:hover:bg-zinc-800/60"
-                }`}
-              >
-                <span>{tab.label}</span>
-                <span
-                  className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold transition-all ${
-                    isSelected
-                      ? "bg-white text-purple-700 shadow-2xs"
-                      : "bg-purple-100 text-purple-800 dark:bg-purple-950/70 dark:text-purple-300"
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Search & Property Filter Bar (Dropped unit column) */}
-        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-            <input
-              type="text"
-              placeholder="Search by renter name or property title..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-11 w-full rounded-xl border border-zinc-200 bg-white pr-4 pl-10 text-xs shadow-xs focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:focus-visible:ring-purple-400"
-            />
-          </div>
-
-          <select
-            value={propertyFilter}
-            onChange={(e) => setPropertyFilter(e.target.value)}
-            className="h-11 rounded-xl border border-zinc-200 bg-white px-3.5 text-xs font-medium text-zinc-700 shadow-xs focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:focus-visible:ring-purple-400"
-          >
-            <option value="all">All Properties</option>
-            <option value="PROP-1">Sampaloc Scholar Suites</option>
-            <option value="PROP-2">Katipunan Prime Studio</option>
-            <option value="PROP-3">Morayta Courtyard Dorm</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Main Viewing Requests List */}
-      <div className="space-y-4">
-        {loadError ? (
-          <div
-            role="alert"
-            className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200"
-          >
-            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-            <div className="space-y-1">
-              <p className="font-semibold">
-                Couldn&apos;t load viewing requests
-              </p>
-              <p className="text-xs text-rose-600 dark:text-rose-400">
-                Please refresh the page to try again.
-              </p>
+      {showAvailability ? (
+        <ViewingAvailabilityForm />
+      ) : (
+        <>
+          {/* FILTER BY STATUS / METRIC & Search */}
+          <div className="space-y-3">
+            {/* Header & Viewing indicator */}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
+                FILTER BY STATUS / METRIC
+              </span>
+              <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
+                Viewing: {currentTabObj.label} ({tabCounts[activeTab]})
+              </span>
             </div>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 bg-white p-12 text-center dark:border-zinc-800 dark:bg-zinc-900/50">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
-              <Clock className="h-6 w-6" />
-            </div>
-            <h3 className="mt-4 text-sm font-bold text-zinc-900 dark:text-zinc-100">
-              No viewing requests found
-            </h3>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-              {searchQuery
-                ? "No appointments match your search criteria."
-                : `There are currently no ${activeTab === "all" ? "" : activeTab} viewing requests.`}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3.5">
-            {filtered.map((req) => {
-              const allowMarkCompleted = canMarkCompleted(
-                req.status,
-                req.requestedDateIso,
-              );
 
-              return (
-                <div
-                  key={req.id}
-                  onClick={() => setSelectedRequestId(req.id)}
-                  className={`cursor-pointer rounded-2xl border bg-white p-5 shadow-2xs transition-all hover:border-purple-300 dark:bg-zinc-900 ${
-                    selectedRequestId === req.id
-                      ? "border-purple-500 ring-2 ring-purple-500/20 dark:border-purple-500"
-                      : "border-zinc-200 hover:border-purple-200 dark:border-zinc-800 dark:hover:border-zinc-700"
-                  }`}
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    {/* Renter & Property Details */}
-                    <div className="flex items-start gap-4">
-                      <div
-                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-bold text-white shadow-xs ${req.avatarColor}`}
-                      >
-                        {req.renterAvatar}
-                      </div>
+            {/* 6 Pill Buttons spanning grid width (#20 includes Cancelled) */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">
+              {VIEWING_TABS.map((tab) => {
+                const isSelected = activeTab === tab.value;
+                const count = tabCounts[tab.value];
 
-                      <div className="space-y-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-50">
-                            {req.renterName}
-                          </h3>
-                          <span className="text-xs text-zinc-400">
-                            • {req.renterRole}
-                          </span>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
-                          <span className="flex items-center gap-1">
-                            <Building2 className="h-3.5 w-3.5 text-purple-500" />
-                            {req.propertyTitle}
-                          </span>
-                          <span className="font-semibold text-zinc-700 dark:text-zinc-300">
-                            ₱{req.monthlyRent.toLocaleString()} / mo
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2 pt-1 text-xs font-semibold text-purple-700 dark:text-purple-300">
-                          <Clock className="h-3.5 w-3.5" />
-                          <span>
-                            {req.requestedDate} • {req.requestedTime}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions and Status (stop propagation so card click doesn't trigger drawer) */}
-                    <div
-                      className="flex items-center gap-2.5 self-end lg:self-center"
-                      onClick={(e) => e.stopPropagation()}
+                return (
+                  <button
+                    key={tab.value}
+                    type="button"
+                    onClick={() => setActiveTab(tab.value)}
+                    className={`flex h-11 items-center justify-center gap-2 rounded-2xl px-3 text-xs font-semibold transition-all ${
+                      isSelected
+                        ? "bg-purple-600 text-white shadow-xs"
+                        : "border-2 border-purple-500/30 bg-white text-purple-700 hover:border-purple-500/50 hover:bg-purple-50/50 dark:border-purple-500/30 dark:bg-zinc-900 dark:text-purple-300 dark:hover:bg-zinc-800/60"
+                    }`}
+                  >
+                    <span>{tab.label}</span>
+                    <span
+                      className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold transition-all ${
+                        isSelected
+                          ? "bg-white text-purple-700 shadow-2xs"
+                          : "bg-purple-100 text-purple-800 dark:bg-purple-950/70 dark:text-purple-300"
+                      }`}
                     >
-                      {req.status === "pending" && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleUpdateStatus(req.id, "confirmed")
-                            }
-                            className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-purple-700"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Confirm Slot
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDecliningRequest(req);
-                              setDeclineReason("");
-                              setDeclineError(null);
-                            }}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
-                          >
-                            <XCircle className="h-3.5 w-3.5 text-rose-500" />
-                            Decline
-                          </button>
-                        </>
-                      )}
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
 
-                      {req.status === "confirmed" && (
-                        <>
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-600 dark:text-purple-400">
-                            Confirmed
-                          </span>
-                          {allowMarkCompleted ? (
-                            <button
-                              type="button"
-                              onClick={() => setCompletingRequest(req)}
-                              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:text-purple-700 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:text-purple-300"
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                              Mark Completed
-                            </button>
-                          ) : (
-                            <span
-                              title="Mark as Completed becomes available on or after the scheduled viewing date."
-                              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-[11px] font-semibold text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-400"
-                            >
-                              Scheduled (Future)
+            {/* Search & Property Filter Bar (Dropped unit column) */}
+            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center">
+              <div className="relative flex-1">
+                <Search className="absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+                <input
+                  type="text"
+                  placeholder="Search by renter name or property title..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-11 w-full rounded-xl border border-zinc-200 bg-white pr-4 pl-10 text-xs shadow-xs focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:focus-visible:ring-purple-400"
+                />
+              </div>
+
+              <select
+                value={propertyFilter}
+                onChange={(e) => setPropertyFilter(e.target.value)}
+                className="h-11 rounded-xl border border-zinc-200 bg-white px-3.5 text-xs font-medium text-zinc-700 shadow-xs focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:focus-visible:ring-purple-400"
+              >
+                <option value="all">All Properties</option>
+                <option value="PROP-1">Sampaloc Scholar Suites</option>
+                <option value="PROP-2">Katipunan Prime Studio</option>
+                <option value="PROP-3">Morayta Courtyard Dorm</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Main Viewing Requests List */}
+          <div className="space-y-4">
+            {loadError ? (
+              <div
+                role="alert"
+                className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200"
+              >
+                <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                <div className="space-y-1">
+                  <p className="font-semibold">
+                    Couldn&apos;t load viewing requests
+                  </p>
+                  <p className="text-xs text-rose-600 dark:text-rose-400">
+                    Please refresh the page to try again.
+                  </p>
+                </div>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-zinc-300 bg-white p-12 text-center dark:border-zinc-800 dark:bg-zinc-900/50">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
+                  <Clock className="h-6 w-6" />
+                </div>
+                <h3 className="mt-4 text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                  No viewing requests found
+                </h3>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  {searchQuery
+                    ? "No appointments match your search criteria."
+                    : `There are currently no ${activeTab === "all" ? "" : activeTab} viewing requests.`}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3.5">
+                {filtered.map((req) => {
+                  const allowMarkCompleted = canMarkCompleted(
+                    req.status,
+                    req.requestedDateIso,
+                  );
+
+                  return (
+                    <div
+                      key={req.id}
+                      onClick={() => setSelectedRequestId(req.id)}
+                      className={`cursor-pointer rounded-2xl border bg-white p-5 shadow-2xs transition-all hover:border-purple-300 dark:bg-zinc-900 ${
+                        selectedRequestId === req.id
+                          ? "border-purple-500 ring-2 ring-purple-500/20 dark:border-purple-500"
+                          : "border-zinc-200 hover:border-purple-200 dark:border-zinc-800 dark:hover:border-zinc-700"
+                      }`}
+                    >
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                        {/* Renter & Property Details */}
+                        <div className="flex items-start gap-4">
+                          <div
+                            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-bold text-white shadow-xs ${req.avatarColor}`}
+                          >
+                            {req.renterAvatar}
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-50">
+                                {req.renterName}
+                              </h3>
+                              <span className="text-xs text-zinc-400">
+                                • {req.renterRole}
+                              </span>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+                              <span className="flex items-center gap-1">
+                                <Building2 className="h-3.5 w-3.5 text-purple-500" />
+                                {req.propertyTitle}
+                              </span>
+                              <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                                ₱{req.monthlyRent.toLocaleString()} / mo
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2 pt-1 text-xs font-semibold text-purple-700 dark:text-purple-300">
+                              <Clock className="h-3.5 w-3.5" />
+                              <span>
+                                {req.requestedDate} • {req.requestedTime}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions and Status (stop propagation so card click doesn't trigger drawer) */}
+                        <div
+                          className="flex items-center gap-2.5 self-end lg:self-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {req.status === "pending" && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleUpdateStatus(req.id, "confirmed")
+                                }
+                                className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-purple-700"
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                Confirm Slot
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDecliningRequest(req);
+                                  setDeclineReason("");
+                                  setDeclineError(null);
+                                }}
+                                className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
+                              >
+                                <XCircle className="h-3.5 w-3.5 text-rose-500" />
+                                Decline
+                              </button>
+                            </>
+                          )}
+
+                          {req.status === "confirmed" && (
+                            <>
+                              <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 text-xs font-bold text-purple-600 dark:text-purple-400">
+                                Confirmed
+                              </span>
+                              {allowMarkCompleted ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setCompletingRequest(req)}
+                                  className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 shadow-2xs hover:bg-zinc-50 hover:text-purple-700 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:text-purple-300"
+                                >
+                                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                                  Mark Completed
+                                </button>
+                              ) : (
+                                <span
+                                  title="Mark as Completed becomes available on or after the scheduled viewing date."
+                                  className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-[11px] font-semibold text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-400"
+                                >
+                                  Scheduled (Future)
+                                </span>
+                              )}
+                            </>
+                          )}
+
+                          {req.status === "completed" && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                              Completed
                             </span>
                           )}
-                        </>
+
+                          {req.status === "declined" && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs font-bold text-rose-600 dark:text-rose-400">
+                              <XCircle className="h-3.5 w-3.5" />
+                              Declined
+                            </span>
+                          )}
+
+                          {req.status === "cancelled" && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-zinc-100 px-3 py-1 text-xs font-bold text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
+                              <XCircle className="h-3.5 w-3.5 text-zinc-400" />
+                              Cancelled by Renter
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {req.notes && (
+                        <div className="mt-3.5 rounded-xl bg-zinc-50 p-3 text-xs text-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-300">
+                          <strong className="text-zinc-800 dark:text-zinc-200">
+                            Renter Note:
+                          </strong>{" "}
+                          &ldquo;{req.notes}&rdquo;
+                        </div>
                       )}
 
-                      {req.status === "completed" && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          Completed
-                        </span>
-                      )}
-
-                      {req.status === "declined" && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs font-bold text-rose-600 dark:text-rose-400">
-                          <XCircle className="h-3.5 w-3.5" />
-                          Declined
-                        </span>
-                      )}
-
-                      {req.status === "cancelled" && (
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-300 bg-zinc-100 px-3 py-1 text-xs font-bold text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
-                          <XCircle className="h-3.5 w-3.5 text-zinc-400" />
-                          Cancelled by Renter
-                        </span>
+                      {req.declineReason && (
+                        <div className="mt-2.5 rounded-xl border border-rose-200/60 bg-rose-50/70 p-3 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200">
+                          <strong className="font-bold">Decline Reason:</strong>{" "}
+                          {req.declineReason}
+                        </div>
                       )}
                     </div>
-                  </div>
-
-                  {req.notes && (
-                    <div className="mt-3.5 rounded-xl bg-zinc-50 p-3 text-xs text-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-300">
-                      <strong className="text-zinc-800 dark:text-zinc-200">
-                        Renter Note:
-                      </strong>{" "}
-                      &ldquo;{req.notes}&rdquo;
-                    </div>
-                  )}
-
-                  {req.declineReason && (
-                    <div className="mt-2.5 rounded-xl border border-rose-200/60 bg-rose-50/70 p-3 text-xs text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200">
-                      <strong className="font-bold">Decline Reason:</strong>{" "}
-                      {req.declineReason}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* Slide-Over Dossier Drawer */}
       {selectedRequest && (
