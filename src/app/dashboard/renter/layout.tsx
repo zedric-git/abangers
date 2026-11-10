@@ -66,8 +66,22 @@ export default function RenterLayout({
       />
 
       {/* Main Content Area: route-aware content scrolling */}
-      <main className="custom-scrollbar bg-background min-w-0 flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-8">
-        <div className="mx-auto max-w-6xl">{children}</div>
+      <main
+        className={`bg-background min-w-0 flex-1 ${
+          pathname === "/dashboard/renter"
+            ? "flex h-full flex-col overflow-hidden p-4 md:px-6 md:pt-6 md:pb-4"
+            : "custom-scrollbar overflow-y-auto px-4 py-6 md:px-8 md:py-8"
+        }`}
+      >
+        <div
+          className={
+            pathname === "/dashboard/renter"
+              ? "flex h-full min-h-0 w-full flex-1 flex-col"
+              : "mx-auto max-w-6xl"
+          }
+        >
+          {children}
+        </div>
       </main>
 
       {/* Logout Confirmation Dialog (completes #124) */}

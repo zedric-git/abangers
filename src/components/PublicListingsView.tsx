@@ -19,7 +19,6 @@ import {
   ChevronDown,
   LayoutGrid,
   Heart,
-  Map,
 } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
 import type { ListingFilterParams } from "@/lib/validations/listing-filters";
@@ -713,80 +712,82 @@ export default function PublicListingsView({
     });
   }, [filteredListings]);
 
-  // Sticky Top Positioning for Search Controls and Left Filter Sidebar
-  const stickySearchTop = variant === "public" ? "top-16" : "top-0";
-
-  const sidebarStickyTop =
-    variant === "public"
-      ? activeFilterCount > 0
-        ? "lg:top-[12rem]"
-        : "lg:top-[8.5rem]"
-      : activeFilterCount > 0
-        ? "lg:top-[8rem]"
-        : "lg:top-[4.5rem]";
-
-  const sidebarMaxHeight =
-    variant === "public"
-      ? activeFilterCount > 0
-        ? "lg:max-h-[calc(100vh-13rem)]"
-        : "lg:max-h-[calc(100vh-9.5rem)]"
-      : activeFilterCount > 0
-        ? "lg:max-h-[calc(100vh-9rem)]"
-        : "lg:max-h-[calc(100vh-5.5rem)]";
-
   return (
-    <div className="relative space-y-4 pb-2">
-      {/* Top Heading:
-          - "public" variant (2nd Pic): "Find Your Next Home in Cebu" centered hero
-          - "dashboard" variant (1st Pic): "Renter / Find a Place" dashboard header */}
-      {variant === "public" ? (
-        <div className="mx-auto max-w-4xl pb-2 text-center">
-          <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950 sm:text-4xl dark:text-zinc-50">
-            Find Your Next Home in Cebu
-          </h1>
-          <p className="mt-2 text-sm text-zinc-500 sm:text-base dark:text-zinc-400">
-            Search boarding houses, bedspaces, and rooms near your university or
-            workplace.
-          </p>
-        </div>
-      ) : (
-        <div>
-          <p className="text-xs font-semibold tracking-wider text-purple-600 uppercase dark:text-purple-400">
-            Renter / Find a Place
-          </p>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
-            Find a Place
-          </h1>
-        </div>
-      )}
+    <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
+      {/* Area 1: Top Header & Search Bar (Shrink-0, Fixed at Top, Solid Background, Never Scrolls) */}
+      <div className="shrink-0 space-y-4 pb-4">
+        {/* Header & Title (Matches Pic 2 from .Abangers UI) */}
+        {variant === "public" ? (
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-1.5 text-xs font-medium">
+                <span className="text-zinc-400 dark:text-zinc-500">
+                  Boarding Houses
+                </span>
+                <span className="text-zinc-400 dark:text-zinc-500">/</span>
+                <span className="font-semibold text-purple-600 dark:text-purple-400">
+                  Find Your Next Home in Cebu
+                </span>
+              </div>
+              <div className="mt-1 flex items-center gap-3">
+                <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
+                  Find Your Next Home in Cebu
+                </h1>
+                {viewMode === "map" && (
+                  <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-bold text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+                    Map View
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-1.5 text-xs font-medium">
+                <span className="text-zinc-400 dark:text-zinc-500">Renter</span>
+                <span className="text-zinc-400 dark:text-zinc-500">/</span>
+                <span className="font-semibold text-purple-600 dark:text-purple-400">
+                  Find a Place
+                </span>
+              </div>
+              <div className="mt-1 flex items-center gap-3">
+                <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
+                  Find a Place
+                </h1>
+                {viewMode === "map" && (
+                  <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-bold text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+                    Map View
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
-      {/* STICKY TOP CONTROLS: Search Bar + Active Filters Bar (When activeFilterCount > 0) */}
-      <div
-        className={`sticky z-20 space-y-3 bg-zinc-50/95 py-2 backdrop-blur-md transition-all dark:bg-zinc-950/95 ${stickySearchTop}`}
-      >
-        {/* Top Search + Filter Toggle Bar (1st Pic + Separate Search Button on the side) */}
+        {/* Search Bar + Filter Button (Left Side) */}
         <form
           role="search"
           aria-label="Search and filter boarding houses"
           onSubmit={handleSearchSubmit}
-          className="flex flex-col gap-3 sm:flex-row sm:items-center"
+          className="flex items-center gap-3"
         >
-          {/* Top-left Filter Toggle Button */}
+          {/* Toggle Filter Button on the LEFT side */}
           <button
             type="button"
             onClick={() => setIsFilterPanelOpen((prev) => !prev)}
             aria-expanded={isFilterPanelOpen}
-            className={`inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold shadow-2xs transition-all ${
+            className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl border px-4 text-xs font-semibold shadow-2xs transition-all ${
               isFilterPanelOpen
-                ? "border-purple-600 bg-purple-600 text-white hover:bg-purple-700"
-                : "border-zinc-200/90 bg-white text-zinc-700 hover:border-purple-300 hover:text-purple-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-purple-800"
+                ? "border-purple-600 bg-purple-600 text-white shadow-xs"
+                : "border-zinc-200 bg-white text-zinc-700 hover:border-purple-300 hover:bg-purple-50/70 hover:text-purple-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-purple-800 dark:hover:bg-purple-950/20"
             }`}
           >
             <SlidersHorizontal className="h-4 w-4" />
             <span>{isFilterPanelOpen ? "Hide Filters" : "Filters"}</span>
             {activeFilterCount > 0 && (
               <span
-                className={`ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
+                className={`inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
                   isFilterPanelOpen
                     ? "bg-white text-purple-700"
                     : "bg-purple-600 text-white"
@@ -801,7 +802,7 @@ export default function PublicListingsView({
           <div className="relative flex-1">
             <Search
               aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-zinc-400"
+              className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500"
             />
             <input
               type="search"
@@ -809,7 +810,7 @@ export default function PublicListingsView({
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label="Search by university, street, or boarding house name"
               placeholder="Search by university, street, or boarding house name (e.g. UST, Katipunan, Taft)..."
-              className="w-full rounded-2xl border border-zinc-200/90 bg-white py-3 pr-10 pl-11 text-sm text-zinc-900 shadow-2xs transition-all placeholder:text-zinc-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+              className="flex h-11 w-full rounded-2xl border border-zinc-200 bg-white py-2 pr-10 pl-10 text-xs shadow-2xs transition-colors placeholder:text-zinc-400 focus:border-purple-600 focus:ring-2 focus:ring-purple-500/20 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-purple-400"
             />
             {searchQuery && (
               <button
@@ -821,15 +822,15 @@ export default function PublicListingsView({
                 aria-label="Clear search query"
                 className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
               >
-                <X className="h-4 w-4" />
+                <X className="h-3.5 w-3.5" />
               </button>
             )}
           </div>
 
-          {/* Separate Search Button on the right side (1st Pic customization) */}
+          {/* Separate Search Button on the right side */}
           <button
             type="submit"
-            className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-xs transition-all hover:bg-purple-700 active:scale-[0.99] dark:bg-purple-600 dark:hover:bg-purple-500"
+            className="inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-purple-600 px-5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-purple-700 active:scale-[0.99] dark:bg-purple-600 dark:hover:bg-purple-500"
           >
             <Search className="h-4 w-4" />
             <span>Search</span>
@@ -838,11 +839,12 @@ export default function PublicListingsView({
 
         {/* 2nd Pic: This part of the UI ONLY appears if and only if there are active filters */}
         {activeFilterCount > 0 && (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-purple-200/80 bg-white px-4 py-2.5 shadow-2xs dark:border-purple-900/50 dark:bg-zinc-900">
+          <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-2xl border border-purple-200/80 bg-white px-4 py-2.5 shadow-2xs dark:border-purple-900/50 dark:bg-zinc-900">
             <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                 Filters active ({activeFilterCount}) • Showing{" "}
-                {filteredListings.length} matches:
+                {filteredListings.length}{" "}
+                {filteredListings.length === 1 ? "match" : "matches"}:
               </span>
               {(minRent || maxRent) && (
                 <FilterPill
@@ -950,27 +952,25 @@ export default function PublicListingsView({
         )}
       </div>
 
-      {/* Main 2-Column Layout: Left Filters Panel (Fixed Width + Separate Scrollbar) + Right Listings */}
-      <div className="flex flex-col items-start gap-6 lg:flex-row">
-        {/* LEFT PANEL: Collapsible Filters Sidebar */}
+      {/* Main Layout: 2 Fixed-Height Panels with Independent Scrolling */}
+      <div className="flex min-h-0 w-full flex-1 items-stretch gap-6 overflow-hidden">
+        {/* Area 2: Collapsible Filters Sidebar (Independent Scroll, Fixed Width, Fixed Height) */}
         {isFilterPanelOpen && (
           <aside
             id="renter-filter-sidebar"
             aria-label="Property filters"
-            className={`w-full shrink-0 lg:sticky ${sidebarStickyTop} ${sidebarMaxHeight} transition-all lg:w-80 lg:max-w-80 lg:min-w-80 lg:self-start`}
+            className="flex h-full w-full shrink-0 flex-col self-stretch overflow-hidden lg:w-72 xl:w-80"
           >
             {/* Outer Card: owns rounded-3xl border and clips inner content cleanly */}
-            <div
-              className={`flex max-h-full flex-col overflow-hidden rounded-3xl border border-zinc-200/90 bg-white shadow-xs ${sidebarMaxHeight} dark:border-zinc-800 dark:bg-zinc-900`}
-            >
-              {/* Panel Header with Title, Count, Reset, and Collapse Icon (Pinned at top of card) */}
-              <div className="flex shrink-0 items-center justify-between border-b border-zinc-200/80 px-5 py-3.5 dark:border-zinc-800">
+            <div className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain rounded-3xl border border-zinc-200/90 bg-white p-5 pr-3 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+              {/* Panel Header with Title, Count, Reset, and Collapse Icon */}
+              <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-50">
+                  <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
                     Filters
                   </h2>
                   {activeFilterCount > 0 && (
-                    <span className="rounded-full bg-purple-100 px-2 py-0.5 text-xs font-bold text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-purple-600 px-1.5 text-[11px] font-bold text-white">
                       {activeFilterCount}
                     </span>
                   )}
@@ -988,322 +988,322 @@ export default function PublicListingsView({
                   <button
                     type="button"
                     onClick={() => setIsFilterPanelOpen(false)}
-                    title="Hide Filters"
-                    aria-label="Hide Filters"
-                    className="cursor-pointer rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                    title="Collapse filter panel"
+                    aria-label="Collapse filter panel"
+                    className="cursor-pointer rounded-lg p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
                   >
                     <PanelLeft className="h-4 w-4" />
                   </button>
                 </div>
               </div>
+              {/* Rent Section */}
+              <div>
+                <p className="mb-2 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
+                  Rent
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={0}
+                    value={minRent}
+                    onChange={(e) => setMinRent(e.target.value)}
+                    aria-label="Minimum monthly rent"
+                    placeholder="Min (₱2,500)"
+                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                  />
+                  <span className="text-xs font-bold text-zinc-400">-</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={maxRent}
+                    onChange={(e) => setMaxRent(e.target.value)}
+                    aria-label="Maximum monthly rent"
+                    placeholder="Max (₱5,000)"
+                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                  />
+                </div>
+              </div>
 
-              {/* Scrollable Filter Body: scrolls smoothly inside the card, never cutting rounded corners */}
-              <div className="custom-scrollbar min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-4 pr-3.5">
-                {/* Rent Section */}
-                <div>
-                  <p className="mb-2 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
-                    Rent
-                  </p>
-                  <div className="flex items-center gap-2">
+              {/* Location Section */}
+              <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
+                <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
+                  Location
+                </p>
+                <div className="space-y-2.5">
+                  <div>
+                    <label
+                      htmlFor="filter-location-near"
+                      className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                    >
+                      Near:
+                    </label>
                     <input
-                      type="number"
-                      min={0}
-                      value={minRent}
-                      onChange={(e) => setMinRent(e.target.value)}
-                      aria-label="Minimum monthly rent"
-                      placeholder="Min (₱2,500)"
+                      id="filter-location-near"
+                      type="text"
+                      value={locationNear}
+                      onChange={(e) => setLocationNear(e.target.value)}
+                      placeholder="University, street, landmark..."
                       className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
                     />
-                    <span className="text-xs font-bold text-zinc-400">-</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={maxRent}
-                      onChange={(e) => setMaxRent(e.target.value)}
-                      aria-label="Maximum monthly rent"
-                      placeholder="Max (₱5,000)"
-                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="filter-location-within"
+                      className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                    >
+                      Within:
+                    </label>
+                    <select
+                      id="filter-location-within"
+                      value={locationWithin}
+                      onChange={(e) => setLocationWithin(e.target.value)}
+                      className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-700 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200"
+                    >
+                      {DISTANCE_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
+              </div>
 
-                {/* Location Section */}
-                <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
-                  <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
-                    Location
-                  </p>
-                  <div className="space-y-2.5">
-                    <div>
-                      <label
-                        htmlFor="filter-location-near"
-                        className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400"
-                      >
-                        Near:
-                      </label>
-                      <input
-                        id="filter-location-near"
-                        type="text"
-                        value={locationNear}
-                        onChange={(e) => setLocationNear(e.target.value)}
-                        placeholder="University, street, landmark..."
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="filter-location-within"
-                        className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400"
-                      >
-                        Within:
-                      </label>
-                      <select
-                        id="filter-location-within"
-                        value={locationWithin}
-                        onChange={(e) => setLocationWithin(e.target.value)}
-                        className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-700 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200"
-                      >
-                        {DISTANCE_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                </div>
+              {/* Amenities Section */}
+              <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
+                <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
+                  Amenities
+                </p>
 
-                {/* Amenities Section */}
-                <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
-                  <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
-                    Amenities
-                  </p>
+                {/* Parking Checkbox */}
+                <label className="mb-2 flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/60">
+                  <input
+                    type="checkbox"
+                    checked={hasParking}
+                    onChange={(e) => setHasParking(e.target.checked)}
+                    className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-purple-600 focus:ring-purple-500"
+                  />
+                  <span>Parking</span>
+                </label>
 
-                  {/* Parking Checkbox */}
-                  <label className="mb-2 flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/60">
-                    <input
-                      type="checkbox"
-                      checked={hasParking}
-                      onChange={(e) => setHasParking(e.target.checked)}
-                      className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span>Parking</span>
-                  </label>
-
-                  {/* Accordion Categories */}
-                  <div className="divide-y divide-zinc-200/60 dark:divide-zinc-800/80">
-                    {/* 1. Utilities */}
-                    <FilterAccordion
-                      label="Utilities"
-                      count={selectedUtilities.length}
-                      isOpen={openAccordions.utilities}
-                      onToggle={() => toggleAccordion("utilities")}
-                    >
-                      {UTILITY_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedUtilities.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedUtilities, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 2. Room */}
-                    <FilterAccordion
-                      label="Room"
-                      count={selectedRoom.length}
-                      isOpen={openAccordions.room}
-                      onToggle={() => toggleAccordion("room")}
-                    >
-                      {ROOM_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedRoom.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedRoom, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 3. Bathroom */}
-                    <FilterAccordion
-                      label="Bathroom"
-                      count={selectedBathroom.length}
-                      isOpen={openAccordions.bathroom}
-                      onToggle={() => toggleAccordion("bathroom")}
-                    >
-                      {BATHROOM_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedBathroom.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedBathroom, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 4. Kitchen & Food */}
-                    <FilterAccordion
-                      label="Kitchen & Food"
-                      count={selectedKitchen.length}
-                      isOpen={openAccordions.kitchen}
-                      onToggle={() => toggleAccordion("kitchen")}
-                    >
-                      {KITCHEN_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedKitchen.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedKitchen, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 5. Laundry */}
-                    <FilterAccordion
-                      label="Laundry"
-                      count={selectedLaundry.length}
-                      isOpen={openAccordions.laundry}
-                      onToggle={() => toggleAccordion("laundry")}
-                    >
-                      {LAUNDRY_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedLaundry.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedLaundry, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 6. Safety & Security */}
-                    <FilterAccordion
-                      label="Safety & Security"
-                      count={selectedSafety.length}
-                      isOpen={openAccordions.safety}
-                      onToggle={() => toggleAccordion("safety")}
-                    >
-                      {SAFETY_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedSafety.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedSafety, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 7. Property Type */}
-                    <FilterAccordion
-                      label="Property Type"
-                      count={selectedPropertyTypes.length}
-                      isOpen={openAccordions.propertyType}
-                      onToggle={() => toggleAccordion("propertyType")}
-                    >
-                      {PROPERTY_TYPES.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedPropertyTypes.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedPropertyTypes, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 8. Room/Occupancy Type */}
-                    <FilterAccordion
-                      label="Room/Occupancy Type"
-                      count={selectedOccupancyTypes.length}
-                      isOpen={openAccordions.occupancyType}
-                      onToggle={() => toggleAccordion("occupancyType")}
-                    >
-                      {OCCUPANCY_TYPES.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedOccupancyTypes.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedOccupancyTypes, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 9. Allowed Gender */}
-                    <FilterAccordion
-                      label="Allowed Gender"
-                      count={selectedGenders.length}
-                      isOpen={openAccordions.allowedGender}
-                      onToggle={() => toggleAccordion("allowedGender")}
-                    >
-                      {GENDER_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedGenders.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedGenders, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 10. House Rules */}
-                    <FilterAccordion
-                      label="House Rules"
-                      count={selectedHouseRules.length}
-                      isOpen={openAccordions.houseRules}
-                      onToggle={() => toggleAccordion("houseRules")}
-                    >
-                      {HOUSE_RULE_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedHouseRules.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedHouseRules, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-                  </div>
-                </div>
-
-                {/* Clear Filters Button */}
-                <div className="border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
-                  <button
-                    type="button"
-                    onClick={clearAllFilters}
-                    disabled={
-                      activeFilterCount === 0 && searchQuery.trim() === ""
-                    }
-                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-bold text-zinc-700 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-45 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300 dark:hover:border-rose-900/50 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
+                {/* Accordion Categories */}
+                <div className="divide-y divide-zinc-200/60 dark:divide-zinc-800/80">
+                  {/* 1. Utilities */}
+                  <FilterAccordion
+                    label="Utilities"
+                    count={selectedUtilities.length}
+                    isOpen={openAccordions.utilities}
+                    onToggle={() => toggleAccordion("utilities")}
                   >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    Clear Filters
-                  </button>
+                    {UTILITY_OPTIONS.map((item) => (
+                      <CheckboxOption
+                        key={item}
+                        label={item}
+                        checked={selectedUtilities.includes(item)}
+                        onChange={() =>
+                          toggleArrayItem(setSelectedUtilities, item)
+                        }
+                      />
+                    ))}
+                  </FilterAccordion>
+
+                  {/* 2. Room */}
+                  <FilterAccordion
+                    label="Room"
+                    count={selectedRoom.length}
+                    isOpen={openAccordions.room}
+                    onToggle={() => toggleAccordion("room")}
+                  >
+                    {ROOM_OPTIONS.map((item) => (
+                      <CheckboxOption
+                        key={item}
+                        label={item}
+                        checked={selectedRoom.includes(item)}
+                        onChange={() => toggleArrayItem(setSelectedRoom, item)}
+                      />
+                    ))}
+                  </FilterAccordion>
+
+                  {/* 3. Bathroom */}
+                  <FilterAccordion
+                    label="Bathroom"
+                    count={selectedBathroom.length}
+                    isOpen={openAccordions.bathroom}
+                    onToggle={() => toggleAccordion("bathroom")}
+                  >
+                    {BATHROOM_OPTIONS.map((item) => (
+                      <CheckboxOption
+                        key={item}
+                        label={item}
+                        checked={selectedBathroom.includes(item)}
+                        onChange={() =>
+                          toggleArrayItem(setSelectedBathroom, item)
+                        }
+                      />
+                    ))}
+                  </FilterAccordion>
+
+                  {/* 4. Kitchen & Food */}
+                  <FilterAccordion
+                    label="Kitchen & Food"
+                    count={selectedKitchen.length}
+                    isOpen={openAccordions.kitchen}
+                    onToggle={() => toggleAccordion("kitchen")}
+                  >
+                    {KITCHEN_OPTIONS.map((item) => (
+                      <CheckboxOption
+                        key={item}
+                        label={item}
+                        checked={selectedKitchen.includes(item)}
+                        onChange={() =>
+                          toggleArrayItem(setSelectedKitchen, item)
+                        }
+                      />
+                    ))}
+                  </FilterAccordion>
+
+                  {/* 5. Laundry */}
+                  <FilterAccordion
+                    label="Laundry"
+                    count={selectedLaundry.length}
+                    isOpen={openAccordions.laundry}
+                    onToggle={() => toggleAccordion("laundry")}
+                  >
+                    {LAUNDRY_OPTIONS.map((item) => (
+                      <CheckboxOption
+                        key={item}
+                        label={item}
+                        checked={selectedLaundry.includes(item)}
+                        onChange={() =>
+                          toggleArrayItem(setSelectedLaundry, item)
+                        }
+                      />
+                    ))}
+                  </FilterAccordion>
+
+                  {/* 6. Safety & Security */}
+                  <FilterAccordion
+                    label="Safety & Security"
+                    count={selectedSafety.length}
+                    isOpen={openAccordions.safety}
+                    onToggle={() => toggleAccordion("safety")}
+                  >
+                    {SAFETY_OPTIONS.map((item) => (
+                      <CheckboxOption
+                        key={item}
+                        label={item}
+                        checked={selectedSafety.includes(item)}
+                        onChange={() =>
+                          toggleArrayItem(setSelectedSafety, item)
+                        }
+                      />
+                    ))}
+                  </FilterAccordion>
+
+                  {/* 7. Property Type */}
+                  <FilterAccordion
+                    label="Property Type"
+                    count={selectedPropertyTypes.length}
+                    isOpen={openAccordions.propertyType}
+                    onToggle={() => toggleAccordion("propertyType")}
+                  >
+                    {PROPERTY_TYPES.map((item) => (
+                      <CheckboxOption
+                        key={item}
+                        label={item}
+                        checked={selectedPropertyTypes.includes(item)}
+                        onChange={() =>
+                          toggleArrayItem(setSelectedPropertyTypes, item)
+                        }
+                      />
+                    ))}
+                  </FilterAccordion>
+
+                  {/* 8. Room/Occupancy Type */}
+                  <FilterAccordion
+                    label="Room/Occupancy Type"
+                    count={selectedOccupancyTypes.length}
+                    isOpen={openAccordions.occupancyType}
+                    onToggle={() => toggleAccordion("occupancyType")}
+                  >
+                    {OCCUPANCY_TYPES.map((item) => (
+                      <CheckboxOption
+                        key={item}
+                        label={item}
+                        checked={selectedOccupancyTypes.includes(item)}
+                        onChange={() =>
+                          toggleArrayItem(setSelectedOccupancyTypes, item)
+                        }
+                      />
+                    ))}
+                  </FilterAccordion>
+
+                  {/* 9. Allowed Gender */}
+                  <FilterAccordion
+                    label="Allowed Gender"
+                    count={selectedGenders.length}
+                    isOpen={openAccordions.allowedGender}
+                    onToggle={() => toggleAccordion("allowedGender")}
+                  >
+                    {GENDER_OPTIONS.map((item) => (
+                      <CheckboxOption
+                        key={item}
+                        label={item}
+                        checked={selectedGenders.includes(item)}
+                        onChange={() =>
+                          toggleArrayItem(setSelectedGenders, item)
+                        }
+                      />
+                    ))}
+                  </FilterAccordion>
+
+                  {/* 10. House Rules */}
+                  <FilterAccordion
+                    label="House Rules"
+                    count={selectedHouseRules.length}
+                    isOpen={openAccordions.houseRules}
+                    onToggle={() => toggleAccordion("houseRules")}
+                  >
+                    {HOUSE_RULE_OPTIONS.map((item) => (
+                      <CheckboxOption
+                        key={item}
+                        label={item}
+                        checked={selectedHouseRules.includes(item)}
+                        onChange={() =>
+                          toggleArrayItem(setSelectedHouseRules, item)
+                        }
+                      />
+                    ))}
+                  </FilterAccordion>
                 </div>
+              </div>
+
+              {/* Clear Filters Button */}
+              <div className="border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
+                <button
+                  type="button"
+                  onClick={clearAllFilters}
+                  disabled={
+                    activeFilterCount === 0 && searchQuery.trim() === ""
+                  }
+                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-bold text-zinc-700 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-45 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300 dark:hover:border-rose-900/50 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
+                  Clear Filters
+                </button>
               </div>
             </div>
           </aside>
         )}
 
-        {/* RIGHT PANEL: Grid / Map View */}
-        <div className="min-w-0 flex-1 space-y-4">
+        {/* Area 3: Right Panel (Independent Scroll, Map View or Cards Grid + Message) */}
+        <div
+          className={`flex h-full min-w-0 flex-1 flex-col gap-4 pr-1 ${
+            viewMode === "map"
+              ? "overflow-hidden"
+              : "custom-scrollbar overflow-y-auto overscroll-contain"
+          }`}
+        >
           {viewMode === "map" && (
             <div className="flex items-center justify-between pb-1">
               <div className="flex items-center gap-2">
@@ -1634,7 +1634,7 @@ export default function PublicListingsView({
 
           {/* Clean end-of-results indicator when listings are found (Last part of the page) */}
           {filteredListings.length > 0 && (
-            <div className="mt-4 flex flex-col items-center justify-center gap-1 border-t border-zinc-200/80 pt-4 pb-1 text-center dark:border-zinc-800">
+            <div className="mt-2 flex flex-col items-center justify-center gap-1 border-t border-zinc-200/80 pt-3 pb-3 text-center dark:border-zinc-800">
               <div className="inline-flex items-center gap-2 rounded-full border border-purple-200/70 bg-purple-50/60 px-3.5 py-1 text-xs font-semibold text-purple-700 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300">
                 <Check className="h-3.5 w-3.5 stroke-[2.5]" />
                 <span>
@@ -1679,11 +1679,11 @@ export default function PublicListingsView({
             {/* Vignette overlay */}
             <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/25 to-transparent transition-opacity group-hover:opacity-90" />
 
-            {/* Bottom Badge - Text stays fixed at normal size, does not enlarge */}
-            <div className="absolute right-2 bottom-2 left-2 z-10 flex items-center justify-center gap-1 px-1">
-              <Map className="h-3.5 w-3.5 shrink-0 text-white drop-shadow-xs" />
-              <span className="text-[10px] font-bold tracking-tight text-white drop-shadow-xs">
-                View in Maps
+            {/* Center white pill matching .Abangers UI */}
+            <div className="absolute inset-0 flex items-center justify-center p-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200/60 bg-white/95 px-3 py-1.5 text-xs font-bold text-zinc-900 shadow-md backdrop-blur-xs transition-transform group-hover:scale-105">
+                <MapPin className="h-3.5 w-3.5 text-purple-600" />
+                <span>View in Maps</span>
               </span>
             </div>
           </button>
