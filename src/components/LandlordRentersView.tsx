@@ -11,6 +11,10 @@ import {
   Clock,
   MessageSquare,
   CheckCircle2,
+  ChevronDown,
+  Receipt,
+  AlertCircle,
+  Check,
 } from "lucide-react";
 import {
   Select,
@@ -33,6 +37,18 @@ export interface TenantRecord {
   monthlyRent: number;
   bookedAt: string;
   status: "confirmed";
+  paymentStatus: "paid" | "overdue";
+  nextDueDate: string;
+  depositsHeld: number;
+  depositsCoverage: string;
+  leaseDuration: string;
+  leasePeriod: string;
+  lastPayment?: {
+    amount: number;
+    method: string;
+    date: string;
+    refNumber: string;
+  };
 }
 
 export interface InterestedRenterRecord {
@@ -65,6 +81,18 @@ const sampleTenants: TenantRecord[] = [
     monthlyRent: 4200,
     bookedAt: "Aug 01, 2026",
     status: "confirmed",
+    paymentStatus: "paid",
+    nextDueDate: "Nov 05, 2026",
+    depositsHeld: 8400,
+    depositsCoverage: "1 Mo. Advance + 1 Mo. Deposit",
+    leaseDuration: "10 Months Active",
+    leasePeriod: "Aug 2026 – May 2027",
+    lastPayment: {
+      amount: 4200,
+      method: "GCash",
+      date: "Oct 03, 2026 at 2:15 PM",
+      refNumber: "Ref #9028144",
+    },
   },
   {
     id: "TNT-02",
@@ -79,6 +107,12 @@ const sampleTenants: TenantRecord[] = [
     monthlyRent: 8500,
     bookedAt: "Jun 15, 2026",
     status: "confirmed",
+    paymentStatus: "overdue",
+    nextDueDate: "Oct 05, 2026",
+    depositsHeld: 17000,
+    depositsCoverage: "2 Months Security Deposit",
+    leaseDuration: "1 Year Contract",
+    leasePeriod: "Jun 2026 – Jun 2027",
   },
   {
     id: "TNT-03",
@@ -93,6 +127,18 @@ const sampleTenants: TenantRecord[] = [
     monthlyRent: 3500,
     bookedAt: "Jul 01, 2026",
     status: "confirmed",
+    paymentStatus: "paid",
+    nextDueDate: "Nov 01, 2026",
+    depositsHeld: 7000,
+    depositsCoverage: "1 Mo. Advance + 1 Mo. Deposit",
+    leaseDuration: "1 Year Contract",
+    leasePeriod: "Jul 2026 – Jun 2027",
+    lastPayment: {
+      amount: 3500,
+      method: "Maya",
+      date: "Oct 01, 2026 at 10:45 AM",
+      refNumber: "Ref #8821034",
+    },
   },
   {
     id: "TNT-04",
@@ -107,6 +153,18 @@ const sampleTenants: TenantRecord[] = [
     monthlyRent: 6000,
     bookedAt: "Sep 01, 2026",
     status: "confirmed",
+    paymentStatus: "paid",
+    nextDueDate: "Nov 01, 2026",
+    depositsHeld: 12000,
+    depositsCoverage: "1 Mo. Advance + 1 Mo. Deposit",
+    leaseDuration: "1 Year Contract",
+    leasePeriod: "Sep 2026 – Aug 2027",
+    lastPayment: {
+      amount: 6000,
+      method: "Bank Transfer",
+      date: "Oct 01, 2026 at 3:30 PM",
+      refNumber: "Ref #7190245",
+    },
   },
 ];
 
@@ -168,6 +226,13 @@ export default function LandlordRentersView() {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [propertyFilter, setPropertyFilter] = useState("all");
+  const [expandedTenantIds, setExpandedTenantIds] = useState<string[]>([]);
+
+  const toggleTenantDetails = (id: string) => {
+    setExpandedTenantIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    );
+  };
 
   const filteredTenants = tenants.filter((t) => {
     const matchesProp =
@@ -216,6 +281,7 @@ export default function LandlordRentersView() {
           </span>
         </div>
       </div>
+
       {/* Tabs & Filter Bar */}
       <div className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -303,70 +369,241 @@ export default function LandlordRentersView() {
               </p>
             </div>
           ) : (
-            filteredTenants.map((t) => (
-              <div
-                key={t.id}
-                className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xs transition-all hover:border-purple-200 lg:flex-row lg:items-center lg:justify-between dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
-              >
-                <div className="flex items-start gap-4">
-                  <div
-                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-bold text-white shadow-xs ${t.avatarColor}`}
-                  >
-                    {t.avatar}
+            filteredTenants.map((t) => {
+              const isExpanded = expandedTenantIds.includes(t.id);
+              return (
+                <div
+                  key={t.id}
+                  className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xs transition-all hover:border-purple-200 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex items-start gap-4">
+                      <div
+                        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-bold text-white shadow-xs ${t.avatarColor}`}
+                      >
+                        {t.avatar}
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-50">
+                            {t.renterName}
+                          </h3>
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Confirmed Tenant
+                          </span>
+                          {t.paymentStatus === "paid" ? (
+                            <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                              Paid for October
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                              Payment Overdue (₱{t.monthlyRent.toLocaleString()}
+                              )
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+                          <span className="flex items-center gap-1">
+                            <Building2 className="h-3.5 w-3.5 text-purple-500" />
+                            {t.propertyTitle} ({t.room})
+                          </span>
+                          <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+                            ₱{t.monthlyRent.toLocaleString()} / mo
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                          <span className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {t.email}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {t.phone}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            Booked: {t.bookedAt}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end lg:self-center">
+                      <button
+                        type="button"
+                        onClick={() => toggleTenantDetails(t.id)}
+                        className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3.5 text-xs font-semibold text-purple-700 transition-colors hover:bg-purple-100 dark:border-purple-900/60 dark:bg-purple-950/40 dark:text-purple-300 dark:hover:bg-purple-900/40"
+                      >
+                        <Receipt className="h-3.5 w-3.5" />
+                        <span>
+                          {isExpanded ? "Hide Details" : "View Payment Details"}
+                        </span>
+                        <ChevronDown
+                          className={`h-3.5 w-3.5 transition-transform duration-200 ${
+                            isExpanded ? "rotate-180" : ""
+                          }`}
+                        />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          alert(`Message window for ${t.renterName} (#116)`)
+                        }
+                        className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:bg-zinc-50 hover:text-purple-700 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        Message Tenant
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-50">
-                        {t.renterName}
-                      </h3>
-                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Confirmed Tenant
-                      </span>
-                    </div>
+                  {/* Expandable Payment & Lease Panel */}
+                  {isExpanded && (
+                    <div className="dark:bg-zinc-850/60 mt-4 space-y-3.5 rounded-xl border border-zinc-100 bg-zinc-50/80 p-4 dark:border-zinc-800">
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        {/* Monthly Dues & Next Due */}
+                        <div className="rounded-xl border border-zinc-200 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-900">
+                          <span className="block text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+                            Monthly Dues
+                          </span>
+                          <div className="mt-1 flex items-baseline gap-1.5">
+                            <span
+                              className={`text-lg font-bold ${
+                                t.paymentStatus === "overdue"
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : "text-zinc-900 dark:text-zinc-100"
+                              }`}
+                            >
+                              ₱{t.monthlyRent.toLocaleString()}
+                            </span>
+                            <span className="text-[11px] text-zinc-400">
+                              / month
+                            </span>
+                          </div>
+                          <div className="mt-2 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                            <span>
+                              {t.paymentStatus === "overdue"
+                                ? "Was Due On:"
+                                : "Next Due:"}
+                            </span>
+                            <span
+                              className={`font-semibold ${
+                                t.paymentStatus === "overdue"
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : "text-zinc-800 dark:text-zinc-200"
+                              }`}
+                            >
+                              {t.nextDueDate}
+                            </span>
+                          </div>
+                        </div>
 
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
-                      <span className="flex items-center gap-1">
-                        <Building2 className="h-3.5 w-3.5 text-purple-500" />
-                        {t.propertyTitle} ({t.room})
-                      </span>
-                      <span className="font-semibold text-zinc-700 dark:text-zinc-300">
-                        ₱{t.monthlyRent.toLocaleString()} / mo
-                      </span>
-                    </div>
+                        {/* Deposits on Hold */}
+                        <div className="rounded-xl border border-zinc-200 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-900">
+                          <span className="block text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+                            Deposits on Hold
+                          </span>
+                          <div className="mt-1 flex items-baseline gap-1.5">
+                            <span className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+                              ₱{t.depositsHeld.toLocaleString()}
+                            </span>
+                            <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                              (Held)
+                            </span>
+                          </div>
+                          <div className="mt-2 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                            <span>Coverage:</span>
+                            <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                              {t.depositsCoverage}
+                            </span>
+                          </div>
+                        </div>
 
-                    <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      <span className="flex items-center gap-1">
-                        <Mail className="h-3 w-3" />
-                        {t.email}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        {t.phone}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        Booked: {t.bookedAt}
-                      </span>
+                        {/* Lease Agreement */}
+                        <div className="rounded-xl border border-zinc-200 bg-white p-3.5 dark:border-zinc-800 dark:bg-zinc-900">
+                          <span className="block text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+                            Lease Agreement
+                          </span>
+                          <div className="mt-1 text-sm font-bold text-zinc-900 dark:text-zinc-100">
+                            {t.leaseDuration}
+                          </div>
+                          <div className="mt-2 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                            <span>Period:</span>
+                            <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                              {t.leasePeriod}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Recent Payment or Due Status Row */}
+                      <div className="flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-3.5 text-xs sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800 dark:bg-zinc-900">
+                        {t.paymentStatus === "paid" && t.lastPayment ? (
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 font-bold text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
+                              <Check className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-zinc-800 dark:text-zinc-200">
+                                Latest Payment: ₱
+                                {t.lastPayment.amount.toLocaleString()} via{" "}
+                                {t.lastPayment.method}
+                              </p>
+                              <p className="text-[11px] text-zinc-400">
+                                {t.lastPayment.refNumber} • Received{" "}
+                                {t.lastPayment.date}
+                              </p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 font-bold text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+                              <AlertCircle className="h-4 w-4" />
+                            </div>
+                            <div>
+                              <p className="font-bold text-zinc-800 dark:text-zinc-200">
+                                October Rent Unsettled (Due {t.nextDueDate})
+                              </p>
+                              <p className="text-[11px] text-zinc-400">
+                                Tenant promised payment via GCash.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              alert(`Record payment for ${t.renterName}`)
+                            }
+                            className="rounded-lg border border-zinc-200 px-3 py-1.5 font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                          >
+                            Record Payment
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              alert(`Send receipt/reminder for ${t.renterName}`)
+                            }
+                            className="rounded-lg bg-purple-600 px-3 py-1.5 font-semibold text-white shadow-2xs hover:bg-purple-700"
+                          >
+                            {t.paymentStatus === "paid"
+                              ? "Send Receipt"
+                              : "Send Due Reminder"}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
-
-                <div className="flex items-center gap-2 self-end lg:self-center">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      alert(`Message window for ${t.renterName} (#116)`)
-                    }
-                    className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:bg-zinc-50 hover:text-purple-700 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-                  >
-                    <MessageSquare className="h-3.5 w-3.5" />
-                    Message Tenant
-                  </button>
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       )}
