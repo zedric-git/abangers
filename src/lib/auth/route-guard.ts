@@ -66,6 +66,10 @@ export function guardRedirect(
   signedIn: boolean,
   ownPath: string | null,
 ): string | null {
+  // Unguarded paths (e.g. /listings, #85) never redirect.
+  if (!isGuardedPath(pathname)) {
+    return null;
+  }
   // Signed out (e.g. after logging out and pressing Back) → home page,
   // where they can log in again from the modal.
   if (!signedIn) {
