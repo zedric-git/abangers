@@ -65,36 +65,41 @@ input:-webkit-autofill:active {
 }
 
 /* Remove native Windows arrow buttons on scrollbars */
+*::-webkit-scrollbar-button,
 ::-webkit-scrollbar-button {
   display: none !important;
   width: 0 !important;
   height: 0 !important;
 }
 
-/* Sleek auto-hiding scrollbar: invisible by default, subtle thin thumb on hover */
+/* Sleek thin scrollbar: elegant subtle thumb */
 .custom-scrollbar {
+  --scrollbar-thumb: rgba(161, 161, 170, 0.45);
+  --scrollbar-track: transparent;
   scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-  /*
-    Only the scrollbar transitions here. Theme background fades come from
-    the shared --background transition on <html> (see top of file), so
-    don't add background-color here; a second, separate transition is what
-    let <main> and the sidebar's active tab drift out of sync.
-  */
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   transition: scrollbar-color 0.2s ease;
 }
 
 .custom-scrollbar:hover {
-  scrollbar-color: rgba(156, 163, 175, 0.4) transparent;
+  --scrollbar-thumb: rgba(161, 161, 170, 0.75);
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.dark .custom-scrollbar {
+  --scrollbar-thumb: rgba(113, 113, 122, 0.45);
+  --scrollbar-track: transparent;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 .dark .custom-scrollbar:hover {
-  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  --scrollbar-thumb: rgba(161, 161, 170, 0.65);
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
@@ -102,23 +107,13 @@ input:-webkit-autofill:active {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: transparent;
+  background: var(--scrollbar-thumb);
   border-radius: 9999px;
   transition: background-color 0.2s ease;
 }
 
-.custom-scrollbar:hover::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.4);
-}
-
-.custom-scrollbar:hover::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.7);
-}
-
-.dark .custom-scrollbar:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.25);
-}
-
-.dark .custom-scrollbar:hover::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.45);
+.custom-scrollbar::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }

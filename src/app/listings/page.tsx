@@ -1,126 +1,95 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { AlertCircle, Home } from "lucide-react";
+import { Home, AlertTriangle, RefreshCw, AlertCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { dashboardFor, parseRole } from "@/lib/auth/post-login";
 import PublicListingsView from "@/components/PublicListingsView";
-import { getFavoritedListingIds } from "@/lib/favorites";
-import HeaderAuthButtons from "@/components/HeaderAuthButtons";
+import ListingsNavbarActions from "@/components/ListingsNavbarActions";
+import type { ListingPreview } from "@/types/listing";
+import { parseListingFilterParams } from "@/lib/validations/listing-filters";
 import { MISSING_PUBLIC_LISTING_NOTE } from "@/lib/fetch-listing";
 import { MISSING_LISTING_NOTICE } from "@/lib/listing-lookup";
+import { getFavoritedListingIds } from "@/lib/favorites";
 
-export const metadata = {
-  title: "Browse Listings | Abangers",
-  description:
-    "Search boarding houses, bedspaces, and apartments for rent near universities and workplaces in Cebu.",
-};
+export const dynamic = "force-dynamic";
 
-const PUBLIC_LISTING_COLUMNS =
-  "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, created_at";
+export const PUBLIC_LISTING_COLUMNS =
+  "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, amenities, utilities, room_features, bathroom_features, kitchen_features, laundry_features, safety_features, house_rules, latitude, longitude, created_at";
 
-export default async function ListingsPage({
+interface PublicListingsPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function PublicListingsPage({
   searchParams,
-}: {
-  searchParams?: Promise<{ notice?: string }>;
-}) {
-  const { notice } = (await searchParams) ?? {};
+}: PublicListingsPageProps) {
+  const resolvedParams = await searchParams;
+  const initialFilters = parseListingFilterParams(resolvedParams);
+  const notice =
+    typeof resolvedParams.notice === "string"
+      ? resolvedParams.notice
+      : undefined;
   const showMissingListingNote = notice === MISSING_LISTING_NOTICE;
 
   const supabase = await createClient();
 
-  // Load public available listings and current user session in parallel
-  const [{ data: rawListings, error }, { data: authData }] = await Promise.all([
-    supabase
-      .from("listings")
-      .select(PUBLIC_LISTING_COLUMNS)
-      .in("availability_status", ["available", "almost_full"])
-      .order("created_at", { ascending: false }),
-    supabase.auth.getUser(),
-  ]);
+  // Check if user is logged in to show a quick dashboard shortcut in the header
+  // and to enable heart-saving favorites on listing cards.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (error) {
-    console.error("Failed to load listings:", error);
-    return (
-      <div className="min-h-screen bg-zinc-50 px-4 py-12 font-sans dark:bg-black">
-        <div className="mx-auto max-w-5xl">
-          <div
-            role="alert"
-            className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200"
-          >
-            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-            <div>
-              <h2 className="font-semibold">Unable to load listings</h2>
-              <p className="mt-1">
-                We couldn&apos;t load listings right now. Please refresh the
-                page or try again in a few moments.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Look up dashboard link if signed in (#14)
   let dashboardPath: string | null = null;
   let userRole: string | null = null;
-  let favoritedListingIds: string[] = [];
+  let favoritedIds: string[] = [];
 
-  if (authData?.user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", authData.user.id)
-      .maybeSingle();
+  if (user) {
+    const [{ data: profile }, savedSet] = await Promise.all([
+      supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+      getFavoritedListingIds(supabase),
+    ]);
 
-    const role = parseRole(profile?.role);
-    if (role) {
-      dashboardPath = dashboardFor(role);
-      userRole = role;
-    }
+    userRole = profile?.role ?? "renter";
+    favoritedIds = Array.from(savedSet);
 
-    if (role === "renter") {
-      const savedSet = await getFavoritedListingIds(supabase);
-      favoritedListingIds = Array.from(savedSet);
+    if (profile?.role === "landlord") {
+      dashboardPath = "/dashboard/landlord";
+    } else if (profile?.role === "admin") {
+      dashboardPath = "/dashboard/admin";
+    } else {
+      dashboardPath = "/dashboard/renter";
     }
   }
 
-  const listings = rawListings ?? [];
+  // Fetch all available listings (newest first), excluding private landlord columns
+  const { data: rows, error } = await supabase
+    .from("listings")
+    .select(PUBLIC_LISTING_COLUMNS)
+    .in("availability_status", ["available", "almost_full"])
+    .order("created_at", { ascending: false });
+
+  const listings: ListingPreview[] = rows ?? [];
 
   return (
-    <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 dark:bg-black dark:text-zinc-100">
-      {/* Top Header / Navigation */}
-      <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/80 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/80">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
+    <div className="flex min-h-dvh flex-col bg-zinc-50/70 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      {/* Top Navigation Bar (Abangers logo on left, Home + Sign-in + Log-in on right) */}
+      <header className="sticky top-0 z-30 shrink-0 border-b border-zinc-200/80 bg-white/85 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/85">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <Link
             href="/"
-            className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-90 sm:gap-2.5"
+            className="flex items-center gap-2.5 text-lg font-bold tracking-tight transition-opacity hover:opacity-85"
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-600 text-white shadow-xs">
-              <Home className="h-5 w-5" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-600 text-white shadow-sm shadow-purple-500/20">
+              <Home className="h-4.5 w-4.5" />
             </div>
-            <span className="text-base font-bold tracking-tight text-zinc-950 sm:text-lg dark:text-zinc-50">
-              Abangers
-            </span>
+            <span>Abangers</span>
           </Link>
 
-          <nav className="flex items-center gap-1.5 sm:gap-3">
-            <Link
-              href="/"
-              className="rounded-xl px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 sm:px-3.5 sm:py-2 sm:text-sm dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
-            >
-              Home
-            </Link>
-            <HeaderAuthButtons
-              isAuthenticated={Boolean(authData?.user)}
-              dashboardPath={dashboardPath}
-            />
-          </nav>
+          <ListingsNavbarActions dashboardPath={dashboardPath} />
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
+      {/* Main Content: Natural document scrolling down the page */}
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         {showMissingListingNote && (
           <div
             role="status"
@@ -131,15 +100,58 @@ export default async function ListingsPage({
           </div>
         )}
 
-        <Suspense fallback={null}>
-          <PublicListingsView
-            initialListings={listings}
-            userRole={userRole}
-            favoritedListingIds={favoritedListingIds}
-            isAuthenticated={Boolean(authData?.user)}
-          />
-        </Suspense>
+        {/* Error state if database query fails (distinct from 0 listings) */}
+        {error ? (
+          <div className="mx-auto mt-8 max-w-lg rounded-2xl border border-rose-200 bg-rose-50/70 p-6 text-center dark:border-rose-900/60 dark:bg-rose-950/30">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <h2 className="mt-4 text-base font-bold text-rose-950 dark:text-rose-100">
+              Unable to load listings right now
+            </h2>
+            <p className="mt-1.5 text-xs leading-relaxed text-rose-700 sm:text-sm dark:text-rose-300">
+              We ran into a temporary problem reaching the database. Please
+              refresh the page or try again in a moment.
+            </p>
+            <div className="mt-5">
+              <Link
+                href="/listings"
+                className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-rose-700"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Try Again
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <Suspense fallback={null}>
+            <PublicListingsView
+              listings={listings}
+              initialFilters={initialFilters}
+              favoritedIds={favoritedIds}
+              userRole={userRole}
+              isAuthenticated={Boolean(user)}
+              variant="public"
+            />
+          </Suspense>
+        )}
       </main>
+
+      {/* Grounded site footer */}
+      <footer className="mt-auto border-t border-zinc-200/80 bg-white/70 py-6 text-center text-xs text-zinc-500 backdrop-blur-xs dark:border-zinc-800 dark:bg-zinc-950/70 dark:text-zinc-400">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-4 sm:flex-row sm:px-6 lg:px-8">
+          <div className="flex items-center gap-2 font-medium">
+            <span className="font-bold text-zinc-800 dark:text-zinc-200">
+              Abangers
+            </span>
+            <span>•</span>
+            <span>Boarding House Finder in Cebu</span>
+          </div>
+          <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
+            &copy; {new Date().getFullYear()} Abangers. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

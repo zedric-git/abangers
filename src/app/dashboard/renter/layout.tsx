@@ -25,7 +25,7 @@ export default function RenterLayout({
     // Top Group
     {
       label: "Find a Place",
-      href: "/listings",
+      href: "/dashboard/renter",
       icon: Search,
       description: "Search properties and explore listings",
     },
