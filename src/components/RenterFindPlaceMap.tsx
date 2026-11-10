@@ -1,19 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import {
-  MapPin,
-  ShieldCheck,
-  Navigation,
-  ExternalLink,
-  LocateFixed,
-  ArrowLeft,
-} from "lucide-react";
+import { MapPin, Eye, ArrowLeft } from "lucide-react";
 
 export interface MapPinItem {
   id: string;
@@ -137,33 +130,41 @@ export default function RenterFindPlaceMap({
   onViewDetails,
   onToggleView,
 }: RenterFindPlaceMapProps) {
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(
-    null,
-  );
-  const [locating, setLocating] = useState(false);
-
   const initialCenter: [number, number] =
     listings.length > 0
       ? [listings[0].latitude, listings[0].longitude]
       : DEFAULT_CENTER;
 
-  const handleLocateMe = () => {
-    if (!navigator.geolocation) return;
-    setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setUserLocation([pos.coords.latitude, pos.coords.longitude]);
-        setLocating(false);
-      },
-      () => {
-        setLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 8000 },
-    );
-  };
-
   return (
     <div className="relative isolate z-0 h-full min-h-[480px] w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 shadow-xs dark:border-zinc-800 dark:bg-zinc-950">
+      {/* Top Left Floating Map Banner (Placed at left-16 to clear Leaflet zoom controls) */}
+      <div
+        style={{ zIndex: 1001 }}
+        className="absolute top-4 left-16 flex items-center gap-2 rounded-2xl border border-zinc-200/90 bg-white/95 px-3.5 py-2 shadow-lg backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/95"
+      >
+        <MapPin className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+          Map View ({listings.length} places)
+        </span>
+      </div>
+
+      {/* Top Right: Prominent Return to List View Button */}
+      {onToggleView && (
+        <div
+          style={{ zIndex: 1001 }}
+          className="absolute top-4 right-4 flex items-center gap-2"
+        >
+          <button
+            type="button"
+            onClick={onToggleView}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-2xl border border-zinc-200/90 bg-white px-4 py-2.5 text-xs font-bold text-zinc-800 shadow-xl backdrop-blur-md transition-all hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 active:scale-95 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-purple-950/40"
+          >
+            <ArrowLeft className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            <span>Return to List View</span>
+          </button>
+        </div>
+      )}
+
       <MapContainer
         center={initialCenter}
         zoom={13}
@@ -196,82 +197,56 @@ export default function RenterFindPlaceMap({
               }}
             >
               <Popup
-                className="abangers-map-popup"
+                className="renter-map-popup font-sans"
                 maxWidth={280}
-                minWidth={250}
+                minWidth={224}
               >
-                <div className="overflow-hidden rounded-xl font-sans">
-                  <div className="relative h-32 w-full overflow-hidden rounded-lg bg-zinc-100">
-                    {listing.coverImage ? (
-                      <Image
-                        src={listing.coverImage}
-                        alt={listing.title}
-                        fill
-                        unoptimized
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-zinc-400">
-                        No Cover Image
-                      </div>
-                    )}
-                    <span
-                      className={`absolute top-2 left-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold text-white shadow-xs ${
-                        isAvailable ? "bg-emerald-600/95" : "bg-rose-600/95"
-                      }`}
-                    >
-                      {isAvailable
-                        ? `${listing.availableRooms} rooms left`
-                        : "Fully Occupied"}
-                    </span>
-                    <span className="absolute right-2 bottom-2 rounded-lg bg-zinc-950/90 px-2 py-0.5 text-xs font-extrabold text-white">
-                      ₱{listing.monthlyRent.toLocaleString("en-PH")}/mo
-                    </span>
+                <div className="w-56 overflow-hidden rounded-2xl bg-white p-0 shadow-lg dark:bg-zinc-900">
+                  {/* Photo with Property Type Badge */}
+                  <div className="relative aspect-16/10 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                    <Image
+                      src={
+                        listing.coverImage ||
+                        "https://images.unsplash.com/photo-1555854877-bab0e564b8d5?auto=format&fit=crop&w=600&q=80"
+                      }
+                      alt={listing.title}
+                      fill
+                      unoptimized
+                      className="h-full w-full object-cover"
+                    />
+                    <div className="absolute top-2 left-2 rounded-full bg-purple-600/90 px-2 py-0.5 text-[10px] font-bold text-white shadow-xs backdrop-blur-xs">
+                      {listing.propertyType}
+                    </div>
                   </div>
 
-                  <div className="pt-2.5">
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] font-bold tracking-wider text-purple-600 uppercase">
-                        {listing.propertyType} • {listing.occupancyType}
-                      </span>
-                      {listing.landlordVerified && (
-                        <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600">
-                          <ShieldCheck className="h-3 w-3" /> Verified
-                        </span>
-                      )}
-                    </div>
-
-                    <p className="mt-0.5 line-clamp-1 text-sm font-bold text-zinc-900">
+                  {/* Info */}
+                  <div className="p-3">
+                    <h4 className="line-clamp-1 text-xs font-bold text-zinc-900 dark:text-zinc-100">
                       {listing.title}
+                    </h4>
+                    <p className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+                      {listing.occupancyType} • {listing.allowedGender}
                     </p>
-
-                    <p className="mt-1 flex items-start gap-1 text-[11px] text-zinc-600">
-                      <MapPin className="mt-0.5 h-3 w-3 shrink-0 text-purple-600" />
-                      <span className="line-clamp-1">
-                        {listing.address}, {listing.city}
-                      </span>
-                    </p>
-
-                    <div className="mt-2.5 flex items-center justify-between gap-2 border-t border-zinc-100 pt-2">
-                      <span className="rounded-md bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-700">
-                        {listing.allowedGender}
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-purple-700 dark:text-purple-400">
+                        ₱{listing.monthlyRent.toLocaleString("en-PH")} / mo
                       </span>
                       {listing.href ? (
                         <Link
                           href={listing.href}
-                          className="inline-flex items-center gap-1 rounded-lg bg-purple-600 px-2.5 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-purple-700"
+                          className="inline-flex items-center gap-1 rounded-lg bg-purple-600 px-2.5 py-1 text-[10px] font-bold !text-white text-white shadow-xs hover:bg-purple-700"
                         >
-                          View Details
-                          <ExternalLink className="h-3 w-3" />
+                          <Eye className="h-3 w-3 !text-white text-white" />
+                          <span className="!text-white text-white">View</span>
                         </Link>
                       ) : (
                         <button
                           type="button"
                           onClick={() => onViewDetails?.(listing.id)}
-                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-purple-600 px-2.5 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-purple-700"
+                          className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-purple-600 px-2.5 py-1 text-[10px] font-bold !text-white text-white shadow-xs hover:bg-purple-700"
                         >
-                          View Details
-                          <ExternalLink className="h-3 w-3" />
+                          <Eye className="h-3 w-3 !text-white text-white" />
+                          <span className="!text-white text-white">View</span>
                         </button>
                       )}
                     </div>
@@ -281,68 +256,7 @@ export default function RenterFindPlaceMap({
             </Marker>
           );
         })}
-
-        {userLocation && (
-          <Marker
-            position={userLocation}
-            icon={L.divIcon({
-              className: "abangers-user-pin",
-              html: `
-                <div style="
-                  width: 18px;
-                  height: 18px;
-                  border-radius: 9999px;
-                  background-color: #2563eb;
-                  border: 3px solid #ffffff;
-                  box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.25);
-                "></div>
-              `,
-              iconSize: [18, 18],
-              iconAnchor: [9, 9],
-            })}
-          >
-            <Popup>
-              <p className="font-sans text-xs font-semibold text-zinc-900">
-                Your current location
-              </p>
-            </Popup>
-          </Marker>
-        )}
       </MapContainer>
-
-      {/* Floating Map Controls Overlay */}
-      <div className="pointer-events-none absolute top-3 right-3 left-3 z-400 flex flex-wrap items-center justify-between gap-2">
-        <div className="pointer-events-auto inline-flex items-center gap-2 rounded-xl border border-zinc-200/90 bg-white/95 px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-md backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-900/95 dark:text-zinc-200">
-          <Navigation className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-          <span>
-            Showing <strong>{listings.length}</strong>{" "}
-            {listings.length === 1 ? "pin" : "pins"} on map
-          </span>
-        </div>
-
-        <div className="pointer-events-auto flex items-center gap-2">
-          {onToggleView && (
-            <button
-              type="button"
-              onClick={onToggleView}
-              className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200/90 bg-white/95 px-3 py-1.5 text-xs font-bold text-zinc-800 shadow-md backdrop-blur-md transition-all hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 active:scale-95 dark:border-zinc-700 dark:bg-zinc-900/95 dark:text-zinc-100 dark:hover:bg-purple-950/40"
-            >
-              <ArrowLeft className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-              <span>Return to List View</span>
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={handleLocateMe}
-            disabled={locating}
-            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200/90 bg-white/95 px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-md backdrop-blur-md transition-colors hover:border-purple-300 hover:text-purple-600 disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-900/95 dark:text-zinc-200"
-          >
-            <LocateFixed className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-            {locating ? "Locating..." : "Near My Location"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

@@ -117,3 +117,25 @@ input:-webkit-autofill:active {
 .dark .custom-scrollbar:hover::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.45);
 }
+
+/* Leaflet popup customization for Renter Map View */
+.renter-map-popup .leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 1rem !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.renter-map-popup .leaflet-popup-content {
+  margin: 0 !important;
+  line-height: inherit !important;
+}
+
+.renter-map-popup .leaflet-popup-tip-container {
+  margin-top: -1px;
+}
+
+.renter-map-popup a {
+  color: inherit !important;
+}

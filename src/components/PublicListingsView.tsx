@@ -716,30 +716,16 @@ export default function PublicListingsView({
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       {/* Area 1: Top Header & Search Bar (Shrink-0, Fixed at Top, Solid Background, Never Scrolls) */}
       <div className="shrink-0 space-y-4 pb-4">
-        {/* Header & Title (Matches Pic 2 from .Abangers UI) */}
+        {/* Header & Title (Matches Pic 2 & Pic 4 from .Abangers UI) */}
         {variant === "public" ? (
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-1.5 text-xs font-medium">
-                <span className="text-zinc-400 dark:text-zinc-500">
-                  Boarding Houses
-                </span>
-                <span className="text-zinc-400 dark:text-zinc-500">/</span>
-                <span className="font-semibold text-purple-600 dark:text-purple-400">
-                  Find Your Next Home in Cebu
-                </span>
-              </div>
-              <div className="mt-1 flex items-center gap-3">
-                <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
-                  Find Your Next Home in Cebu
-                </h1>
-                {viewMode === "map" && (
-                  <span className="rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-bold text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
-                    Map View
-                  </span>
-                )}
-              </div>
-            </div>
+          <div className="mx-auto max-w-4xl pb-1 text-center">
+            <h1 className="text-3xl font-extrabold tracking-tight text-zinc-950 sm:text-4xl dark:text-zinc-50">
+              Find Your Next Home in Cebu
+            </h1>
+            <p className="mt-1.5 text-xs text-zinc-500 sm:text-sm dark:text-zinc-400">
+              Search boarding houses, bedspaces, and rooms near your university
+              or workplace.
+            </p>
           </div>
         ) : (
           <div className="flex items-center justify-between">
@@ -1310,6 +1296,34 @@ export default function PublicListingsView({
               : "custom-scrollbar overflow-y-auto overscroll-contain"
           }`}
         >
+          {/* Status & Toggle Bar: Matches Attachment 1 & 2 from .Abangers UI */}
+          {viewMode === "grid" && (
+            <div
+              id="filter-status-banner"
+              className="flex shrink-0 items-center justify-between rounded-2xl border border-zinc-200 bg-white p-3 shadow-2xs dark:border-zinc-800 dark:bg-zinc-900"
+            >
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                {!isFilterPanelOpen
+                  ? "filters hidden. showing all matches"
+                  : activeFilterCount > 0
+                    ? `Filters active (${activeFilterCount}). Showing ${filteredListings.length} ${filteredListings.length === 1 ? "match" : "matches"}`
+                    : `Showing all matches (${filteredListings.length})`}
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsFilterPanelOpen((prev) => !prev)}
+                className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-bold text-purple-600 hover:underline dark:text-purple-400"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                <span>
+                  {isFilterPanelOpen
+                    ? "Hide Filters Panel"
+                    : "Open Filters Panel"}
+                </span>
+              </button>
+            </div>
+          )}
+
           {/* MAIN CONTENT: MAP VIEW OR CARDS GRID */}
           {viewMode === "map" ? (
             <div className="relative isolate z-0 min-h-0 w-full flex-1 overflow-hidden rounded-3xl border border-zinc-200 dark:border-zinc-800">
@@ -1585,14 +1599,14 @@ export default function PublicListingsView({
             type="button"
             onClick={() => setViewMode("map")}
             title="View in Maps"
-            className="group relative flex h-[70px] w-[130px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-white bg-zinc-900 shadow-2xl ring-1 shadow-black/35 ring-black/10 transition-all duration-300 ease-out hover:scale-105 active:scale-95 dark:border-zinc-700"
+            className="group relative flex h-[88px] w-[88px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-white bg-zinc-900 shadow-2xl ring-1 shadow-black/35 ring-black/10 transition-all duration-300 ease-out hover:scale-105 active:scale-95 dark:border-zinc-700"
           >
             {/* Background image preview - Philippines default or chosen location */}
             <Image
               src={getMapThumbnailPhoto(locationNear || searchQuery)}
               alt="Map View preview"
               fill
-              sizes="(max-width: 768px) 180px, 180px"
+              sizes="88px"
               className="object-cover transition-transform duration-500 group-hover:scale-105"
               unoptimized
             />
@@ -1600,10 +1614,10 @@ export default function PublicListingsView({
             {/* Vignette overlay */}
             <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent transition-opacity group-hover:opacity-80" />
 
-            {/* Center white pill matching .Abangers UI */}
-            <div className="absolute inset-0 flex items-center justify-center p-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200/60 bg-white/95 px-3 py-1.5 text-xs font-bold whitespace-nowrap text-zinc-900 shadow-md backdrop-blur-xs">
-                <MapPin className="h-3.5 w-3.5 shrink-0 text-purple-600" />
+            {/* Center white pill with single-line whitespace-nowrap text */}
+            <div className="absolute inset-0 flex items-center justify-center p-1">
+              <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200/60 bg-white/95 px-2.5 py-1 text-[10px] font-bold whitespace-nowrap text-zinc-900 shadow-md backdrop-blur-xs">
+                <MapPin className="h-3 w-3 shrink-0 text-purple-600" />
                 <span className="whitespace-nowrap">View in Maps</span>
               </span>
             </div>
