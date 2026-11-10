@@ -205,23 +205,14 @@ export default function LandlordMessagesView() {
   return (
     <div className="w-full space-y-4">
       {/* Header */}
-      <div>
-        <div className="flex items-center gap-1.5 text-xs font-medium">
-          <span className="text-zinc-400 dark:text-zinc-500">Landlord</span>
-          <span className="text-zinc-400 dark:text-zinc-500">/</span>
-          <span className="font-semibold text-purple-600 dark:text-purple-400">
-            Messages
-          </span>
-        </div>
-        <div className="mt-1 flex items-center gap-3">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
-            Messages & Inquiries
-          </h1>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-0.5 text-xs font-bold text-purple-700 dark:text-purple-300">
-            <MessageSquare className="h-3.5 w-3.5" />
-            {conversations.length} Active Conversations
-          </span>
-        </div>
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
+          Messages & Inquiries
+        </h1>
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-0.5 text-xs font-bold text-purple-700 dark:text-purple-300">
+          <MessageSquare className="h-3.5 w-3.5" />
+          {conversations.length} Active Conversations
+        </span>
       </div>
 
       {/* Main Dual-Panel Container */}
