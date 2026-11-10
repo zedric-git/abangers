@@ -296,7 +296,10 @@ export default function PublicListingsView({
   isAuthenticated = false,
   variant = "public",
 }: PublicListingsViewProps) {
-  const listings = rawListings ?? initialListings ?? [];
+  const listings = useMemo(
+    () => rawListings ?? initialListings ?? [],
+    [rawListings, initialListings],
+  );
   const router = useRouter();
   const pathname = usePathname();
   const [authModalOpen, setAuthModalOpen] = useState(false);
