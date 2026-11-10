@@ -26,6 +26,16 @@ export default async function ListingDetailPage({
     redirect("/");
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.role === "renter") {
+    redirect(`/dashboard/renter/listings/${id}`);
+  }
+
   const lookup = await fetchListingById(supabase, id);
 
   // Deleted or mistyped id in the URL: back to /listings with a notice

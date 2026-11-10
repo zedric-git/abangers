@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AlertCircle, Home } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
@@ -70,6 +71,9 @@ export default async function ListingsPage({
       .maybeSingle();
 
     const role = parseRole(profile?.role);
+    if (role === "renter") {
+      redirect("/dashboard/renter");
+    }
     if (role) {
       dashboardPath = dashboardFor(role);
     }
