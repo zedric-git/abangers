@@ -300,6 +300,37 @@ export default function PublicListingsView({
   const router = useRouter();
   const pathname = usePathname();
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<"login" | "signup">("signup");
+  const [promptTitle, setPromptTitle] = useState<string | undefined>(undefined);
+  const [promptDescription, setPromptDescription] = useState<
+    string | undefined
+  >(undefined);
+
+  const handleRequireAuth = (
+    customTitle?: string,
+    customDescription?: string,
+  ) => {
+    setPromptTitle(customTitle || "Join Abangers to View Details");
+    setPromptDescription(
+      customDescription ||
+        "Join Abangers to use further features and view details.",
+    );
+    setModalMode("signup");
+    setAuthModalOpen(true);
+  };
+
+  const handleViewInMaps = () => {
+    if (!isAuthenticated) {
+      setPromptTitle("Join Abangers to View Map");
+      setPromptDescription(
+        "Join Abangers to use further features and explore the map.",
+      );
+      setModalMode("signup");
+      setAuthModalOpen(true);
+      return;
+    }
+    setViewMode("map");
+  };
 
   const resolvedInitialQuery = initialFilters?.q ?? initialSearchQuery;
 
@@ -376,6 +407,11 @@ export default function PublicListingsView({
 
   const handleToggleFavorite = async (listingId: string) => {
     if (!isAuthenticated) {
+      setPromptTitle("Join Abangers to Save Favorites");
+      setPromptDescription(
+        "Join Abangers to use further features and save your favorite listings.",
+      );
+      setModalMode("signup");
       setAuthModalOpen(true);
       return;
     }
@@ -404,7 +440,7 @@ export default function PublicListingsView({
       } = await supabase.auth.getUser();
 
       if (!user) {
-        setAuthModalOpen(true);
+        handleRequireAuth();
         return;
       }
 
@@ -1367,8 +1403,19 @@ export default function PublicListingsView({
                 return (
                   <article
                     key={listing.id}
-                    className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-300/80 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-purple-900/60"
+                    className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-200/80 bg-white shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-purple-300/80 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-purple-900/60"
                   >
+                    {/* Guest Click Interceptor: clicking anywhere on the card prompts signup */}
+                    {!isAuthenticated && (
+                      <button
+                        type="button"
+                        onClick={() => handleRequireAuth()}
+                        aria-label={`View details for ${listing.title} (Requires sign in)`}
+                        className="absolute inset-0 z-10 cursor-pointer text-left"
+                      >
+                        <span className="sr-only">View {listing.title}</span>
+                      </button>
+                    )}
                     {/* Card Image Header */}
                     <div className="relative h-52 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                       <Link
@@ -1563,15 +1610,12 @@ export default function PublicListingsView({
         </div>
       </div>
 
-      {/* Floating Google Maps Style Thumbnail Switcher - Shown only in Grid Mode */}
-      {viewMode === "grid" && (
-        <div
-          style={{ zIndex: 1001 }}
-          className="fixed right-6 bottom-6 z-30 md:right-8"
-        >
+      {/* Floating Google Maps Style Thumbnail Switcher - Shown only in Grid Mode and when Auth Modal is closed */}
+      {viewMode === "grid" && !authModalOpen && (
+        <div className="fixed right-6 bottom-6 z-30 md:right-8">
           <button
             type="button"
-            onClick={() => setViewMode("map")}
+            onClick={handleViewInMaps}
             title="View in Maps"
             className="group relative flex h-[80px] w-[88px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-white bg-zinc-900 shadow-2xl ring-1 shadow-black/35 ring-black/10 transition-all duration-300 ease-out hover:h-[160px] hover:w-[176px] hover:shadow-2xl hover:ring-2 hover:shadow-purple-500/25 hover:ring-purple-500/50 active:scale-95 dark:border-zinc-700"
           >
@@ -1604,12 +1648,14 @@ export default function PublicListingsView({
         </div>
       )}
 
-      {/* Guest Login / Sign-up Modal when clicking Favorite while signed out */}
+      {/* Guest Login / Sign-up Modal */}
       <LandlordAuthModal
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
-        initialMode="login"
+        initialMode={modalMode}
         initialRole="renter"
+        promptTitle={promptTitle}
+        promptDescription={promptDescription}
       />
     </div>
   );

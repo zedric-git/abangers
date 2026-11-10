@@ -20,6 +20,10 @@ interface PublicListingCardProps {
    * Intercepts card click for unauthenticated guests, opening the Auth Modal (#86).
    */
   onRequireAuth?: (listing: ListingPreview) => void;
+  /**
+   * Optional explicit details handler.
+   */
+  onViewDetails?: (listing: ListingPreview) => void;
 }
 
 /**
@@ -33,11 +37,13 @@ export default function PublicListingCard({
   action,
   flagOccupied = false,
   onRequireAuth,
+  onViewDetails,
 }: PublicListingCardProps) {
   const coverPhoto = listing.cover_image || listing.images?.[0] || "";
   const statusView = listingStatusView(listing.availability_status);
   const isOccupied = statusView.group === "occupied";
   const showOccupiedFlag = flagOccupied && isOccupied;
+  const handleCardClick = onRequireAuth || onViewDetails;
 
   return (
     <article
@@ -48,10 +54,10 @@ export default function PublicListingCard({
       )}
     >
       {/* Clickable Overlay — Link when authenticated, or Auth Prompt button for guests (#86) */}
-      {onRequireAuth ? (
+      {handleCardClick ? (
         <button
           type="button"
-          onClick={() => onRequireAuth(listing)}
+          onClick={() => handleCardClick(listing)}
           aria-label={`View details for ${listing.title} (Requires sign in)`}
           className="absolute inset-0 z-10 cursor-pointer text-left"
         >
