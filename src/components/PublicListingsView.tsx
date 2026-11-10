@@ -713,24 +713,29 @@ export default function PublicListingsView({
     });
   }, [filteredListings]);
 
-  // Status text in the right-hand bar
-  const statusBarText = useMemo(() => {
-    if (!isFilterPanelOpen) {
-      return "filters hidden. showing all matches";
-    }
-    if (activeFilterCount === 0 && searchQuery.trim() === "") {
-      return `Showing all matches (${filteredListings.length})`;
-    }
-    return `Filters active (${activeFilterCount}). Showing ${filteredListings.length} matches`;
-  }, [
-    isFilterPanelOpen,
-    activeFilterCount,
-    searchQuery,
-    filteredListings.length,
-  ]);
+  // Sticky Top Positioning for Search Controls and Left Filter Sidebar
+  const stickySearchTop = variant === "public" ? "top-16" : "top-0";
+
+  const sidebarStickyTop =
+    variant === "public"
+      ? activeFilterCount > 0
+        ? "lg:top-[12rem]"
+        : "lg:top-[8.5rem]"
+      : activeFilterCount > 0
+        ? "lg:top-[8rem]"
+        : "lg:top-[4.5rem]";
+
+  const sidebarMaxHeight =
+    variant === "public"
+      ? activeFilterCount > 0
+        ? "lg:max-h-[calc(100vh-13rem)]"
+        : "lg:max-h-[calc(100vh-9.5rem)]"
+      : activeFilterCount > 0
+        ? "lg:max-h-[calc(100vh-9rem)]"
+        : "lg:max-h-[calc(100vh-5.5rem)]";
 
   return (
-    <div className="relative space-y-6 pb-6 sm:pb-8">
+    <div className="relative space-y-4 pb-2">
       {/* Top Heading:
           - "public" variant (2nd Pic): "Find Your Next Home in Cebu" centered hero
           - "dashboard" variant (1st Pic): "Renter / Find a Place" dashboard header */}
@@ -755,77 +760,195 @@ export default function PublicListingsView({
         </div>
       )}
 
-      {/* Top Search + Filter Toggle Bar (1st Pic + Separate Search Button on the side) */}
-      <form
-        role="search"
-        aria-label="Search and filter boarding houses"
-        onSubmit={handleSearchSubmit}
-        className="flex flex-col gap-3 sm:flex-row sm:items-center"
+      {/* STICKY TOP CONTROLS: Search Bar + Active Filters Bar (When activeFilterCount > 0) */}
+      <div
+        className={`sticky z-20 space-y-3 bg-zinc-50/95 py-2 backdrop-blur-md transition-all dark:bg-zinc-950/95 ${stickySearchTop}`}
       >
-        {/* Top-left Filter Toggle Button */}
-        <button
-          type="button"
-          onClick={() => setIsFilterPanelOpen((prev) => !prev)}
-          aria-expanded={isFilterPanelOpen}
-          className={`inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold shadow-2xs transition-all ${
-            isFilterPanelOpen
-              ? "border-purple-600 bg-purple-600 text-white hover:bg-purple-700"
-              : "border-zinc-200/90 bg-white text-zinc-700 hover:border-purple-300 hover:text-purple-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-purple-800"
-          }`}
+        {/* Top Search + Filter Toggle Bar (1st Pic + Separate Search Button on the side) */}
+        <form
+          role="search"
+          aria-label="Search and filter boarding houses"
+          onSubmit={handleSearchSubmit}
+          className="flex flex-col gap-3 sm:flex-row sm:items-center"
         >
-          <SlidersHorizontal className="h-4 w-4" />
-          <span>{isFilterPanelOpen ? "Hide Filters" : "Filters"}</span>
-          {activeFilterCount > 0 && (
-            <span
-              className={`ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
-                isFilterPanelOpen
-                  ? "bg-white text-purple-700"
-                  : "bg-purple-600 text-white"
-              }`}
-            >
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
+          {/* Top-left Filter Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setIsFilterPanelOpen((prev) => !prev)}
+            aria-expanded={isFilterPanelOpen}
+            className={`inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-semibold shadow-2xs transition-all ${
+              isFilterPanelOpen
+                ? "border-purple-600 bg-purple-600 text-white hover:bg-purple-700"
+                : "border-zinc-200/90 bg-white text-zinc-700 hover:border-purple-300 hover:text-purple-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-purple-800"
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>{isFilterPanelOpen ? "Hide Filters" : "Filters"}</span>
+            {activeFilterCount > 0 && (
+              <span
+                className={`ml-0.5 flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
+                  isFilterPanelOpen
+                    ? "bg-white text-purple-700"
+                    : "bg-purple-600 text-white"
+                }`}
+              >
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
 
-        {/* Search Input Bar */}
-        <div className="relative flex-1">
-          <Search
-            aria-hidden="true"
-            className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-zinc-400"
-          />
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            aria-label="Search by university, street, or boarding house name"
-            placeholder="Search by university, street, or boarding house name (e.g. UST, Katipunan, Taft)..."
-            className="w-full rounded-2xl border border-zinc-200/90 bg-white py-3 pr-10 pl-11 text-sm text-zinc-900 shadow-2xs transition-all placeholder:text-zinc-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => {
-                setSearchQuery("");
-                syncUrlParams({ q: "" });
-              }}
-              aria-label="Clear search query"
-              className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+          {/* Search Input Bar */}
+          <div className="relative flex-1">
+            <Search
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-zinc-400"
+            />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              aria-label="Search by university, street, or boarding house name"
+              placeholder="Search by university, street, or boarding house name (e.g. UST, Katipunan, Taft)..."
+              className="w-full rounded-2xl border border-zinc-200/90 bg-white py-3 pr-10 pl-11 text-sm text-zinc-900 shadow-2xs transition-all placeholder:text-zinc-400 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  syncUrlParams({ q: "" });
+                }}
+                aria-label="Clear search query"
+                className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
 
-        {/* Separate Search Button on the right side (1st Pic customization) */}
-        <button
-          type="submit"
-          className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-xs transition-all hover:bg-purple-700 active:scale-[0.99] dark:bg-purple-600 dark:hover:bg-purple-500"
-        >
-          <Search className="h-4 w-4" />
-          <span>Search</span>
-        </button>
-      </form>
+          {/* Separate Search Button on the right side (1st Pic customization) */}
+          <button
+            type="submit"
+            className="inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-purple-600 px-6 py-3 text-sm font-semibold text-white shadow-xs transition-all hover:bg-purple-700 active:scale-[0.99] dark:bg-purple-600 dark:hover:bg-purple-500"
+          >
+            <Search className="h-4 w-4" />
+            <span>Search</span>
+          </button>
+        </form>
+
+        {/* 2nd Pic: This part of the UI ONLY appears if and only if there are active filters */}
+        {activeFilterCount > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-purple-200/80 bg-white px-4 py-2.5 shadow-2xs dark:border-purple-900/50 dark:bg-zinc-900">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                Filters active ({activeFilterCount}) • Showing{" "}
+                {filteredListings.length} matches:
+              </span>
+              {(minRent || maxRent) && (
+                <FilterPill
+                  label={`Rent: ₱${minRent || "0"} - ₱${maxRent || "Any"}`}
+                  onRemove={() => {
+                    setMinRent("");
+                    setMaxRent("");
+                  }}
+                />
+              )}
+              {locationNear && (
+                <FilterPill
+                  label={`Near: ${locationNear}`}
+                  onRemove={() => setLocationNear("")}
+                />
+              )}
+              {locationWithin && (
+                <FilterPill
+                  label={`Within ${locationWithin} km`}
+                  onRemove={() => setLocationWithin("")}
+                />
+              )}
+              {hasParking && (
+                <FilterPill
+                  label="Parking"
+                  onRemove={() => setHasParking(false)}
+                />
+              )}
+              {selectedPropertyTypes.map((t) => (
+                <FilterPill
+                  key={t}
+                  label={t}
+                  onRemove={() => toggleArrayItem(setSelectedPropertyTypes, t)}
+                />
+              ))}
+              {selectedOccupancyTypes.map((t) => (
+                <FilterPill
+                  key={t}
+                  label={t}
+                  onRemove={() => toggleArrayItem(setSelectedOccupancyTypes, t)}
+                />
+              ))}
+              {selectedGenders.map((g) => (
+                <FilterPill
+                  key={g}
+                  label={g}
+                  onRemove={() => toggleArrayItem(setSelectedGenders, g)}
+                />
+              ))}
+              {[
+                ...selectedUtilities,
+                ...selectedRoom,
+                ...selectedBathroom,
+                ...selectedKitchen,
+                ...selectedLaundry,
+                ...selectedSafety,
+                ...selectedHouseRules,
+              ].map((item) => (
+                <FilterPill
+                  key={item}
+                  label={item}
+                  onRemove={() => {
+                    setSelectedUtilities((p) => p.filter((x) => x !== item));
+                    setSelectedRoom((p) => p.filter((x) => x !== item));
+                    setSelectedBathroom((p) => p.filter((x) => x !== item));
+                    setSelectedKitchen((p) => p.filter((x) => x !== item));
+                    setSelectedLaundry((p) => p.filter((x) => x !== item));
+                    setSelectedSafety((p) => p.filter((x) => x !== item));
+                    setSelectedHouseRules((p) => p.filter((x) => x !== item));
+                  }}
+                />
+              ))}
+              <button
+                type="button"
+                onClick={clearAllFilters}
+                className="ml-1 cursor-pointer text-xs font-bold text-purple-600 underline-offset-2 hover:underline dark:text-purple-400"
+              >
+                Reset all
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {viewMode === "map" && (
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700 transition-colors hover:border-purple-300 hover:text-purple-600 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  Back to List
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsFilterPanelOpen((prev) => !prev)}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold text-purple-600 transition-colors hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/40"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                {isFilterPanelOpen
+                  ? "Hide Filters Panel"
+                  : "Open Filters Panel"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Main 2-Column Layout: Left Filters Panel (Fixed Width + Separate Scrollbar) + Right Listings */}
       <div className="flex flex-col items-start gap-6 lg:flex-row">
@@ -834,10 +957,12 @@ export default function PublicListingsView({
           <aside
             id="renter-filter-sidebar"
             aria-label="Property filters"
-            className="w-full shrink-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:w-80 lg:max-w-80 lg:min-w-80 lg:self-start"
+            className={`w-full shrink-0 lg:sticky ${sidebarStickyTop} ${sidebarMaxHeight} transition-all lg:w-80 lg:max-w-80 lg:min-w-80 lg:self-start`}
           >
             {/* Outer Card: owns rounded-3xl border and clips inner content cleanly */}
-            <div className="flex max-h-full flex-col overflow-hidden rounded-3xl border border-zinc-200/90 bg-white shadow-xs lg:max-h-[calc(100vh-7rem)] dark:border-zinc-800 dark:bg-zinc-900">
+            <div
+              className={`flex max-h-full flex-col overflow-hidden rounded-3xl border border-zinc-200/90 bg-white shadow-xs ${sidebarMaxHeight} dark:border-zinc-800 dark:bg-zinc-900`}
+            >
               {/* Panel Header with Title, Count, Reset, and Collapse Icon (Pinned at top of card) */}
               <div className="flex shrink-0 items-center justify-between border-b border-zinc-200/80 px-5 py-3.5 dark:border-zinc-800">
                 <div className="flex items-center gap-2">
@@ -1177,126 +1302,26 @@ export default function PublicListingsView({
           </aside>
         )}
 
-        {/* RIGHT PANEL: Listings Status Bar + Grid / Map View */}
+        {/* RIGHT PANEL: Grid / Map View */}
         <div className="min-w-0 flex-1 space-y-4">
-          {/* Status & Toggle Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-zinc-200/90 bg-white px-4 py-3 shadow-2xs dark:border-zinc-800 dark:bg-zinc-900">
-            <p
-              role="status"
-              aria-live="polite"
-              className="text-xs font-medium text-zinc-600 sm:text-sm dark:text-zinc-400"
-            >
-              {statusBarText}
-            </p>
-
-            <div className="flex items-center gap-2">
-              {viewMode === "map" && (
-                <button
-                  type="button"
-                  onClick={() => setViewMode("grid")}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:border-purple-300 hover:text-purple-600 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
-                >
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                  Back to List
-                </button>
-              )}
-
+          {viewMode === "map" && (
+            <div className="flex items-center justify-between pb-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                  Interactive Map View
+                </span>
+                <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
+                  {filteredListings.length}{" "}
+                  {filteredListings.length === 1 ? "pin" : "pins"}
+                </span>
+              </div>
               <button
                 type="button"
-                onClick={() => setIsFilterPanelOpen((prev) => !prev)}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold text-purple-600 transition-colors hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/40"
+                onClick={() => setViewMode("grid")}
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
               >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                {isFilterPanelOpen
-                  ? "Hide Filters Panel"
-                  : "Open Filters Panel"}
-              </button>
-            </div>
-          </div>
-
-          {/* Active Filters Pill Bar */}
-          {activeFilterCount > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-purple-200/70 bg-purple-50/40 px-3.5 py-2.5 dark:border-purple-900/40 dark:bg-purple-950/20">
-              <span className="mr-1 text-[11px] font-bold tracking-wider text-purple-700 uppercase dark:text-purple-300">
-                Active:
-              </span>
-              {(minRent || maxRent) && (
-                <FilterPill
-                  label={`Rent: ₱${minRent || "0"} - ₱${maxRent || "Any"}`}
-                  onRemove={() => {
-                    setMinRent("");
-                    setMaxRent("");
-                  }}
-                />
-              )}
-              {locationNear && (
-                <FilterPill
-                  label={`Near: ${locationNear}`}
-                  onRemove={() => setLocationNear("")}
-                />
-              )}
-              {locationWithin && (
-                <FilterPill
-                  label={`Within ${locationWithin} km`}
-                  onRemove={() => setLocationWithin("")}
-                />
-              )}
-              {hasParking && (
-                <FilterPill
-                  label="Parking"
-                  onRemove={() => setHasParking(false)}
-                />
-              )}
-              {selectedPropertyTypes.map((t) => (
-                <FilterPill
-                  key={t}
-                  label={t}
-                  onRemove={() => toggleArrayItem(setSelectedPropertyTypes, t)}
-                />
-              ))}
-              {selectedOccupancyTypes.map((t) => (
-                <FilterPill
-                  key={t}
-                  label={t}
-                  onRemove={() => toggleArrayItem(setSelectedOccupancyTypes, t)}
-                />
-              ))}
-              {selectedGenders.map((g) => (
-                <FilterPill
-                  key={g}
-                  label={g}
-                  onRemove={() => toggleArrayItem(setSelectedGenders, g)}
-                />
-              ))}
-              {[
-                ...selectedUtilities,
-                ...selectedRoom,
-                ...selectedBathroom,
-                ...selectedKitchen,
-                ...selectedLaundry,
-                ...selectedSafety,
-                ...selectedHouseRules,
-              ].map((item) => (
-                <FilterPill
-                  key={item}
-                  label={item}
-                  onRemove={() => {
-                    setSelectedUtilities((p) => p.filter((x) => x !== item));
-                    setSelectedRoom((p) => p.filter((x) => x !== item));
-                    setSelectedBathroom((p) => p.filter((x) => x !== item));
-                    setSelectedKitchen((p) => p.filter((x) => x !== item));
-                    setSelectedLaundry((p) => p.filter((x) => x !== item));
-                    setSelectedSafety((p) => p.filter((x) => x !== item));
-                    setSelectedHouseRules((p) => p.filter((x) => x !== item));
-                  }}
-                />
-              ))}
-              <button
-                type="button"
-                onClick={clearAllFilters}
-                className="ml-auto cursor-pointer text-xs font-bold text-purple-600 underline-offset-2 hover:underline dark:text-purple-400"
-              >
-                Reset all
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span>Back to Cards List</span>
               </button>
             </div>
           )}
@@ -1607,9 +1632,9 @@ export default function PublicListingsView({
             </div>
           )}
 
-          {/* Clean end-of-results indicator when listings are found */}
+          {/* Clean end-of-results indicator when listings are found (Last part of the page) */}
           {filteredListings.length > 0 && (
-            <div className="mt-10 flex flex-col items-center justify-center gap-1.5 border-t border-zinc-200/80 pt-8 pb-4 text-center dark:border-zinc-800">
+            <div className="mt-4 flex flex-col items-center justify-center gap-1 border-t border-zinc-200/80 pt-4 pb-1 text-center dark:border-zinc-800">
               <div className="inline-flex items-center gap-2 rounded-full border border-purple-200/70 bg-purple-50/60 px-3.5 py-1 text-xs font-semibold text-purple-700 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300">
                 <Check className="h-3.5 w-3.5 stroke-[2.5]" />
                 <span>
@@ -1620,7 +1645,7 @@ export default function PublicListingsView({
                   in Cebu
                 </span>
               </div>
-              <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+              <p className="text-[11px] text-zinc-400 dark:text-zinc-500">
                 You&apos;ve reached the end of the results. Try adjusting your
                 filters if you haven&apos;t found what you need.
               </p>
