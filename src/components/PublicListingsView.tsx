@@ -755,10 +755,13 @@ export default function PublicListingsView({
         longitude: lng,
         coverImage: cover,
         landlordVerified: true,
-        href: `/listings/${listing.id}`,
+        href:
+          userRole === "renter"
+            ? `/dashboard/renter/listings/${listing.id}`
+            : `/listings/${listing.id}`,
       };
     });
-  }, [filteredListings]);
+  }, [filteredListings, userRole]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
@@ -1399,6 +1402,10 @@ export default function PublicListingsView({
                 ].filter((tag, idx, self) => tag && self.indexOf(tag) === idx);
 
                 const isSaved = savedListingIds.has(listing.id);
+                const listingHref =
+                  userRole === "renter"
+                    ? `/dashboard/renter/listings/${listing.id}`
+                    : `/listings/${listing.id}`;
 
                 return (
                   <article
@@ -1419,7 +1426,7 @@ export default function PublicListingsView({
                     {/* Card Image Header */}
                     <div className="relative h-52 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                       <Link
-                        href={`/listings/${listing.id}`}
+                        href={listingHref}
                         tabIndex={-1}
                         aria-hidden="true"
                         className="block h-full w-full"
@@ -1533,7 +1540,7 @@ export default function PublicListingsView({
 
                             <h2 className="mt-1 line-clamp-1 text-lg font-bold text-zinc-900 transition-colors group-hover:text-purple-600 dark:text-zinc-50 dark:group-hover:text-purple-400">
                               <Link
-                                href={`/listings/${listing.id}`}
+                                href={listingHref}
                                 className="focus:outline-none"
                               >
                                 {listing.title}
@@ -1573,7 +1580,7 @@ export default function PublicListingsView({
 
                         <div className="flex items-center gap-2">
                           <Link
-                            href={`/listings/${listing.id}`}
+                            href={listingHref}
                             className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 py-2 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-500"
                           >
                             <Eye className="h-3.5 w-3.5" />

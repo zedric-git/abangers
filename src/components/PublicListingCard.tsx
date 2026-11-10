@@ -24,6 +24,10 @@ interface PublicListingCardProps {
    * Optional explicit details handler.
    */
   onViewDetails?: (listing: ListingPreview) => void;
+  /**
+   * Optional custom destination link (e.g. within renter dashboard).
+   */
+  href?: string;
 }
 
 /**
@@ -38,12 +42,14 @@ export default function PublicListingCard({
   flagOccupied = false,
   onRequireAuth,
   onViewDetails,
+  href,
 }: PublicListingCardProps) {
   const coverPhoto = listing.cover_image || listing.images?.[0] || "";
   const statusView = listingStatusView(listing.availability_status);
   const isOccupied = statusView.group === "occupied";
   const showOccupiedFlag = flagOccupied && isOccupied;
   const handleCardClick = onRequireAuth || onViewDetails;
+  const destinationHref = href || `/listings/${listing.id}`;
 
   return (
     <article
@@ -65,7 +71,7 @@ export default function PublicListingCard({
         </button>
       ) : (
         <Link
-          href={`/listings/${listing.id}`}
+          href={destinationHref}
           aria-label={`View details for ${listing.title}`}
           className="absolute inset-0 z-10"
         >
