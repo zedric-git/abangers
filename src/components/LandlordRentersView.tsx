@@ -12,6 +12,13 @@ import {
   MessageSquare,
   CheckCircle2,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export interface TenantRecord {
   id: string;
@@ -209,61 +216,6 @@ export default function LandlordRentersView() {
           </span>
         </div>
       </div>
-
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xs dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-              Current Tenants
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
-              <Users className="h-4 w-4" />
-            </div>
-          </div>
-          <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-            {tenants.length}
-          </p>
-          <span className="mt-1 block text-xs text-zinc-400">
-            From confirmed room bookings
-          </span>
-        </div>
-
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xs dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-              Interested Renters
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
-              <Clock className="h-4 w-4" />
-            </div>
-          </div>
-          <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-            {interestedRenters.length}
-          </p>
-          <span className="mt-1 block text-xs text-zinc-400">
-            From active viewing requests
-          </span>
-        </div>
-
-        <div className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xs dark:border-zinc-800 dark:bg-zinc-900">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-              Occupied Properties
-            </span>
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
-              <Building2 className="h-4 w-4" />
-            </div>
-          </div>
-          <p className="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-            {new Set(tenants.map((t) => t.propertyId)).size}
-          </p>
-          <span className="mt-1 block text-xs text-zinc-400">
-            Listings with active occupants
-          </span>
-        </div>
-      </div>
-
       {/* Tabs & Filter Bar */}
       <div className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -303,16 +255,19 @@ export default function LandlordRentersView() {
           </div>
 
           {/* Property Selector */}
-          <select
-            value={propertyFilter}
-            onChange={(e) => setPropertyFilter(e.target.value)}
-            className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 shadow-xs focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
-          >
-            <option value="all">All Properties</option>
-            <option value="PROP-1">Sampaloc Scholar Suites</option>
-            <option value="PROP-2">Katipunan Prime Studio</option>
-            <option value="PROP-3">Morayta Courtyard Dorm</option>
-          </select>
+          <div className="w-full sm:w-56">
+            <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+              <SelectTrigger className="h-10 rounded-xl border-zinc-200 bg-white text-xs font-medium text-zinc-700 shadow-xs focus-visible:ring-purple-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200">
+                <SelectValue placeholder="All Properties" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Properties</SelectItem>
+                <SelectItem value="PROP-1">Sampaloc Scholar Suites</SelectItem>
+                <SelectItem value="PROP-2">Katipunan Prime Studio</SelectItem>
+                <SelectItem value="PROP-3">Morayta Courtyard Dorm</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Search Bar */}
