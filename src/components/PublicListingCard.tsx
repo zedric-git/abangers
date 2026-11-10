@@ -17,7 +17,18 @@ export default function PublicListingCard({
   const isAvailable = listing.available_rooms > 0;
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs transition-all hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onViewDetails(listing)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onViewDetails(listing);
+        }
+      }}
+      className="group flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs transition-all hover:shadow-md focus-visible:ring-2 focus-visible:ring-purple-600 focus-visible:outline-hidden dark:border-zinc-800 dark:bg-zinc-900"
+    >
       {/* Cover Photo */}
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
         {coverPhoto ? (
@@ -103,7 +114,10 @@ export default function PublicListingCard({
 
           <button
             type="button"
-            onClick={() => onViewDetails(listing)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewDetails(listing);
+            }}
             className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-700 active:bg-purple-800"
           >
             <span>View Details</span>
