@@ -46,7 +46,7 @@ export default function PublicListingsView({
     // Guest Flow (Issue #86): Prompt with login/sign-up modal
     setPromptTitle("Join Abangers to View Details");
     setPromptDescription(
-      `Sign in or create a renter account to view full property details, contact the landlord, and schedule a viewing for ${listing.title}.`,
+      "Join Abangers to use further features and view details.",
     );
     setModalMode("signup");
     setIsAuthModalOpen(true);
@@ -62,7 +62,7 @@ export default function PublicListingsView({
     // Guest Flow: Prompt with login/sign-up modal
     setPromptTitle("Join Abangers to View Map");
     setPromptDescription(
-      "Sign in or create a renter account to explore boarding houses and bedspaces on our interactive map.",
+      "Join Abangers to use further features and explore the map.",
     );
     setModalMode("signup");
     setIsAuthModalOpen(true);

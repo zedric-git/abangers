@@ -204,10 +204,10 @@ export default function LandlordAuthModal({
             event.preventDefault();
             openerRef.current?.focus();
           }}
-          className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[440px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-zinc-100 bg-white p-8 text-left shadow-2xl outline-none dark:border-zinc-800 dark:bg-zinc-900"
+          className="fixed top-1/2 left-1/2 z-50 max-h-[calc(100dvh-2.5rem)] w-[calc(100%-2rem)] max-w-[440px] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl border border-zinc-100 bg-white p-6 text-left shadow-2xl outline-none sm:p-7 dark:border-zinc-800 dark:bg-zinc-900"
         >
           {/* Logo / Branding */}
-          <div className="mb-6 flex items-center gap-2">
+          <div className="mb-4 flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-700 text-white dark:bg-purple-600">
               <Home className="h-5 w-5" />
             </div>
@@ -217,8 +217,8 @@ export default function LandlordAuthModal({
           </div>
 
           {/* Title & Subtitle — DialogTitle names the dialog for screen readers */}
-          <div className="mb-6 space-y-1.5">
-            <DialogTitle className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+          <div className="mb-4 space-y-1">
+            <DialogTitle className="text-xl font-bold text-zinc-900 sm:text-2xl dark:text-zinc-50">
               {promptTitle ||
                 (isLoginMode ? "Welcome back" : "Create an account")}
             </DialogTitle>
