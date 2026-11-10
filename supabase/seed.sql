@@ -1,10 +1,11 @@
 -- Abangers — development seed data
 --
 -- Creates a fixed set of test accounts (3 landlords, 2 renters and an
--- admin) plus sample boarding house listings around Cebu City, so everyone
--- on the team can log in and see real-looking data right away.
+-- admin) plus sample boarding house listings around Cebu City and viewing
+-- requests for them, so everyone on the team can log in and see
+-- real-looking data right away.
 --
--- NEEDS MIGRATION 0014 (the admin role and reviewed_by) on the project.
+-- NEEDS MIGRATION 0017 (viewing requests, #107) on the project.
 --
 -- HOW TO RUN
 --   npm run db:seed              (runs this file against the linked project,
@@ -25,9 +26,9 @@
 -- IDEMPOTENT: safe to run as many times as you like. Running it again
 -- does NOT create duplicates — it brings the seed accounts and listings
 -- back to exactly what's written below (resetting passwords, names,
--- roles, landlord profiles, verifications and listing details). Anything
--- NOT in this file (e.g. accounts you created by signing up in the app)
--- is left alone.
+-- roles, landlord profiles, verifications, listing details and viewing
+-- requests). Anything NOT in this file (e.g. accounts you created by
+-- signing up in the app) is left alone.
 --
 -- TEST ACCOUNTS — every account uses the same password: Abangers123!
 --   landlord1@abangers.test   Maria Santos      (landlord, verified)
@@ -376,3 +377,131 @@ on conflict (id) do update
       longitude           = excluded.longitude,
       contact_info        = excluded.contact_info,
       availability_status = excluded.availability_status;
+
+-- ── 5. Viewing requests ─────────────────────────────────────────────
+-- Seven requests from the seed renters (0017, #107), in every status and
+-- on both landlord1's and landlord2's listings, so the viewing pages
+-- (#110, #113) and Renter Management (#284) have something to show, and
+-- the DB tests (src/__tests__/rls-viewing-requests.db.test.ts) have rows
+-- to check against:
+--
+--   1  renter2  Santos Boarding House (landlord1)     pending    in 3 days, 10:00
+--   2  renter1  Lahug bedspace (landlord1)            confirmed  yesterday, 15:00
+--                                                     (ready to mark completed)
+--   3  renter1  Santos Boarding House                 completed  a week ago, 10:00
+--   4  renter2  Lahug bedspace                        declined   in 5 days, 13:00,
+--                                                     with a reason
+--   5  renter1  Santos Boarding House                 cancelled  in 4 days, 11:00
+--   6  renter1  Dela Cruz Dorm (landlord2)            pending    in 3 days, 14:00
+--   7  renter2  Budget Rooms near USJ-R (landlord2)   confirmed  in 2 days, 16:00
+--                                                     (too early to mark completed)
+--
+-- The days count from today on the Philippine clock, the time zone 0017
+-- uses, so each run moves them along: the pending and confirmed requests
+-- stay ahead (except request 2, which stays in the past). Each landlord's
+-- pending and confirmed requests start at different hours, so moving
+-- them a day can never put two of them in one slot (0017's slot lock).
+--
+-- Every request has a fixed id, so a re-run updates it instead of adding
+-- another, and the DB tests use the ids (src/__tests__/db-helpers.ts).
+-- The renters are looked up by email, like the listings' landlords
+-- above, and 0017's trigger fills in landlord_id from the listing.
+--
+-- This runs as postgres, so 0017's RLS and its status-change trigger
+-- don't apply: a request that was confirmed, declined or cancelled in
+-- the app goes back to what's below.
+--
+-- Anything else the seed renters requested (e.g. while trying the form,
+-- #108) is deleted first: nobody can delete a request from the app
+-- (0017), and a leftover pending one could hold a slot or a listing that
+-- a request below needs (23505). Other accounts' requests are left
+-- alone, so if one of them holds one of these slots, this fails with
+-- 23505: cancel that request in the app, then run this file again.
+delete from public.viewing_requests as vr
+using auth.users as u
+where vr.renter_id = u.id
+  and u.email in ('renter1@abangers.test', 'renter2@abangers.test')
+  and vr.id not in (
+    'c1b2c3d4-0000-4000-8000-000000000001',
+    'c1b2c3d4-0000-4000-8000-000000000002',
+    'c1b2c3d4-0000-4000-8000-000000000003',
+    'c1b2c3d4-0000-4000-8000-000000000004',
+    'c1b2c3d4-0000-4000-8000-000000000005',
+    'c1b2c3d4-0000-4000-8000-000000000006',
+    'c1b2c3d4-0000-4000-8000-000000000007'
+  );
+
+insert into public.viewing_requests (
+  id, listing_id, renter_id, viewing_date, start_time, end_time,
+  attendees, message, status, decline_reason
+)
+select
+  v.id::uuid,
+  v.listing_id::uuid,
+  u.id,
+  (now() at time zone 'Asia/Manila')::date + v.days_from_today,
+  v.start_time::time,
+  v.end_time::time,
+  v.attendees,
+  v.message,
+  v.status,
+  v.decline_reason
+from (
+  values
+    ('c1b2c3d4-0000-4000-8000-000000000001',
+     'a1b2c3d4-0000-4000-8000-000000000001', 'renter2@abangers.test',
+     3, '10:00', '11:00', 2,
+     'Hi! Can I bring my older brother along to see the room?',
+     'pending', null),
+
+    ('c1b2c3d4-0000-4000-8000-000000000002',
+     'a1b2c3d4-0000-4000-8000-000000000002', 'renter1@abangers.test',
+     -1, '15:00', '16:00', 1,
+     'I would like to check the aircon and the CR first.',
+     'confirmed', null),
+
+    ('c1b2c3d4-0000-4000-8000-000000000003',
+     'a1b2c3d4-0000-4000-8000-000000000001', 'renter1@abangers.test',
+     -7, '10:00', '11:00', 1,
+     null,
+     'completed', null),
+
+    ('c1b2c3d4-0000-4000-8000-000000000004',
+     'a1b2c3d4-0000-4000-8000-000000000002', 'renter2@abangers.test',
+     5, '13:00', '14:00', 1,
+     'Is the bedspace still available for December?',
+     'declined', 'Sorry, that week is fully booked. Please choose another date.'),
+
+    ('c1b2c3d4-0000-4000-8000-000000000005',
+     'a1b2c3d4-0000-4000-8000-000000000001', 'renter1@abangers.test',
+     4, '11:00', '12:00', 2,
+     null,
+     'cancelled', null),
+
+    ('c1b2c3d4-0000-4000-8000-000000000006',
+     'a1b2c3d4-0000-4000-8000-000000000004', 'renter1@abangers.test',
+     3, '14:00', '15:00', 2,
+     'I am coming with a classmate who is also looking for a room.',
+     'pending', null),
+
+    ('c1b2c3d4-0000-4000-8000-000000000007',
+     'a1b2c3d4-0000-4000-8000-000000000006', 'renter2@abangers.test',
+     2, '16:00', '17:00', 1,
+     null,
+     'confirmed', null)
+) as v (
+  id, listing_id, renter_email, days_from_today, start_time, end_time,
+  attendees, message, status, decline_reason
+)
+join auth.users as u on u.email = v.renter_email
+on conflict (id) do update
+  set listing_id     = excluded.listing_id,
+      renter_id      = excluded.renter_id,
+      landlord_id    = excluded.landlord_id,
+      viewing_date   = excluded.viewing_date,
+      start_time     = excluded.start_time,
+      end_time       = excluded.end_time,
+      attendees      = excluded.attendees,
+      message        = excluded.message,
+      status         = excluded.status,
+      decline_reason = excluded.decline_reason;
