@@ -18,7 +18,6 @@ import {
   Check,
   PanelLeft,
   ChevronDown,
-  LayoutGrid,
   Heart,
 } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
@@ -914,16 +913,6 @@ export default function PublicListingsView({
             </div>
 
             <div className="flex items-center gap-2">
-              {viewMode === "map" && (
-                <button
-                  type="button"
-                  onClick={() => setViewMode("grid")}
-                  className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700 transition-colors hover:border-purple-300 hover:text-purple-600 dark:border-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
-                >
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                  Back to List
-                </button>
-              )}
               <button
                 type="button"
                 onClick={() => setIsFilterPanelOpen((prev) => !prev)}
