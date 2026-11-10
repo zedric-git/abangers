@@ -12,6 +12,7 @@ import {
   Navigation,
   ExternalLink,
   LocateFixed,
+  ArrowLeft,
 } from "lucide-react";
 
 export interface MapPinItem {
@@ -36,6 +37,7 @@ interface RenterFindPlaceMapProps {
   selectedId?: string | null;
   onSelectListing?: (id: string) => void;
   onViewDetails?: (id: string) => void;
+  onToggleView?: () => void;
 }
 
 // Default center: Cebu City
@@ -133,6 +135,7 @@ export default function RenterFindPlaceMap({
   selectedId,
   onSelectListing,
   onViewDetails,
+  onToggleView,
 }: RenterFindPlaceMapProps) {
   const [userLocation, setUserLocation] = useState<[number, number] | null>(
     null,
@@ -265,7 +268,7 @@ export default function RenterFindPlaceMap({
                         <button
                           type="button"
                           onClick={() => onViewDetails?.(listing.id)}
-                          className="inline-flex cursor-pointer items-center gap-1 rounded-lg bg-purple-600 px-2.5 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-purple-700"
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg bg-purple-600 px-2.5 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-purple-700"
                         >
                           View Details
                           <ExternalLink className="h-3 w-3" />
@@ -317,15 +320,28 @@ export default function RenterFindPlaceMap({
           </span>
         </div>
 
-        <button
-          type="button"
-          onClick={handleLocateMe}
-          disabled={locating}
-          className="pointer-events-auto inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200/90 bg-white/95 px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-md backdrop-blur-md transition-colors hover:border-purple-300 hover:text-purple-600 disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-900/95 dark:text-zinc-200"
-        >
-          <LocateFixed className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-          {locating ? "Locating..." : "Near My Location"}
-        </button>
+        <div className="pointer-events-auto flex items-center gap-2">
+          {onToggleView && (
+            <button
+              type="button"
+              onClick={onToggleView}
+              className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200/90 bg-white/95 px-3 py-1.5 text-xs font-bold text-zinc-800 shadow-md backdrop-blur-md transition-all hover:border-purple-300 hover:bg-purple-50 hover:text-purple-700 active:scale-95 dark:border-zinc-700 dark:bg-zinc-900/95 dark:text-zinc-100 dark:hover:bg-purple-950/40"
+            >
+              <ArrowLeft className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+              <span>Return to List View</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handleLocateMe}
+            disabled={locating}
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200/90 bg-white/95 px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-md backdrop-blur-md transition-colors hover:border-purple-300 hover:text-purple-600 disabled:opacity-60 dark:border-zinc-800 dark:bg-zinc-900/95 dark:text-zinc-200"
+          >
+            <LocateFixed className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+            {locating ? "Locating..." : "Near My Location"}
+          </button>
+        </div>
       </div>
     </div>
   );
