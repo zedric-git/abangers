@@ -33,7 +33,7 @@ const RenterFindPlaceMapDynamic = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-135 w-full items-center justify-center rounded-2xl border border-zinc-200 bg-zinc-100 text-sm font-medium text-zinc-500 sm:h-155 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+      <div className="flex h-full min-h-[480px] w-full items-center justify-center rounded-3xl border border-zinc-200 bg-zinc-100 text-sm font-medium text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
         Loading interactive map...
       </div>
     ),
@@ -961,10 +961,10 @@ export default function PublicListingsView({
             aria-label="Property filters"
             className="flex h-full w-full shrink-0 flex-col self-stretch overflow-hidden lg:w-72 xl:w-80"
           >
-            {/* Outer Card: owns rounded-3xl border and clips inner content cleanly */}
-            <div className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain rounded-3xl border border-zinc-200/90 bg-white p-5 pr-3 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
-              {/* Panel Header with Title, Count, Reset, and Collapse Icon */}
-              <div className="flex items-center justify-between border-b border-zinc-100 pb-3 dark:border-zinc-800">
+            {/* Outer Card: owns rounded-3xl border and clips inner scrollbar cleanly inside */}
+            <div className="flex h-full max-h-full min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-zinc-200/90 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+              {/* Panel Header with Title, Count, Reset, and Collapse Icon (Pinned at top of card) */}
+              <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 px-5 py-3.5 dark:border-zinc-800">
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
                     Filters
@@ -996,301 +996,307 @@ export default function PublicListingsView({
                   </button>
                 </div>
               </div>
-              {/* Rent Section */}
-              <div>
-                <p className="mb-2 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
-                  Rent
-                </p>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    value={minRent}
-                    onChange={(e) => setMinRent(e.target.value)}
-                    aria-label="Minimum monthly rent"
-                    placeholder="Min (₱2,500)"
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                  />
-                  <span className="text-xs font-bold text-zinc-400">-</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={maxRent}
-                    onChange={(e) => setMaxRent(e.target.value)}
-                    aria-label="Maximum monthly rent"
-                    placeholder="Max (₱5,000)"
-                    className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                  />
-                </div>
-              </div>
 
-              {/* Location Section */}
-              <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
-                <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
-                  Location
-                </p>
-                <div className="space-y-2.5">
-                  <div>
-                    <label
-                      htmlFor="filter-location-near"
-                      className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400"
-                    >
-                      Near:
-                    </label>
+              {/* Scrollable Filter Body: scrolls smoothly inside the card, never cutting rounded corners */}
+              <div className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-5 pr-3">
+                {/* Rent Section */}
+                <div>
+                  <p className="mb-2 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
+                    Rent
+                  </p>
+                  <div className="flex items-center gap-2">
                     <input
-                      id="filter-location-near"
-                      type="text"
-                      value={locationNear}
-                      onChange={(e) => setLocationNear(e.target.value)}
-                      placeholder="University, street, landmark..."
+                      type="number"
+                      min={0}
+                      value={minRent}
+                      onChange={(e) => setMinRent(e.target.value)}
+                      aria-label="Minimum monthly rent"
+                      placeholder="Min (₱2,500)"
+                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                    />
+                    <span className="text-xs font-bold text-zinc-400">-</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={maxRent}
+                      onChange={(e) => setMaxRent(e.target.value)}
+                      aria-label="Maximum monthly rent"
+                      placeholder="Max (₱5,000)"
                       className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
                     />
                   </div>
-                  <div>
-                    <label
-                      htmlFor="filter-location-within"
-                      className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400"
-                    >
-                      Within:
-                    </label>
-                    <select
-                      id="filter-location-within"
-                      value={locationWithin}
-                      onChange={(e) => setLocationWithin(e.target.value)}
-                      className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-700 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200"
-                    >
-                      {DISTANCE_OPTIONS.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
+                </div>
+
+                {/* Location Section */}
+                <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
+                  <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
+                    Location
+                  </p>
+                  <div className="space-y-2.5">
+                    <div>
+                      <label
+                        htmlFor="filter-location-near"
+                        className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                      >
+                        Near:
+                      </label>
+                      <input
+                        id="filter-location-near"
+                        type="text"
+                        value={locationNear}
+                        onChange={(e) => setLocationNear(e.target.value)}
+                        placeholder="University, street, landmark..."
+                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="filter-location-within"
+                        className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                      >
+                        Within:
+                      </label>
+                      <select
+                        id="filter-location-within"
+                        value={locationWithin}
+                        onChange={(e) => setLocationWithin(e.target.value)}
+                        className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-700 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200"
+                      >
+                        {DISTANCE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Amenities Section */}
-              <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
-                <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
-                  Amenities
-                </p>
+                {/* Amenities Section */}
+                <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
+                  <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
+                    Amenities
+                  </p>
 
-                {/* Parking Checkbox */}
-                <label className="mb-2 flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/60">
-                  <input
-                    type="checkbox"
-                    checked={hasParking}
-                    onChange={(e) => setHasParking(e.target.checked)}
-                    className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-purple-600 focus:ring-purple-500"
-                  />
-                  <span>Parking</span>
-                </label>
+                  {/* Parking Checkbox */}
+                  <label className="mb-2 flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/60">
+                    <input
+                      type="checkbox"
+                      checked={hasParking}
+                      onChange={(e) => setHasParking(e.target.checked)}
+                      className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span>Parking</span>
+                  </label>
 
-                {/* Accordion Categories */}
-                <div className="divide-y divide-zinc-200/60 dark:divide-zinc-800/80">
-                  {/* 1. Utilities */}
-                  <FilterAccordion
-                    label="Utilities"
-                    count={selectedUtilities.length}
-                    isOpen={openAccordions.utilities}
-                    onToggle={() => toggleAccordion("utilities")}
-                  >
-                    {UTILITY_OPTIONS.map((item) => (
-                      <CheckboxOption
-                        key={item}
-                        label={item}
-                        checked={selectedUtilities.includes(item)}
-                        onChange={() =>
-                          toggleArrayItem(setSelectedUtilities, item)
-                        }
-                      />
-                    ))}
-                  </FilterAccordion>
+                  {/* Accordion Categories */}
+                  <div className="divide-y divide-zinc-200/60 dark:divide-zinc-800/80">
+                    {/* 1. Utilities */}
+                    <FilterAccordion
+                      label="Utilities"
+                      count={selectedUtilities.length}
+                      isOpen={openAccordions.utilities}
+                      onToggle={() => toggleAccordion("utilities")}
+                    >
+                      {UTILITY_OPTIONS.map((item) => (
+                        <CheckboxOption
+                          key={item}
+                          label={item}
+                          checked={selectedUtilities.includes(item)}
+                          onChange={() =>
+                            toggleArrayItem(setSelectedUtilities, item)
+                          }
+                        />
+                      ))}
+                    </FilterAccordion>
 
-                  {/* 2. Room */}
-                  <FilterAccordion
-                    label="Room"
-                    count={selectedRoom.length}
-                    isOpen={openAccordions.room}
-                    onToggle={() => toggleAccordion("room")}
-                  >
-                    {ROOM_OPTIONS.map((item) => (
-                      <CheckboxOption
-                        key={item}
-                        label={item}
-                        checked={selectedRoom.includes(item)}
-                        onChange={() => toggleArrayItem(setSelectedRoom, item)}
-                      />
-                    ))}
-                  </FilterAccordion>
+                    {/* 2. Room */}
+                    <FilterAccordion
+                      label="Room"
+                      count={selectedRoom.length}
+                      isOpen={openAccordions.room}
+                      onToggle={() => toggleAccordion("room")}
+                    >
+                      {ROOM_OPTIONS.map((item) => (
+                        <CheckboxOption
+                          key={item}
+                          label={item}
+                          checked={selectedRoom.includes(item)}
+                          onChange={() =>
+                            toggleArrayItem(setSelectedRoom, item)
+                          }
+                        />
+                      ))}
+                    </FilterAccordion>
 
-                  {/* 3. Bathroom */}
-                  <FilterAccordion
-                    label="Bathroom"
-                    count={selectedBathroom.length}
-                    isOpen={openAccordions.bathroom}
-                    onToggle={() => toggleAccordion("bathroom")}
-                  >
-                    {BATHROOM_OPTIONS.map((item) => (
-                      <CheckboxOption
-                        key={item}
-                        label={item}
-                        checked={selectedBathroom.includes(item)}
-                        onChange={() =>
-                          toggleArrayItem(setSelectedBathroom, item)
-                        }
-                      />
-                    ))}
-                  </FilterAccordion>
+                    {/* 3. Bathroom */}
+                    <FilterAccordion
+                      label="Bathroom"
+                      count={selectedBathroom.length}
+                      isOpen={openAccordions.bathroom}
+                      onToggle={() => toggleAccordion("bathroom")}
+                    >
+                      {BATHROOM_OPTIONS.map((item) => (
+                        <CheckboxOption
+                          key={item}
+                          label={item}
+                          checked={selectedBathroom.includes(item)}
+                          onChange={() =>
+                            toggleArrayItem(setSelectedBathroom, item)
+                          }
+                        />
+                      ))}
+                    </FilterAccordion>
 
-                  {/* 4. Kitchen & Food */}
-                  <FilterAccordion
-                    label="Kitchen & Food"
-                    count={selectedKitchen.length}
-                    isOpen={openAccordions.kitchen}
-                    onToggle={() => toggleAccordion("kitchen")}
-                  >
-                    {KITCHEN_OPTIONS.map((item) => (
-                      <CheckboxOption
-                        key={item}
-                        label={item}
-                        checked={selectedKitchen.includes(item)}
-                        onChange={() =>
-                          toggleArrayItem(setSelectedKitchen, item)
-                        }
-                      />
-                    ))}
-                  </FilterAccordion>
+                    {/* 4. Kitchen & Food */}
+                    <FilterAccordion
+                      label="Kitchen & Food"
+                      count={selectedKitchen.length}
+                      isOpen={openAccordions.kitchen}
+                      onToggle={() => toggleAccordion("kitchen")}
+                    >
+                      {KITCHEN_OPTIONS.map((item) => (
+                        <CheckboxOption
+                          key={item}
+                          label={item}
+                          checked={selectedKitchen.includes(item)}
+                          onChange={() =>
+                            toggleArrayItem(setSelectedKitchen, item)
+                          }
+                        />
+                      ))}
+                    </FilterAccordion>
 
-                  {/* 5. Laundry */}
-                  <FilterAccordion
-                    label="Laundry"
-                    count={selectedLaundry.length}
-                    isOpen={openAccordions.laundry}
-                    onToggle={() => toggleAccordion("laundry")}
-                  >
-                    {LAUNDRY_OPTIONS.map((item) => (
-                      <CheckboxOption
-                        key={item}
-                        label={item}
-                        checked={selectedLaundry.includes(item)}
-                        onChange={() =>
-                          toggleArrayItem(setSelectedLaundry, item)
-                        }
-                      />
-                    ))}
-                  </FilterAccordion>
+                    {/* 5. Laundry */}
+                    <FilterAccordion
+                      label="Laundry"
+                      count={selectedLaundry.length}
+                      isOpen={openAccordions.laundry}
+                      onToggle={() => toggleAccordion("laundry")}
+                    >
+                      {LAUNDRY_OPTIONS.map((item) => (
+                        <CheckboxOption
+                          key={item}
+                          label={item}
+                          checked={selectedLaundry.includes(item)}
+                          onChange={() =>
+                            toggleArrayItem(setSelectedLaundry, item)
+                          }
+                        />
+                      ))}
+                    </FilterAccordion>
 
-                  {/* 6. Safety & Security */}
-                  <FilterAccordion
-                    label="Safety & Security"
-                    count={selectedSafety.length}
-                    isOpen={openAccordions.safety}
-                    onToggle={() => toggleAccordion("safety")}
-                  >
-                    {SAFETY_OPTIONS.map((item) => (
-                      <CheckboxOption
-                        key={item}
-                        label={item}
-                        checked={selectedSafety.includes(item)}
-                        onChange={() =>
-                          toggleArrayItem(setSelectedSafety, item)
-                        }
-                      />
-                    ))}
-                  </FilterAccordion>
+                    {/* 6. Safety & Security */}
+                    <FilterAccordion
+                      label="Safety & Security"
+                      count={selectedSafety.length}
+                      isOpen={openAccordions.safety}
+                      onToggle={() => toggleAccordion("safety")}
+                    >
+                      {SAFETY_OPTIONS.map((item) => (
+                        <CheckboxOption
+                          key={item}
+                          label={item}
+                          checked={selectedSafety.includes(item)}
+                          onChange={() =>
+                            toggleArrayItem(setSelectedSafety, item)
+                          }
+                        />
+                      ))}
+                    </FilterAccordion>
 
-                  {/* 7. Property Type */}
-                  <FilterAccordion
-                    label="Property Type"
-                    count={selectedPropertyTypes.length}
-                    isOpen={openAccordions.propertyType}
-                    onToggle={() => toggleAccordion("propertyType")}
-                  >
-                    {PROPERTY_TYPES.map((item) => (
-                      <CheckboxOption
-                        key={item}
-                        label={item}
-                        checked={selectedPropertyTypes.includes(item)}
-                        onChange={() =>
-                          toggleArrayItem(setSelectedPropertyTypes, item)
-                        }
-                      />
-                    ))}
-                  </FilterAccordion>
+                    {/* 7. Property Type */}
+                    <FilterAccordion
+                      label="Property Type"
+                      count={selectedPropertyTypes.length}
+                      isOpen={openAccordions.propertyType}
+                      onToggle={() => toggleAccordion("propertyType")}
+                    >
+                      {PROPERTY_TYPES.map((item) => (
+                        <CheckboxOption
+                          key={item}
+                          label={item}
+                          checked={selectedPropertyTypes.includes(item)}
+                          onChange={() =>
+                            toggleArrayItem(setSelectedPropertyTypes, item)
+                          }
+                        />
+                      ))}
+                    </FilterAccordion>
 
-                  {/* 8. Room/Occupancy Type */}
-                  <FilterAccordion
-                    label="Room/Occupancy Type"
-                    count={selectedOccupancyTypes.length}
-                    isOpen={openAccordions.occupancyType}
-                    onToggle={() => toggleAccordion("occupancyType")}
-                  >
-                    {OCCUPANCY_TYPES.map((item) => (
-                      <CheckboxOption
-                        key={item}
-                        label={item}
-                        checked={selectedOccupancyTypes.includes(item)}
-                        onChange={() =>
-                          toggleArrayItem(setSelectedOccupancyTypes, item)
-                        }
-                      />
-                    ))}
-                  </FilterAccordion>
+                    {/* 8. Room/Occupancy Type */}
+                    <FilterAccordion
+                      label="Room/Occupancy Type"
+                      count={selectedOccupancyTypes.length}
+                      isOpen={openAccordions.occupancyType}
+                      onToggle={() => toggleAccordion("occupancyType")}
+                    >
+                      {OCCUPANCY_TYPES.map((item) => (
+                        <CheckboxOption
+                          key={item}
+                          label={item}
+                          checked={selectedOccupancyTypes.includes(item)}
+                          onChange={() =>
+                            toggleArrayItem(setSelectedOccupancyTypes, item)
+                          }
+                        />
+                      ))}
+                    </FilterAccordion>
 
-                  {/* 9. Allowed Gender */}
-                  <FilterAccordion
-                    label="Allowed Gender"
-                    count={selectedGenders.length}
-                    isOpen={openAccordions.allowedGender}
-                    onToggle={() => toggleAccordion("allowedGender")}
-                  >
-                    {GENDER_OPTIONS.map((item) => (
-                      <CheckboxOption
-                        key={item}
-                        label={item}
-                        checked={selectedGenders.includes(item)}
-                        onChange={() =>
-                          toggleArrayItem(setSelectedGenders, item)
-                        }
-                      />
-                    ))}
-                  </FilterAccordion>
+                    {/* 9. Allowed Gender */}
+                    <FilterAccordion
+                      label="Allowed Gender"
+                      count={selectedGenders.length}
+                      isOpen={openAccordions.allowedGender}
+                      onToggle={() => toggleAccordion("allowedGender")}
+                    >
+                      {GENDER_OPTIONS.map((item) => (
+                        <CheckboxOption
+                          key={item}
+                          label={item}
+                          checked={selectedGenders.includes(item)}
+                          onChange={() =>
+                            toggleArrayItem(setSelectedGenders, item)
+                          }
+                        />
+                      ))}
+                    </FilterAccordion>
 
-                  {/* 10. House Rules */}
-                  <FilterAccordion
-                    label="House Rules"
-                    count={selectedHouseRules.length}
-                    isOpen={openAccordions.houseRules}
-                    onToggle={() => toggleAccordion("houseRules")}
-                  >
-                    {HOUSE_RULE_OPTIONS.map((item) => (
-                      <CheckboxOption
-                        key={item}
-                        label={item}
-                        checked={selectedHouseRules.includes(item)}
-                        onChange={() =>
-                          toggleArrayItem(setSelectedHouseRules, item)
-                        }
-                      />
-                    ))}
-                  </FilterAccordion>
+                    {/* 10. House Rules */}
+                    <FilterAccordion
+                      label="House Rules"
+                      count={selectedHouseRules.length}
+                      isOpen={openAccordions.houseRules}
+                      onToggle={() => toggleAccordion("houseRules")}
+                    >
+                      {HOUSE_RULE_OPTIONS.map((item) => (
+                        <CheckboxOption
+                          key={item}
+                          label={item}
+                          checked={selectedHouseRules.includes(item)}
+                          onChange={() =>
+                            toggleArrayItem(setSelectedHouseRules, item)
+                          }
+                        />
+                      ))}
+                    </FilterAccordion>
+                  </div>
                 </div>
-              </div>
 
-              {/* Clear Filters Button */}
-              <div className="border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
-                <button
-                  type="button"
-                  onClick={clearAllFilters}
-                  disabled={
-                    activeFilterCount === 0 && searchQuery.trim() === ""
-                  }
-                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-bold text-zinc-700 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-45 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300 dark:hover:border-rose-900/50 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Clear Filters
-                </button>
+                {/* Clear Filters Button */}
+                <div className="border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={clearAllFilters}
+                    disabled={
+                      activeFilterCount === 0 && searchQuery.trim() === ""
+                    }
+                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-bold text-zinc-700 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-45 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300 dark:hover:border-rose-900/50 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Clear Filters
+                  </button>
+                </div>
               </div>
             </div>
           </aside>
@@ -1304,100 +1310,15 @@ export default function PublicListingsView({
               : "custom-scrollbar overflow-y-auto overscroll-contain"
           }`}
         >
-          {viewMode === "map" && (
-            <div className="flex items-center justify-between pb-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                  Interactive Map View
-                </span>
-                <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-700 dark:bg-purple-950/60 dark:text-purple-300">
-                  {filteredListings.length}{" "}
-                  {filteredListings.length === 1 ? "pin" : "pins"}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewMode("grid")}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
-              >
-                <LayoutGrid className="h-3.5 w-3.5" />
-                <span>Back to Cards List</span>
-              </button>
-            </div>
-          )}
-
           {/* MAIN CONTENT: MAP VIEW OR CARDS GRID */}
           {viewMode === "map" ? (
-            <div className="space-y-4">
+            <div className="relative isolate z-0 min-h-0 w-full flex-1 overflow-hidden rounded-3xl border border-zinc-200 dark:border-zinc-800">
               <RenterFindPlaceMapDynamic
                 listings={mapPins}
                 selectedId={selectedMapListingId}
                 onSelectListing={(id) => setSelectedMapListingId(id)}
                 onToggleView={() => setViewMode("grid")}
               />
-
-              {/* Horizontal Mini Cards Strip Under Map */}
-              {filteredListings.length > 0 && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {filteredListings.map((listing) => {
-                    const isSelected = selectedMapListingId === listing.id;
-                    const coverImage =
-                      listing.cover_image ||
-                      (listing.images && listing.images.length > 0
-                        ? listing.images[0]
-                        : null);
-
-                    return (
-                      <div
-                        key={listing.id}
-                        onClick={() => setSelectedMapListingId(listing.id)}
-                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-3 transition-all ${
-                          isSelected
-                            ? "border-purple-500 bg-purple-50/50 shadow-sm dark:border-purple-500 dark:bg-purple-950/20"
-                            : "border-zinc-200/90 bg-white hover:border-purple-200 dark:border-zinc-800 dark:bg-zinc-900"
-                        }`}
-                      >
-                        <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
-                          {coverImage ? (
-                            <Image
-                              src={coverImage}
-                              alt={listing.title}
-                              fill
-                              unoptimized
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center text-zinc-400">
-                              <Building2 className="h-5 w-5" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                            {listing.title}
-                          </p>
-                          <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                            {listing.address}, {listing.city}
-                          </p>
-                          <div className="mt-1 flex items-center justify-between">
-                            <span className="text-xs font-extrabold text-purple-600 dark:text-purple-400">
-                              ₱{listing.monthly_rent.toLocaleString("en-PH")}
-                              /mo
-                            </span>
-                            <Link
-                              href={`/listings/${listing.id}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-xs font-semibold text-zinc-700 underline-offset-2 hover:text-purple-600 hover:underline dark:text-zinc-300"
-                            >
-                              Open details
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           ) : filteredListings.length === 0 ? (
             /* Empty State */
@@ -1633,7 +1554,7 @@ export default function PublicListingsView({
           )}
 
           {/* Clean end-of-results indicator when listings are found (Last part of the page) */}
-          {filteredListings.length > 0 && (
+          {viewMode === "grid" && filteredListings.length > 0 && (
             <div className="mt-2 flex flex-col items-center justify-center gap-1 border-t border-zinc-200/80 pt-3 pb-3 text-center dark:border-zinc-800">
               <div className="inline-flex items-center gap-2 rounded-full border border-purple-200/70 bg-purple-50/60 px-3.5 py-1 text-xs font-semibold text-purple-700 dark:border-purple-900/50 dark:bg-purple-950/40 dark:text-purple-300">
                 <Check className="h-3.5 w-3.5 stroke-[2.5]" />
@@ -1664,7 +1585,7 @@ export default function PublicListingsView({
             type="button"
             onClick={() => setViewMode("map")}
             title="View in Maps"
-            className="group relative flex h-[80px] w-[88px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-white bg-zinc-900 shadow-2xl ring-1 shadow-black/35 ring-black/10 transition-all duration-300 ease-out hover:h-[160px] hover:w-[176px] hover:shadow-2xl hover:ring-2 hover:shadow-purple-500/25 hover:ring-purple-500/50 active:scale-95 dark:border-zinc-700"
+            className="group relative flex h-[70px] w-[130px] cursor-pointer items-center justify-center overflow-hidden rounded-2xl border-2 border-white bg-zinc-900 shadow-2xl ring-1 shadow-black/35 ring-black/10 transition-all duration-300 ease-out hover:scale-105 active:scale-95 dark:border-zinc-700"
           >
             {/* Background image preview - Philippines default or chosen location */}
             <Image
@@ -1677,13 +1598,13 @@ export default function PublicListingsView({
             />
 
             {/* Vignette overlay */}
-            <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/25 to-transparent transition-opacity group-hover:opacity-90" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent transition-opacity group-hover:opacity-80" />
 
             {/* Center white pill matching .Abangers UI */}
             <div className="absolute inset-0 flex items-center justify-center p-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200/60 bg-white/95 px-3 py-1.5 text-xs font-bold text-zinc-900 shadow-md backdrop-blur-xs transition-transform group-hover:scale-105">
-                <MapPin className="h-3.5 w-3.5 text-purple-600" />
-                <span>View in Maps</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200/60 bg-white/95 px-3 py-1.5 text-xs font-bold whitespace-nowrap text-zinc-900 shadow-md backdrop-blur-xs">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-purple-600" />
+                <span className="whitespace-nowrap">View in Maps</span>
               </span>
             </div>
           </button>

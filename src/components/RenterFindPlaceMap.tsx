@@ -163,7 +163,7 @@ export default function RenterFindPlaceMap({
   };
 
   return (
-    <div className="relative isolate z-0 h-135 w-full overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 shadow-xs sm:h-155 dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="relative isolate z-0 h-full min-h-[480px] w-full overflow-hidden rounded-3xl border border-zinc-200 bg-zinc-100 shadow-xs dark:border-zinc-800 dark:bg-zinc-950">
       <MapContainer
         center={initialCenter}
         zoom={13}
