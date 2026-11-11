@@ -2,7 +2,7 @@ import Link from "next/link";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getFavoritedListings } from "@/lib/favorites";
-import RenterFavoritesList from "@/components/RenterFavoritesList";
+import RenterFavoritesView from "@/components/RenterFavoritesView";
 import { Button } from "@/components/ui/button";
 
 export default async function RenterFavoritesPage() {
@@ -48,5 +48,5 @@ export default async function RenterFavoritesPage() {
     );
   }
 
-  return <RenterFavoritesList initialListings={result.listings} />;
+  return <RenterFavoritesView initialListings={result.listings} />;
 }
