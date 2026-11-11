@@ -12,6 +12,7 @@ describe("isGuardedPath", () => {
 
   it("leaves other pages alone", () => {
     expect(isGuardedPath("/")).toBe(false);
+    expect(isGuardedPath("/listings")).toBe(false);
     expect(isGuardedPath("/listings/123")).toBe(false);
     // Only whole path segments count.
     expect(isGuardedPath("/dashboards")).toBe(false);
@@ -21,6 +22,20 @@ describe("isGuardedPath", () => {
 });
 
 describe("guardRedirect", () => {
+  describe("public pages (#85)", () => {
+    it("never redirects unauthenticated guests on /listings", () => {
+      expect(guardRedirect("/listings", false, null)).toBeNull();
+      expect(guardRedirect("/listings/123", false, null)).toBeNull();
+      expect(guardRedirect("/", false, null)).toBeNull();
+    });
+
+    it("never redirects authenticated users on /listings", () => {
+      expect(guardRedirect("/listings", true, "/dashboard/renter")).toBeNull();
+      expect(
+        guardRedirect("/listings/123", true, "/dashboard/landlord"),
+      ).toBeNull();
+    });
+  });
   describe("/profile-setup (#233)", () => {
     it("sends a signed-out visitor to the home page", () => {
       expect(guardRedirect("/profile-setup", false, null)).toBe("/");

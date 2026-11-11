@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { SearchX } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
@@ -14,9 +15,11 @@ import {
 import ListingSearchBar from "@/components/ListingSearchBar";
 import ListingFilterControls from "@/components/ListingFilterControls";
 import PublicListingCard from "@/components/PublicListingCard";
+import LandlordAuthModal from "@/components/LandlordAuthModal";
 
 interface PublicListingsViewProps {
   initialListings: ListingPreview[];
+  isAuthenticated?: boolean;
 }
 
 /**
@@ -29,7 +32,18 @@ interface PublicListingsViewProps {
  */
 export default function PublicListingsView({
   initialListings,
+  isAuthenticated = false,
 }: PublicListingsViewProps) {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [selectedListing, setSelectedListing] = useState<ListingPreview | null>(
+    null,
+  );
+
+  const handleRequireAuth = (listing: ListingPreview) => {
+    setSelectedListing(listing);
+    setIsAuthModalOpen(true);
+  };
+
   const searchParams = useSearchParams();
   const filters = parseListingFilterParams(searchParams);
 
@@ -184,7 +198,11 @@ export default function PublicListingsView({
         {visibleListings.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:gap-8">
             {visibleListings.map((listing) => (
-              <PublicListingCard key={listing.id} listing={listing} />
+              <PublicListingCard
+                key={listing.id}
+                listing={listing}
+                onRequireAuth={isAuthenticated ? undefined : handleRequireAuth}
+              />
             ))}
           </div>
         ) : hasAnyFilterOrSearch ? (
@@ -224,6 +242,28 @@ export default function PublicListingsView({
           </div>
         )}
       </div>
+
+      {/* Guest Login/Sign-up Modal (#86) */}
+      {isAuthModalOpen && (
+        <LandlordAuthModal
+          isOpen
+          onClose={() => {
+            setIsAuthModalOpen(false);
+            setSelectedListing(null);
+          }}
+          initialMode="signup"
+          initialRole="renter"
+          promptTitle="Create an account to view details"
+          promptDescription={
+            selectedListing
+              ? `Sign up or log in to view full photos, rules, and contact information for "${selectedListing.title}".`
+              : "Sign up or log in to view complete listing details, photos, and landlord contact information."
+          }
+          redirectTo={
+            selectedListing ? `/listings/${selectedListing.id}` : undefined
+          }
+        />
+      )}
     </>
   );
 }
