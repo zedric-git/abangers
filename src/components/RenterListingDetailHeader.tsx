@@ -155,116 +155,78 @@ export default function RenterListingDetailHeader({
         </Link>
       </div>
 
-      {/* 3. Top Header Card (Matches Pic 1 prototype) */}
-      <div className="flex flex-col gap-4 rounded-3xl border border-purple-100 bg-purple-50/40 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5 dark:border-purple-900/30 dark:bg-purple-950/20">
-        <div className="flex items-center gap-3.5">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-600 text-white shadow-xs">
-            <Building2 className="h-6 w-6 stroke-[1.8]" />
+      {/* 3. Top Header Card with Callout Notice */}
+      <div className="flex flex-col gap-3.5 rounded-3xl border border-purple-100 bg-purple-50/40 p-4 sm:p-5 dark:border-purple-900/30 dark:bg-purple-950/20">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-600 text-white shadow-xs">
+              <Building2 className="h-6 w-6 stroke-[1.8]" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="truncate text-lg font-bold tracking-tight text-zinc-950 sm:text-2xl dark:text-zinc-50">
+                {title}
+              </h1>
+              {subtitle && (
+                <p className="mt-0.5 truncate text-xs font-medium text-zinc-600 sm:text-sm dark:text-zinc-400">
+                  {subtitle}
+                </p>
+              )}
+            </div>
           </div>
-          <div className="min-w-0">
-            <h1 className="truncate text-lg font-bold tracking-tight text-zinc-950 sm:text-2xl dark:text-zinc-50">
-              {title}
-            </h1>
-            {subtitle && (
-              <p className="mt-0.5 truncate text-xs font-medium text-zinc-600 sm:text-sm dark:text-zinc-400">
-                {subtitle}
-              </p>
-            )}
+
+          {/* Action Buttons Right */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Save Button */}
+            <button
+              type="button"
+              onClick={handleToggleFavorite}
+              disabled={isSaving}
+              className={cn(
+                "inline-flex h-9.5 cursor-pointer items-center gap-1.5 rounded-xl border px-3.5 text-xs font-semibold shadow-2xs transition-all",
+                isSaved
+                  ? "border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400"
+                  : "border-zinc-200 bg-white text-zinc-700 hover:border-rose-200 hover:text-rose-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200",
+              )}
+            >
+              <Heart
+                className={cn(
+                  "h-3.5 w-3.5",
+                  isSaved && "fill-rose-600 dark:fill-rose-400",
+                )}
+              />
+              <span>{isSaved ? "Saved" : "Save"}</span>
+            </button>
+
+            {/* Chat Landlord Button */}
+            <button
+              type="button"
+              onClick={() => setIsChatModalOpen(true)}
+              className="inline-flex h-9.5 cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-purple-700"
+            >
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span>Chat Landlord</span>
+            </button>
+
+            {/* Book Viewing Button */}
+            <button
+              type="button"
+              onClick={() => setIsBookingModalOpen(true)}
+              className="inline-flex h-9.5 cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-4 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-700 active:bg-purple-800"
+            >
+              <Calendar className="h-3.5 w-3.5" />
+              <span>Book Viewing</span>
+            </button>
           </div>
         </div>
 
-        {/* Action Buttons Right */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Save Button */}
-          <button
-            type="button"
-            onClick={handleToggleFavorite}
-            disabled={isSaving}
-            className={cn(
-              "inline-flex h-9.5 cursor-pointer items-center gap-1.5 rounded-xl border px-3.5 text-xs font-semibold shadow-2xs transition-all",
-              isSaved
-                ? "border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400"
-                : "border-zinc-200 bg-white text-zinc-700 hover:border-rose-200 hover:text-rose-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200",
-            )}
-          >
-            <Heart
-              className={cn(
-                "h-3.5 w-3.5",
-                isSaved && "fill-rose-600 dark:fill-rose-400",
-              )}
-            />
-            <span>{isSaved ? "Saved" : "Save"}</span>
-          </button>
-
-          {/* Chat Landlord Button */}
-          <button
-            type="button"
-            onClick={() => setIsChatModalOpen(true)}
-            className="inline-flex h-9.5 cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-purple-700"
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            <span>Chat Landlord</span>
-          </button>
-
-          {/* Book Viewing Button */}
-          <button
-            type="button"
-            onClick={() => setIsBookingModalOpen(true)}
-            className="inline-flex h-9.5 cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-4 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-700 active:bg-purple-800"
-          >
-            <Calendar className="h-3.5 w-3.5" />
-            <span>Book Viewing</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 4. Callout Banner (Matches Pic 1 prototype) */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-purple-100 bg-purple-50/25 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between dark:border-purple-900/30 dark:bg-purple-950/15">
-        <p className="text-xs font-medium text-zinc-700 sm:text-sm dark:text-zinc-300">
-          Interested in this boarding house?{" "}
-          <span className="font-semibold text-purple-700 dark:text-purple-400">
-            Book a scheduled viewing or message the landlord.
-          </span>
-        </p>
-
-        <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            onClick={handleToggleFavorite}
-            disabled={isSaving}
-            className={cn(
-              "inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold shadow-2xs transition-all",
-              isSaved
-                ? "border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400"
-                : "border-zinc-200 bg-white text-zinc-700 hover:border-rose-200 hover:text-rose-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200",
-            )}
-          >
-            <Heart
-              className={cn(
-                "h-3.5 w-3.5",
-                isSaved && "fill-rose-600 dark:fill-rose-400",
-              )}
-            />
-            <span>{isSaved ? "Saved" : "Save"}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsChatModalOpen(true)}
-            className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200"
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            <span>Chat</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsBookingModalOpen(true)}
-            className="inline-flex h-8.5 cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-700"
-          >
-            <Calendar className="h-3.5 w-3.5" />
-            <span>Book Viewing</span>
-          </button>
+        {/* Callout Notice inside card */}
+        <div className="border-t border-purple-100/80 pt-3 dark:border-purple-900/30">
+          <p className="text-xs font-medium text-zinc-700 sm:text-sm dark:text-zinc-300">
+            Interested in this boarding house?{" "}
+            <span className="font-semibold text-purple-700 dark:text-purple-400">
+              Book a scheduled viewing or message the landlord.
+            </span>
+          </p>
         </div>
       </div>
 
