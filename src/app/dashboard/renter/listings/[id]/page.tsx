@@ -10,6 +10,7 @@ import {
   lookupListing,
 } from "@/lib/listing-lookup";
 import { listingRowToFormValues } from "@/lib/validations/listing";
+import type { Listing } from "@/types/listing";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,7 @@ export default async function RenterListingDetailPage({
   }
 
   // Fetch listing data
-  const lookup = lookupListing(
+  const lookup = lookupListing<Listing>(
     await supabase.from("listings").select("*").eq("id", id).maybeSingle(),
   );
 

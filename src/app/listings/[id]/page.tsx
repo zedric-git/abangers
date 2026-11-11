@@ -10,6 +10,7 @@ import {
   MISSING_PUBLIC_LISTING_REDIRECT_PATH,
 } from "@/lib/listing-lookup";
 import { listingRowToFormValues } from "@/lib/validations/listing";
+import type { Listing } from "@/types/listing";
 
 export default async function ListingDetailPage({
   params,
@@ -37,7 +38,7 @@ export default async function ListingDetailPage({
     redirect(`/dashboard/renter/listings/${id}`);
   }
 
-  const lookup = lookupListing(
+  const lookup = lookupListing<Listing>(
     await supabase.from("listings").select("*").eq("id", id).maybeSingle(),
   );
 
