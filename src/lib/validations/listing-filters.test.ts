@@ -13,10 +13,12 @@ describe("listingFilterParamsSchema", () => {
       property_type: undefined,
       occupancy: undefined,
       gender: undefined,
+      features: undefined,
+      rules: undefined,
     });
   });
 
-  it("trims search query and parses valid numbers", () => {
+  it("trims search query and parses valid numbers and attributes", () => {
     const result = listingFilterParamsSchema.parse({
       q: "  USC Main  ",
       max_rent: "4500",
@@ -30,6 +32,8 @@ describe("listingFilterParamsSchema", () => {
       property_type: "Apartment",
       occupancy: "Single Room",
       gender: "Female Only",
+      features: undefined,
+      rules: undefined,
     });
   });
 
@@ -55,6 +59,24 @@ describe("listingFilterParamsSchema", () => {
     expect(result.occupancy).toBeUndefined();
     expect(result.gender).toBeUndefined();
   });
+
+  it("parses and canonicalizes features from comma-separated string", () => {
+    const result = listingFilterParamsSchema.parse({
+      features: "WiFi,aircon,Private CR",
+    });
+    expect(result.features).toEqual([
+      "Wi-Fi Included",
+      "Air Conditioning",
+      "Private Bathroom/CR",
+    ]);
+  });
+
+  it("parses and validates house rules, discarding invalid ones", () => {
+    const result = listingFilterParamsSchema.parse({
+      rules: "No Curfew,Cooking Allowed,Play Loud Drums",
+    });
+    expect(result.rules).toEqual(["No Curfew", "Cooking Allowed"]);
+  });
 });
 
 describe("parseListingFilterParams", () => {
@@ -64,9 +86,9 @@ describe("parseListingFilterParams", () => {
     expect(parseListingFilterParams("invalid")).toEqual({ q: "" });
   });
 
-  it("handles URLSearchParams instances", () => {
+  it("handles URLSearchParams instances with core, feature, and rule filters", () => {
     const params = new URLSearchParams(
-      "q=Banilad&max_rent=6000&property_type=Boarding+House&occupancy=Bedspace&gender=Male+Only",
+      "q=Banilad&max_rent=6000&property_type=Boarding+House&occupancy=Bedspace&gender=Male+Only&features=WiFi,CCTV&rules=Pets+Allowed",
     );
     const parsed = parseListingFilterParams(params);
     expect(parsed).toEqual({
@@ -75,6 +97,8 @@ describe("parseListingFilterParams", () => {
       property_type: "Boarding House",
       occupancy: "Bedspace",
       gender: "Male Only",
+      features: ["Wi-Fi Included", "CCTV"],
+      rules: ["Pets Allowed"],
     });
   });
 
@@ -83,9 +107,13 @@ describe("parseListingFilterParams", () => {
       q: ["Lahug"],
       max_rent: ["8000"],
       property_type: ["Condo"],
+      features: ["Wi-Fi Included", "Has Parking"],
+      rules: ["No Curfew"],
     });
     expect(parsed.q).toBe("Lahug");
     expect(parsed.max_rent).toBe(8000);
     expect(parsed.property_type).toBe("Condo");
+    expect(parsed.features).toEqual(["Wi-Fi Included", "Has Parking"]);
+    expect(parsed.rules).toEqual(["No Curfew"]);
   });
 });

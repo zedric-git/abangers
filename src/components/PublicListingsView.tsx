@@ -20,6 +20,7 @@ import LandlordAuthModal from "@/components/LandlordAuthModal";
 
 interface PublicListingsViewProps {
   initialListings: ListingPreview[];
+  isAuthenticated?: boolean;
   userRole?: string | null;
   favoritedListingIds?: string[];
 }
@@ -34,14 +35,19 @@ interface PublicListingsViewProps {
  */
 export default function PublicListingsView({
   initialListings,
+  isAuthenticated = false,
   userRole = null,
   favoritedListingIds = [],
 }: PublicListingsViewProps) {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [selectedListing, setSelectedListing] = useState<ListingPreview | null>(
+    null,
+  );
 
   const savedSet = new Set(favoritedListingIds);
 
-  const handleRequireAuth = () => {
+  const handleRequireAuth = (listing: ListingPreview) => {
+    setSelectedListing(listing);
     setIsAuthModalOpen(true);
   };
   const searchParams = useSearchParams();
@@ -64,6 +70,12 @@ export default function PublicListingsView({
     if (next.property_type) params.set("property_type", next.property_type);
     if (next.occupancy) params.set("occupancy", next.occupancy);
     if (next.gender) params.set("gender", next.gender);
+    if (next.features && next.features.length > 0) {
+      params.set("features", next.features.join(","));
+    }
+    if (next.rules && next.rules.length > 0) {
+      params.set("rules", next.rules.join(","));
+    }
 
     const queryString = params.toString();
     const url = queryString ? `/listings?${queryString}` : "/listings";
@@ -91,6 +103,8 @@ export default function PublicListingsView({
       property_type: undefined,
       occupancy: undefined,
       gender: undefined,
+      features: undefined,
+      rules: undefined,
     });
   };
 
@@ -101,6 +115,8 @@ export default function PublicListingsView({
       property_type: undefined,
       occupancy: undefined,
       gender: undefined,
+      features: undefined,
+      rules: undefined,
     });
   };
 
@@ -191,12 +207,13 @@ export default function PublicListingsView({
               <PublicListingCard
                 key={listing.id}
                 listing={listing}
+                onRequireAuth={isAuthenticated ? undefined : handleRequireAuth}
                 action={
                   <FavoriteButton
                     listingId={listing.id}
                     initialFavorited={savedSet.has(listing.id)}
                     userRole={userRole}
-                    onRequireAuth={handleRequireAuth}
+                    onRequireAuth={() => handleRequireAuth(listing)}
                   />
                 }
               />
@@ -244,9 +261,21 @@ export default function PublicListingsView({
       {isAuthModalOpen && (
         <LandlordAuthModal
           isOpen
-          onClose={() => setIsAuthModalOpen(false)}
+          onClose={() => {
+            setIsAuthModalOpen(false);
+            setSelectedListing(null);
+          }}
           initialMode="signup"
           initialRole="renter"
+          promptTitle="Create an account to view details"
+          promptDescription={
+            selectedListing
+              ? `Sign up or log in to view full photos, rules, and contact information for "${selectedListing.title}".`
+              : "Sign up or log in to view complete listing details, photos, and landlord contact information."
+          }
+          redirectTo={
+            selectedListing ? `/listings/${selectedListing.id}` : undefined
+          }
         />
       )}
     </>

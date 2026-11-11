@@ -1,15 +1,22 @@
 "use client";
 
 import { useState } from "react";
-import { LogOut, ShieldCheck } from "lucide-react";
+import {
+  LayoutDashboard,
+  ShieldCheck,
+  Users,
+  Building2,
+  Bell,
+  User,
+  LogOut,
+} from "lucide-react";
 import DashboardSidebar, { NavItem } from "@/components/DashboardSidebar";
 import LogoutConfirmModal from "@/components/LogoutConfirmModal";
 import SignedInOnly from "@/components/SignedInOnly";
 import { logOut } from "@/lib/auth/log-out";
-import { ADMIN_DASHBOARD_PATH } from "@/lib/admin-review-view";
 
 /**
- * The admin dashboard (S2-11.2, #256). The proxy only lets admins in
+ * The admin dashboard layout. The proxy only lets admins in
  * (src/lib/auth/route-guard.ts). A Client Component, like the landlord
  * layout, for Log Out's click handler.
  */
@@ -22,24 +29,60 @@ export default function AdminLayout({
 
   const adminNavItems: NavItem[] = [
     {
+      label: "Dashboard",
+      href: "/dashboard/admin",
+      icon: LayoutDashboard,
+      description:
+        "Overview of users, listings, pending verifications, and system activity.",
+    },
+    {
       label: "Verifications",
-      href: ADMIN_DASHBOARD_PATH,
+      href: "/dashboard/admin/verifications",
       icon: ShieldCheck,
+      badge: 3,
+      description:
+        "Review landlord verification requests, government IDs, and live selfies.",
+    },
+    {
+      label: "User Management",
+      href: "/dashboard/admin/users",
+      icon: Users,
+      description:
+        "Manage landlord/renter accounts, review verification requests, and suspend/reactivate users.",
+    },
+    {
+      label: "Listing Management",
+      href: "/dashboard/admin/listings",
+      icon: Building2,
+      description:
+        "Monitor, review, and remove property listings when necessary.",
+    },
+    {
+      label: "Notifications",
+      href: "/dashboard/admin/notifications",
+      icon: Bell,
+      badge: 3,
+      description: "View verification requests and important system alerts.",
+      position: "bottom",
+    },
+    {
+      label: "Profile",
+      href: "/dashboard/admin/profile",
+      icon: User,
+      description: "Manage admin profile and account settings.",
+      position: "bottom",
     },
     {
       label: "Log Out",
       icon: LogOut,
-      // Opens the confirmation dialog, which then calls logOut() for a
-      // hard navigation home (src/lib/auth/log-out.ts).
       onClick: () => setIsLogoutOpen(true),
       isDanger: true,
       position: "bottom",
+      description: "Sign out of your account",
     },
   ];
 
   return (
-    // The same frame as the landlord layout: see its comments for
-    // bg-background and h-dvh.
     <div className="bg-background flex h-dvh flex-col overflow-hidden font-sans md:flex-row">
       {/* These pages show landlords' ID photos: a signed-out browser
           (e.g. Back after logging out) goes home (#252) */}
@@ -47,8 +90,8 @@ export default function AdminLayout({
 
       <DashboardSidebar items={adminNavItems} userRoleLabel="Admin Dashboard" />
 
-      <main className="custom-scrollbar bg-background flex-1 overflow-y-auto p-6 md:p-10">
-        {children}
+      <main className="custom-scrollbar bg-background flex-1 overflow-y-auto p-4 md:px-6 md:pt-6 md:pb-8">
+        <div className="w-full">{children}</div>
       </main>
 
       <LogoutConfirmModal

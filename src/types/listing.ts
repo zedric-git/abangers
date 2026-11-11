@@ -15,8 +15,8 @@ import type { Database } from "@/types/database";
 export type Listing = Database["public"]["Tables"]["listings"]["Row"];
 
 /**
- * The subset of columns sent to the public browse page (S2-04, #14).
- * Excludes private or full details (contact_info, coordinates, house_rules)
+ * The subset of columns sent to the public browse page (S2-04, S2-05, S2-06, #14, #15, #18).
+ * Excludes private or contact details (contact_info, coordinates)
  * which are reserved for signed-in detail views (#19).
  */
 export type ListingPreview = Pick<
@@ -36,4 +36,12 @@ export type ListingPreview = Pick<
   | "images"
   | "availability_status"
   | "created_at"
+  | "amenities"
+  | "utilities"
+  | "room_features"
+  | "bathroom_features"
+  | "kitchen_features"
+  | "laundry_features"
+  | "safety_features"
+  | "house_rules"
 >;
