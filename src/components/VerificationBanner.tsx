@@ -56,9 +56,12 @@ const TONES: Record<
  */
 export default function VerificationBanner({
   status,
+  onActionClick,
 }: {
   /** From loadLandlordStatus; null (couldn't be read) shows nothing. */
   status: LandlordStatus | null;
+  /** Optional click handler for the action button (e.g. smooth scroll to #verify-account). */
+  onActionClick?: () => void;
 }) {
   const banner = verificationBanner(status);
   if (!banner) {
@@ -98,15 +101,25 @@ export default function VerificationBanner({
         </div>
       </div>
 
-      {banner.action && (
-        <Link
-          href={banner.action.href}
-          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 active:bg-purple-900 dark:bg-purple-600 dark:hover:bg-purple-700"
-        >
-          {banner.action.label}
-          <ArrowRight className="h-4 w-4" />
-        </Link>
-      )}
+      {banner.action &&
+        (onActionClick ? (
+          <button
+            type="button"
+            onClick={onActionClick}
+            className="inline-flex h-10 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 active:bg-purple-900 dark:bg-purple-600 dark:hover:bg-purple-700"
+          >
+            {banner.action.label}
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        ) : (
+          <Link
+            href={banner.action.href}
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-800 active:bg-purple-900 dark:bg-purple-600 dark:hover:bg-purple-700"
+          >
+            {banner.action.label}
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        ))}
     </section>
   );
 }

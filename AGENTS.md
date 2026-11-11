@@ -174,6 +174,29 @@ https://github.com/users/zedric-git/projects/3
   after it (`src/components/PhMobileNumberInput.tsx`), but save it as
   `09` + 9 digits (`09171234567`), which is what the schema and the
   policy check; `src/lib/ph-mobile-number.ts` converts between the two.
+- **Viewing requests (`viewing_requests`, #107) change only in ways a
+  trigger allows.** A renter sends a request as `pending`. After that
+  only its `status` and `decline_reason` can change, and the trigger in
+  `0017_create_viewing_requests.sql` lets the landlord confirm or
+  decline a pending request and mark a confirmed one completed once it
+  has started, and lets the renter cancel a pending or confirmed one
+  before it starts. Anything else is `42501`, and nobody can delete a
+  request. So filter an update by the status you expect
+  (`.eq("status", "pending")`), and treat "no row back" as "it changed
+  in the meantime". The generated types make `landlord_id` required on
+  insert, so send the listing's landlord: another trigger replaces
+  whatever comes in with the listing's own `landlord_id`, so a wrong one
+  can't stick. A pending or confirmed request holds the
+  landlord's date and start time, and a renter can't have two for one
+  listing (`23505`, and the message names the index). "Started" means
+  `viewing_date + start_time` on the Philippine clock
+  (`now() at time zone 'Asia/Manila'`), never the server's UTC `now()`,
+  so compare the same way in app code. Two foreign keys point at
+  `profiles`, so a join names the one it wants
+  (`profiles!viewing_requests_renter_id_fkey`). The seed has seven
+  requests with fixed ids, one in each status, on landlord1's and
+  landlord2's listings, dated from the day it runs. Running it again
+  resets them and deletes the seed renters' other requests.
 - **Storage errors arrive as HTTP 400 — read `error.statusCode`, not
   `error.status`.** Supabase Storage answers every refused request with
   status 400 and puts the real code in the response body, which
@@ -192,12 +215,12 @@ https://github.com/users/zedric-git/projects/3
   the PC, and add a port forwarding rule from `3000` to
   `localhost:3000`. Then open `http://localhost:3000` in Chrome on the
   phone. An iPhone needs real https.
-- **`/dashboard/*` and `/profile-setup` are guarded in the proxy, and
+- **`/dashboard/*`, `/profile-setup` and `/renter/profile-setup` are guarded in the proxy, and
   logout must be a hard navigation.** `updateSession` in
   `src/lib/supabase/middleware.ts` sends signed-out users to the home
   page (`/`), keeps each role on its own dashboard (via
   `resolvePostLoginPath`), and lets only landlords open `/profile-setup`
-  (#233). The decision is `guardRedirect` in
+  (#233), and keeps incomplete renters on `/renter/profile-setup` (S2-01). The decision is `guardRedirect` in
   `src/lib/auth/route-guard.ts`; guard a new page there. Each role's
   dashboard is `/dashboard/<role>` (renter, landlord, admin). Logout is
   `logOut()` in `src/lib/auth/log-out.ts`, which every dashboard layout's
@@ -208,7 +231,7 @@ https://github.com/users/zedric-git/projects/3
   history, and Back can show the browser's own copy of one without
   asking the server (it did in `next dev`, #252). `SignedInOnly`
   (`src/components/SignedInOnly.tsx`) sends a signed-out browser home
-  from such a copy: the landlord and admin layouts and `/profile-setup`
+  from such a copy: the landlord and admin layouts, `/profile-setup` and `/renter/profile-setup`
   render it, and any new page that shows a signed-in user's data outside
   them (e.g. the renter dashboard's layout) should too.
 - **There are no `/login` or `/signup` pages.** Login and sign-up both
@@ -226,9 +249,9 @@ https://github.com/users/zedric-git/projects/3
   logic lives in shared helpers — validation (`loginSchema` /
   `signUpSchema` in `src/lib/validations/auth.ts`), sign-up
   (`signUpWithProfile` in `src/lib/auth/sign-up.ts`) and post-login
-  routing (`resolvePostLoginPath` in `src/lib/auth/post-login.ts`). Renter
-  sign-up (Sprint 2) should extend the modal with those helpers rather
-  than bring back a second auth form.
+  routing (`resolvePostLoginPath` in `src/lib/auth/post-login.ts`). Both renter
+  and landlord sign-up extend the modal with those helpers (S2-01) rather
+  than having a second auth form.
 - **Write invisible characters as escapes, never raw.** A no-break
   space, a zero-width space, a byte order mark, a text-direction mark
   and the like look like a normal space, or like nothing at all, in an
@@ -371,7 +394,10 @@ Three-tier flow: `feature/*` → `dev` → `main`.
   The same flow applies to non-feature work with a different prefix:
   `fix/<bug>`, `chore/<tooling-or-data>`, `docs/<what>`.
   Open a PR into `dev` when ready; needs a passing CI check to merge.
-  Delete the branch after it merges.
+  Don't delete the branch when it merges: keep every branch from the
+  current sprint, on GitHub and locally, until the sprint is over (the
+  next sprint starts, or `dev` merges into `main`). Delete them after
+  that.
 - **`dev` branch** — the repo's **default branch** and the integration
   branch for the sprint currently in progress. All `feature/*` branches
   merge here first. This is where we test and stabilize everything the
@@ -395,6 +421,11 @@ right after each exam window closes:
 | Sprint 1 | Now → Midterms        | Midterm Exams (Oct 5–10)  | After Oct 10         |
 | Sprint 2 | Midterms → Pre-Finals | Pre-Final Exams (Nov 5–7) | After Nov 7          |
 | Sprint 3 | Pre-Finals → Finals   | Final Exams (Dec 4–11)    | After Dec 11         |
+
+These dates often slip: unplanned class suspensions extend the sprints
+(Sprint 1 ran well past its dates). A sprint is over when the PM says
+the next one has started, or when `dev` merges into `main`, not when
+its date passes.
 
 If a sprint's features aren't all done and stable on `dev` by its exam
 window, that's a signal to descope for `main` rather than merge
@@ -589,10 +620,14 @@ entry in the PR that closes it.
   merge. Run by hand, they use `.env.local` and the seed data, so they
   hit the **shared** project. Any new table's RLS policies should get a
   test here; DB tests must leave shared data unchanged. They sign in as
-  the seed accounts about 45 times per run, so the shared project's
-  sign-in rate limit (dashboard → Authentication → Rate Limits,
-  "sign-ups and sign-ins" per 5 minutes) must allow that, or they fail
-  with "Request rate limit reached".
+  the seed accounts about 50 times per run, so the shared project's
+  limit on password sign-ins must allow that, or they fail with
+  "Request rate limit reached". In the dashboard (Authentication → Rate
+  Limits) that limit is "token refreshes", not "sign-ups and sign-ins",
+  which covers sign-ups, magic links, password resets and user updates.
+  It allows 30 sign-ins at once from one address, then the setting ÷ 300
+  more per second. The shared project has it at 900; the default, 150,
+  failed #289's apply.
 - `npm run lint` — ESLint
 - `npm run format` — Prettier (auto-runs on commit via Husky)
 - `npm run format:check` — Prettier check only

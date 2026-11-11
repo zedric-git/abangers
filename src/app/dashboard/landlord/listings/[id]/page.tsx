@@ -60,7 +60,7 @@ export default async function LandlordListingDetailPage({
   if (lookup.kind === "failed") {
     console.error("Error fetching listing:", lookup.error);
     return (
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="mx-auto max-w-6xl space-y-6">
         {backLink}
         <div
           role="alert"
@@ -76,7 +76,7 @@ export default async function LandlordListingDetailPage({
   const { listing } = lookup;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       {/* Top Header & Navigation */}
       {backLink}
 
@@ -98,7 +98,7 @@ export default async function LandlordListingDetailPage({
       </div>
 
       {/* Reusable Public Listing Detail View */}
-      <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-xs sm:p-8 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
         <ListingDetailView listing={listingRowToFormValues(listing)} />
       </div>
     </div>

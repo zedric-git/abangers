@@ -28,10 +28,12 @@ auto_expose_new_tables = false
 major_version = 17
 
 [auth.rate_limit]
-# The DB tests sign in as the seed accounts many times in a few minutes,
-# all from the same address. The default (30 per 5 minutes) would start
-# refusing them partway through the run.
-sign_in_sign_ups = 1000
+# The DB tests sign in as the seed accounts about 50 times in under a
+# minute, all from the same address, so the limit on password sign-ins is
+# raised. Supabase counts those against token_refresh (default 150 per 5
+# minutes), not sign_in_sign_ups, which covers sign-ups, magic links,
+# password resets and user updates. The shared project has it at 900.
+token_refresh = 1000
 
 # Services the DB tests don't use are turned off, so `supabase start`
 # doesn't download or start them. What stays on: the database, the API

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { X, Home, Loader2, Eye, EyeOff } from "lucide-react";
+import { X, Home, Loader2, Eye, EyeOff, User, Building } from "lucide-react";
 import {
   Dialog,
   DialogClose,
@@ -21,6 +21,7 @@ import {
 } from "@/lib/validations/auth";
 import { resolvePostLoginPath } from "@/lib/auth/post-login";
 import { signUpWithProfile } from "@/lib/auth/sign-up";
+import { cn } from "@/lib/utils";
 
 interface LandlordAuthModalProps {
   isOpen: boolean;
@@ -29,10 +30,12 @@ interface LandlordAuthModalProps {
   initialRole?: SignUpRole;
   promptTitle?: string;
   promptDescription?: string;
+  redirectTo?: string;
 }
 
 /**
- * The landlord login / sign-up popup, opened from the home page.
+ * The login / sign-up popup, opened from the home page.
+ * Supports both renters and landlords (S2-01).
  *
  * Built on shadcn's Dialog (#245): Escape and a click outside close it,
  * Tab stays inside it, screen readers announce it as a dialog named by
@@ -46,6 +49,7 @@ export default function LandlordAuthModal({
   initialRole = "landlord",
   promptTitle,
   promptDescription,
+  redirectTo,
 }: LandlordAuthModalProps) {
   const router = useRouter();
   const supabase = createClient();
@@ -53,13 +57,14 @@ export default function LandlordAuthModal({
   const openerRef = useRef<HTMLElement | null>(null);
 
   const [isLoginMode, setIsLoginMode] = useState(initialMode === "login");
-  const [selectedRole, setSelectedRole] = useState<SignUpRole>(initialRole);
+  const [role, setRole] = useState<SignUpRole>(initialRole);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -80,7 +85,7 @@ export default function LandlordAuthModal({
           email,
           password,
           confirmPassword,
-          role: selectedRole,
+          role,
         });
 
     if (result.success) {
@@ -126,17 +131,26 @@ export default function LandlordAuthModal({
             return;
           }
 
-          router.push(result.path);
+          if (
+            redirectTo &&
+            redirectTo.startsWith("/") &&
+            !redirectTo.startsWith("//") &&
+            !result.path.includes("profile-setup")
+          ) {
+            router.push(redirectTo);
+          } else {
+            router.push(result.path);
+          }
           onClose();
         }
       } else {
-        // Sign Up — shared flow, including the
+        // Sign Up (Renter or Landlord) — shared flow, including the
         // already-registered-email check (src/lib/auth/sign-up.ts).
         const result = await signUpWithProfile(supabase, {
           email,
           password,
           fullName,
-          role: selectedRole,
+          role,
         });
 
         if (!result.ok) {
@@ -145,13 +159,10 @@ export default function LandlordAuthModal({
         }
 
         if (result.kind === "signed-in") {
-          if (selectedRole === "landlord") {
-            // New landlords fill in their contact details first.
-            router.push("/profile-setup");
-          } else {
-            // Renters go directly to renter dashboard.
-            router.push("/dashboard/renter");
-          }
+          // Direct new users through their role-specific profile setup
+          router.push(
+            role === "landlord" ? "/profile-setup" : "/renter/profile-setup",
+          );
           onClose();
         } else {
           setSuccess(
@@ -204,7 +215,7 @@ export default function LandlordAuthModal({
             event.preventDefault();
             openerRef.current?.focus();
           }}
-          className="fixed top-1/2 left-1/2 z-50 w-[calc(100%-2rem)] max-w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-zinc-100 bg-white p-6 text-left shadow-2xl outline-none dark:border-zinc-800 dark:bg-zinc-900"
+          className="fixed top-1/2 left-1/2 z-50 flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[440px] -translate-x-1/2 -translate-y-1/2 flex-col overflow-y-auto rounded-3xl border border-zinc-100 bg-white p-6 text-left shadow-2xl outline-none sm:p-7 dark:border-zinc-800 dark:bg-zinc-900"
         >
           {/* Logo / Branding */}
           <div className="mb-4 flex items-center gap-2">
@@ -218,17 +229,15 @@ export default function LandlordAuthModal({
 
           {/* Title & Subtitle — DialogTitle names the dialog for screen readers */}
           <div className="mb-4 space-y-1">
-            <DialogTitle className="text-xl font-bold text-zinc-900 sm:text-2xl dark:text-zinc-50">
-              {promptTitle ||
-                (isLoginMode ? "Welcome back" : "Create an account")}
+            <DialogTitle className="text-xl font-bold tracking-tight text-zinc-900 sm:text-2xl dark:text-zinc-50">
+              {isLoginMode
+                ? "Welcome back"
+                : promptTitle || "Create an account"}
             </DialogTitle>
-            <DialogDescription className="text-sm text-zinc-500 dark:text-zinc-400">
-              {promptDescription ||
-                (isLoginMode
-                  ? "Sign in to manage your listings or viewings"
-                  : selectedRole === "renter"
-                    ? "Start finding and booking boarding houses today"
-                    : "Start listing your properties today")}
+            <DialogDescription className="text-xs text-zinc-500 sm:text-sm dark:text-zinc-400">
+              {isLoginMode
+                ? "Sign in to access your account"
+                : promptDescription || "Join Abangers as a renter or landlord"}
             </DialogDescription>
           </div>
 
@@ -246,49 +255,61 @@ export default function LandlordAuthModal({
 
           {/* Form */}
           {/* noValidate: the shared Zod schemas show the messages, not the browser */}
-          <form onSubmit={handleSubmit} noValidate className="space-y-2.5">
+          <form onSubmit={handleSubmit} noValidate className="space-y-3.5">
             {!isLoginMode && (
-              <div className="flex rounded-xl bg-zinc-100 p-1 dark:bg-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole("renter")}
-                  className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
-                    selectedRole === "renter"
-                      ? "bg-white text-purple-700 shadow-xs dark:bg-zinc-900 dark:text-purple-300"
-                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                  }`}
-                >
-                  Renter
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedRole("landlord")}
-                  className={`flex-1 rounded-lg py-2 text-xs font-bold transition-all ${
-                    selectedRole === "landlord"
-                      ? "bg-white text-purple-700 shadow-xs dark:bg-zinc-900 dark:text-purple-300"
-                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                  }`}
-                >
-                  Landlord
-                </button>
-              </div>
-            )}
-            {!isLoginMode && (
-              <div className="space-y-1.5">
-                <input
-                  type="text"
-                  placeholder="Full Name"
-                  autoComplete="name"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  aria-invalid={!!fieldErrors.fullName}
-                  className="h-10.5 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
-                />
-                <FieldError message={fieldErrors.fullName} />
-              </div>
+              <>
+                <fieldset className="m-0 mb-5 space-y-2 border-0 p-0">
+                  <legend className="text-xs font-semibold tracking-wide text-zinc-600 uppercase dark:text-zinc-400">
+                    I am a
+                  </legend>
+                  <div className="grid grid-cols-2 gap-2 rounded-2xl border border-zinc-200/90 bg-zinc-100/90 p-1.5 shadow-2xs dark:border-zinc-800 dark:bg-zinc-800/80">
+                    <button
+                      type="button"
+                      aria-pressed={role === "renter"}
+                      onClick={() => setRole("renter")}
+                      className={cn(
+                        "flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all sm:h-11.5",
+                        role === "renter"
+                          ? "bg-purple-600 font-bold text-white shadow-sm ring-2 ring-purple-600/25 dark:bg-purple-600 dark:text-white dark:ring-purple-500/40"
+                          : "text-zinc-600 hover:bg-white/80 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-700/60 dark:hover:text-zinc-100",
+                      )}
+                    >
+                      <User className="h-4 w-4" />
+                      <span>Renter</span>
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={role === "landlord"}
+                      onClick={() => setRole("landlord")}
+                      className={cn(
+                        "flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all sm:h-11.5",
+                        role === "landlord"
+                          ? "bg-purple-600 font-bold text-white shadow-sm ring-2 ring-purple-600/25 dark:bg-purple-600 dark:text-white dark:ring-purple-500/40"
+                          : "text-zinc-600 hover:bg-white/80 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-700/60 dark:hover:text-zinc-100",
+                      )}
+                    >
+                      <Building className="h-4 w-4" />
+                      <span>Landlord</span>
+                    </button>
+                  </div>
+                </fieldset>
+
+                <div className="!mt-5 space-y-1">
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    autoComplete="name"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    aria-invalid={!!fieldErrors.fullName}
+                    className="h-10 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none sm:h-11 dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
+                  />
+                  <FieldError message={fieldErrors.fullName} />
+                </div>
+              </>
             )}
 
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <input
                 type="email"
                 placeholder="Email address"
@@ -296,12 +317,12 @@ export default function LandlordAuthModal({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 aria-invalid={!!fieldErrors.email}
-                className="h-10.5 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
+                className="h-10 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none sm:h-11 dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
               />
               <FieldError message={fieldErrors.email} />
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -312,7 +333,7 @@ export default function LandlordAuthModal({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   aria-invalid={!!fieldErrors.password}
-                  className="h-10.5 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pr-10 pl-3.5 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
+                  className="h-10 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pr-10 pl-3.5 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none sm:h-11 dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
                 />
                 <button
                   type="button"
@@ -331,7 +352,7 @@ export default function LandlordAuthModal({
             </div>
 
             {!isLoginMode && (
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 {/* Has its own show/hide toggle, separate from the password field */}
                 <div className="relative">
                   <input
@@ -341,7 +362,7 @@ export default function LandlordAuthModal({
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     aria-invalid={!!fieldErrors.confirmPassword}
-                    className="h-10.5 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pr-10 pl-3.5 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
+                    className="h-10 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 pr-10 pl-3.5 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none sm:h-11 dark:border-zinc-800 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-900 dark:focus:ring-purple-500"
                   />
                   <button
                     type="button"
@@ -367,7 +388,7 @@ export default function LandlordAuthModal({
             <button
               type="submit"
               disabled={loading}
-              className="flex h-11 w-full items-center justify-center rounded-xl bg-purple-700 text-sm font-semibold text-white transition-colors hover:bg-purple-800 active:bg-purple-900 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-700 dark:active:bg-purple-800"
+              className="flex h-10 w-full items-center justify-center rounded-xl bg-purple-700 text-sm font-semibold text-white transition-colors hover:bg-purple-800 active:bg-purple-900 disabled:opacity-50 sm:h-11 dark:bg-purple-600 dark:hover:bg-purple-700 dark:active:bg-purple-800"
             >
               {loading ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -421,7 +442,7 @@ export default function LandlordAuthModal({
             on the first field; it still shows in the top-right corner.
           */}
           <DialogClose
-            className="absolute top-6 right-6 rounded-full p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            className="absolute top-4 right-4 rounded-full p-1 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 sm:top-5 sm:right-5 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
             aria-label="Close dialog"
           >
             <X className="h-5 w-5" />

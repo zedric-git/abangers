@@ -49,7 +49,7 @@ export default function ReadOnlyMap({
   const readOnlyIcon = useMemo(() => createReadOnlyIcon(), []);
 
   return (
-    <div className="relative aspect-16/10 w-full overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 shadow-inner sm:aspect-16/9 dark:border-zinc-800 dark:bg-zinc-950">
+    <div className="relative isolate z-0 aspect-16/10 w-full overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-100 shadow-inner sm:aspect-16/9 dark:border-zinc-800 dark:bg-zinc-950">
       <MapContainer
         center={[latitude, longitude]}
         zoom={16}
