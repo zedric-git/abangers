@@ -50,6 +50,12 @@ export default function PublicListingsView({
     if (next.property_type) params.set("property_type", next.property_type);
     if (next.occupancy) params.set("occupancy", next.occupancy);
     if (next.gender) params.set("gender", next.gender);
+    if (next.features && next.features.length > 0) {
+      params.set("features", next.features.join(","));
+    }
+    if (next.rules && next.rules.length > 0) {
+      params.set("rules", next.rules.join(","));
+    }
 
     const queryString = params.toString();
     const url = queryString ? `/listings?${queryString}` : "/listings";
@@ -77,6 +83,8 @@ export default function PublicListingsView({
       property_type: undefined,
       occupancy: undefined,
       gender: undefined,
+      features: undefined,
+      rules: undefined,
     });
   };
 
@@ -87,6 +95,8 @@ export default function PublicListingsView({
       property_type: undefined,
       occupancy: undefined,
       gender: undefined,
+      features: undefined,
+      rules: undefined,
     });
   };
 

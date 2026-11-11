@@ -49,36 +49,15 @@ import {
   STANDARD_HOUSE_RULES,
 } from "@/lib/house-rules";
 
-// 7 checklist categories from prototype specification
-const AMENITIES_OPTIONS = ["Has Parking"];
-
-const UTILITIES_OPTIONS = [
-  "Wi-Fi Included",
-  "Water Included",
-  "Electricity Included",
-];
-
-const ROOM_FEATURES_OPTIONS = [
-  "Air Conditioning",
-  "Electric Fan",
-  "Bed Provided",
-  "Cabinet/Wardrobe",
-  "Table/Desk",
-  "Chair",
-];
-
-const BATHROOM_FEATURES_OPTIONS = ["Private Bathroom/CR", "Shared Bathroom/CR"];
-
-const KITCHEN_FEATURES_OPTIONS = ["Has Kitchen", "Cooking Allowed"];
-
-const LAUNDRY_FEATURES_OPTIONS = ["Has Laundry Area", "Has Washing Machine"];
-
-const SAFETY_FEATURES_OPTIONS = [
-  "CCTV",
-  "Gated Property",
-  "Security Guard",
-  "Secure/Individual Door Lock",
-];
+import {
+  AMENITIES_OPTIONS,
+  UTILITIES_OPTIONS,
+  ROOM_FEATURES_OPTIONS,
+  BATHROOM_FEATURES_OPTIONS,
+  KITCHEN_FEATURES_OPTIONS,
+  LAUNDRY_FEATURES_OPTIONS,
+  SAFETY_FEATURES_OPTIONS,
+} from "@/lib/listing-features";
 
 // 5 House Rules pills from prototype specification
 const HOUSE_RULES_PILLS = STANDARD_HOUSE_RULES;
