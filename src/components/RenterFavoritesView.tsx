@@ -12,6 +12,7 @@ import {
   Eye,
   Building,
   Users,
+  MessageSquare,
 } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
 import { createClient } from "@/lib/supabase/client";
@@ -273,39 +274,45 @@ export default function RenterFavoritesView({
                     )}
                   </div>
 
-                  {/* Action Buttons Bar matching Favorites Prototype */}
-                  <div className="mt-4 flex items-center justify-between border-t border-zinc-100 pt-3 dark:border-zinc-800">
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(item.id)}
-                      className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-rose-500 transition-colors hover:text-rose-600"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Remove
-                    </button>
+                  {/* Action Buttons: 2-Tier Layout (Option 1) */}
+                  <div className="mt-auto space-y-2.5 border-t border-zinc-100 pt-3.5 dark:border-zinc-800">
+                    {/* Row 1: Remove on left, View & Inquire on right */}
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(item.id)}
+                        className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-rose-500 transition-colors hover:text-rose-600"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Remove</span>
+                      </button>
 
-                    <div className="flex items-center gap-1.5">
-                      <Link
-                        href={destinationHref}
-                        className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-purple-600"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        View
-                      </Link>
-                      <Link
-                        href="/dashboard/renter/messages"
-                        className="rounded-xl border border-zinc-200 px-2.5 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                      >
-                        Inquire
-                      </Link>
-                      <Link
-                        href="/dashboard/renter/viewings"
-                        className="inline-flex items-center gap-1 rounded-xl bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-purple-700"
-                      >
-                        <CalendarCheck className="h-3.5 w-3.5" />
-                        Schedule Visit
-                      </Link>
+                      <div className="flex items-center gap-1.5">
+                        <Link
+                          href={destinationHref}
+                          className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-purple-600"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>View</span>
+                        </Link>
+                        <Link
+                          href="/dashboard/renter/messages"
+                          className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-purple-600"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500" />
+                          <span>Inquire</span>
+                        </Link>
+                      </div>
                     </div>
+
+                    {/* Row 2: Full-Width Primary CTA: Schedule Visit */}
+                    <Link
+                      href="/dashboard/renter/viewings"
+                      className="inline-flex h-9.5 w-full items-center justify-center gap-1.5 rounded-xl bg-purple-600 px-4 text-xs font-bold text-white shadow-xs transition-colors hover:bg-purple-700 active:bg-purple-800"
+                    >
+                      <CalendarCheck className="h-4 w-4" />
+                      <span>Schedule Visit</span>
+                    </Link>
                   </div>
                 </div>
               </article>
