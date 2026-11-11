@@ -2,11 +2,14 @@ import { redirect } from "next/navigation";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { fetchListingById } from "@/lib/fetch-listing";
 import ListingDetailView from "@/components/ListingDetailView";
 import RenterListingDetailHeader from "@/components/RenterListingDetailHeader";
 import SignedInOnly from "@/components/SignedInOnly";
-import { LISTING_LOAD_ERROR_MESSAGE } from "@/lib/listing-lookup";
+import {
+  LISTING_LOAD_ERROR_MESSAGE,
+  lookupListing,
+} from "@/lib/listing-lookup";
+import { listingRowToFormValues } from "@/lib/validations/listing";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +53,9 @@ export default async function RenterListingDetailPage({
   }
 
   // Fetch listing data
-  const lookup = await fetchListingById(supabase, id);
+  const lookup = lookupListing(
+    await supabase.from("listings").select("*").eq("id", id).maybeSingle(),
+  );
 
   if (lookup.kind === "missing") {
     redirect(
@@ -88,7 +93,8 @@ export default async function RenterListingDetailPage({
     );
   }
 
-  const { listing, formValues } = lookup;
+  const listing = lookup.listing;
+  const formValues = listingRowToFormValues(listing);
 
   // Check if favorited
   const { data: favRow } = await supabase
@@ -124,7 +130,7 @@ export default async function RenterListingDetailPage({
 
       {/* Reusable Listing Detail Specs & Photo Gallery */}
       <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <ListingDetailView listing={formValues} />
+        <ListingDetailView listing={formValues} audience="renter" />
       </div>
     </div>
   );

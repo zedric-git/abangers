@@ -23,6 +23,16 @@ describe("isGuardedPath", () => {
 });
 
 describe("guardRedirect", () => {
+  describe("public pages (#85)", () => {
+    it("never redirects unauthenticated guests on /listings", () => {
+      expect(guardRedirect("/listings", false, null)).toBeNull();
+      expect(guardRedirect("/", false, null)).toBeNull();
+    });
+
+    it("never redirects authenticated users on /listings", () => {
+      expect(guardRedirect("/listings", true, "/dashboard/renter")).toBeNull();
+    });
+  });
   describe("/profile-setup (#233)", () => {
     it("sends a signed-out visitor to the home page", () => {
       expect(guardRedirect("/profile-setup", false, null)).toBe("/");

@@ -49,36 +49,15 @@ import {
   STANDARD_HOUSE_RULES,
 } from "@/lib/house-rules";
 
-// 7 checklist categories from prototype specification
-const AMENITIES_OPTIONS = ["Has Parking"];
-
-const UTILITIES_OPTIONS = [
-  "Wi-Fi Included",
-  "Water Included",
-  "Electricity Included",
-];
-
-const ROOM_FEATURES_OPTIONS = [
-  "Air Conditioning",
-  "Electric Fan",
-  "Bed Provided",
-  "Cabinet/Wardrobe",
-  "Table/Desk",
-  "Chair",
-];
-
-const BATHROOM_FEATURES_OPTIONS = ["Private Bathroom/CR", "Shared Bathroom/CR"];
-
-const KITCHEN_FEATURES_OPTIONS = ["Has Kitchen", "Cooking Allowed"];
-
-const LAUNDRY_FEATURES_OPTIONS = ["Has Laundry Area", "Has Washing Machine"];
-
-const SAFETY_FEATURES_OPTIONS = [
-  "CCTV",
-  "Gated Property",
-  "Security Guard",
-  "Secure/Individual Door Lock",
-];
+import {
+  AMENITIES_OPTIONS,
+  UTILITIES_OPTIONS,
+  ROOM_FEATURES_OPTIONS,
+  BATHROOM_FEATURES_OPTIONS,
+  KITCHEN_FEATURES_OPTIONS,
+  LAUNDRY_FEATURES_OPTIONS,
+  SAFETY_FEATURES_OPTIONS,
+} from "@/lib/listing-features";
 
 // 5 House Rules pills from prototype specification
 const HOUSE_RULES_PILLS = STANDARD_HOUSE_RULES;
@@ -426,7 +405,10 @@ export default function LandlordListingForm({
 
           {/* Shared Detail Component */}
           <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-2xs sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
-            <ListingDetailView listing={getValues() as ListingInput} />
+            <ListingDetailView
+              listing={getValues() as ListingInput}
+              audience="landlord"
+            />
           </div>
 
           {/* Bottom Actions Footer */}

@@ -1,14 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertCircle, ArrowLeft, Building } from "lucide-react";
+import { AlertCircle, ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import ListingDetailView from "@/components/ListingDetailView";
 import SignedInOnly from "@/components/SignedInOnly";
-import { LISTING_LOAD_ERROR_MESSAGE } from "@/lib/listing-lookup";
 import {
-  fetchListingById,
+  LISTING_LOAD_ERROR_MESSAGE,
+  lookupListing,
   MISSING_PUBLIC_LISTING_REDIRECT_PATH,
-} from "@/lib/fetch-listing";
+} from "@/lib/listing-lookup";
+import { listingRowToFormValues } from "@/lib/validations/listing";
 
 export default async function ListingDetailPage({
   params,
@@ -36,7 +37,9 @@ export default async function ListingDetailPage({
     redirect(`/dashboard/renter/listings/${id}`);
   }
 
-  const lookup = await fetchListingById(supabase, id);
+  const lookup = lookupListing(
+    await supabase.from("listings").select("*").eq("id", id).maybeSingle(),
+  );
 
   // Deleted or mistyped id in the URL: back to /listings with a notice
   // instead of a 404 page (#244, #94).
@@ -95,14 +98,8 @@ export default async function ListingDetailPage({
     );
   }
 
-  const { listing, formValues } = lookup;
-  const subtitle = [
-    listing.property_type,
-    listing.occupancy_type,
-    listing.allowed_gender,
-  ]
-    .filter(Boolean)
-    .join(" • ");
+  const listing = lookup.listing;
+  const formValues = listingRowToFormValues(listing);
 
   return (
     <div className="bg-background min-h-dvh px-4 py-6 sm:px-6 md:px-8 md:py-8">
@@ -113,28 +110,9 @@ export default async function ListingDetailPage({
         {/* Top Header & Navigation */}
         {backLink}
 
-        {/* Property Overview Banner */}
-        <div className="rounded-2xl border border-purple-200 bg-purple-50/95 p-4 shadow-xs backdrop-blur-md sm:p-5 dark:border-purple-900/50 dark:bg-purple-950/90">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-purple-700 text-white dark:bg-purple-600">
-              <Building className="h-5 w-5" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-purple-950 dark:text-purple-100">
-                {listing.title}
-              </h2>
-              {subtitle && (
-                <p className="text-xs text-purple-700 dark:text-purple-300">
-                  {subtitle}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-
         {/* Reusable Listing Detail View (#93) */}
         <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
-          <ListingDetailView listing={formValues} />
+          <ListingDetailView listing={formValues} audience="renter" />
         </div>
       </div>
     </div>

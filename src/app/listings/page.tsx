@@ -6,8 +6,10 @@ import { createClient } from "@/lib/supabase/server";
 import { dashboardFor, parseRole } from "@/lib/auth/post-login";
 import PublicListingsView from "@/components/PublicListingsView";
 import HeaderAuthButtons from "@/components/HeaderAuthButtons";
-import { MISSING_PUBLIC_LISTING_NOTE } from "@/lib/fetch-listing";
-import { MISSING_LISTING_NOTICE } from "@/lib/listing-lookup";
+import {
+  MISSING_LISTING_NOTICE,
+  MISSING_PUBLIC_LISTING_NOTE,
+} from "@/lib/listing-lookup";
 
 export const metadata = {
   title: "Browse Listings | Abangers",
@@ -16,7 +18,7 @@ export const metadata = {
 };
 
 const PUBLIC_LISTING_COLUMNS =
-  "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, created_at";
+  "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, created_at, amenities, utilities, room_features, bathroom_features, kitchen_features, laundry_features, safety_features, house_rules";
 
 export default async function ListingsPage({
   searchParams,
