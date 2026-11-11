@@ -5,6 +5,7 @@ import {
   addFavorite,
   removeFavorite,
   getFavoritedListingIds,
+  resolveFavoriteStateAfterAction,
   DUPLICATE_KEY_ERROR_CODE,
   FAVORITE_SAVE_ERROR_MESSAGE,
   FAVORITE_REMOVE_ERROR_MESSAGE,
@@ -203,5 +204,53 @@ describe("getFavoritedListingIds (#97)", () => {
     const ids = await getFavoritedListingIds(client);
 
     expect(ids.size).toBe(0);
+  });
+});
+
+describe("resolveFavoriteStateAfterAction (#97)", () => {
+  it("maintains optimistic favorited state and clears error on success", () => {
+    const state = resolveFavoriteStateAfterAction(false, true, { ok: true });
+    expect(state).toEqual({
+      isFavorited: true,
+      errorMessage: null,
+    });
+  });
+
+  it("maintains optimistic unfavorited state and clears error on success", () => {
+    const state = resolveFavoriteStateAfterAction(true, false, { ok: true });
+    expect(state).toEqual({
+      isFavorited: false,
+      errorMessage: null,
+    });
+  });
+
+  it("rolls back to unfavorited and reports error message when addFavorite fails", () => {
+    const state = resolveFavoriteStateAfterAction(false, true, {
+      ok: false,
+      error: FAVORITE_SAVE_ERROR_MESSAGE,
+    });
+    expect(state).toEqual({
+      isFavorited: false,
+      errorMessage: FAVORITE_SAVE_ERROR_MESSAGE,
+    });
+  });
+
+  it("rolls back to favorited and reports error message when removeFavorite fails", () => {
+    const state = resolveFavoriteStateAfterAction(true, false, {
+      ok: false,
+      error: FAVORITE_REMOVE_ERROR_MESSAGE,
+    });
+    expect(state).toEqual({
+      isFavorited: true,
+      errorMessage: FAVORITE_REMOVE_ERROR_MESSAGE,
+    });
+  });
+
+  it("uses fallback error message when result.error is undefined", () => {
+    const state = resolveFavoriteStateAfterAction(false, true, { ok: false });
+    expect(state).toEqual({
+      isFavorited: false,
+      errorMessage: FAVORITE_SAVE_ERROR_MESSAGE,
+    });
   });
 });

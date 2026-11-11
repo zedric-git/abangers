@@ -9,6 +9,7 @@ import {
 } from "@/lib/listing-lookup";
 import type { Listing } from "@/types/listing";
 import { listingRowToFormValues } from "@/lib/validations/listing";
+import { parseRole } from "@/lib/auth/post-login";
 import FavoriteButton from "@/components/FavoriteButton";
 
 export default async function ListingDetailPage({
@@ -65,9 +66,10 @@ export default async function ListingDetailPage({
       .eq("id", user.id)
       .maybeSingle();
 
-    userRole = profile?.role ?? null;
+    const role = parseRole(profile?.role);
+    userRole = role;
 
-    if (userRole === "renter") {
+    if (role === "renter") {
       const { data: fav } = await supabase
         .from("favorites")
         .select("listing_id")
@@ -95,12 +97,14 @@ export default async function ListingDetailPage({
         <ListingDetailView
           listing={listingRowToFormValues(listing)}
           action={
-            <FavoriteButton
-              listingId={listing.id}
-              initialFavorited={isFavorited}
-              userRole={userRole}
-              variant="detail"
-            />
+            userRole === "renter" ? (
+              <FavoriteButton
+                listingId={listing.id}
+                initialFavorited={isFavorited}
+                userRole={userRole}
+                variant="detail"
+              />
+            ) : undefined
           }
         />
       </div>

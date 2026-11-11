@@ -14,6 +14,39 @@ export type FavoriteActionResult = {
   error?: string;
 };
 
+export interface FavoriteTransitionState {
+  isFavorited: boolean;
+  errorMessage: string | null;
+}
+
+/**
+ * Computes the state transition after a favorite action attempt (#97).
+ *
+ * - On success (`result.ok === true`), sets `isFavorited` to `attemptedFavorited` and clears any error.
+ * - On failure (`result.ok === false`), rolls back `isFavorited` to `previousFavorited` and returns `result.error`.
+ */
+export function resolveFavoriteStateAfterAction(
+  previousFavorited: boolean,
+  attemptedFavorited: boolean,
+  result: FavoriteActionResult,
+): FavoriteTransitionState {
+  if (result.ok) {
+    return {
+      isFavorited: attemptedFavorited,
+      errorMessage: null,
+    };
+  }
+
+  return {
+    isFavorited: previousFavorited,
+    errorMessage:
+      result.error ||
+      (attemptedFavorited
+        ? FAVORITE_SAVE_ERROR_MESSAGE
+        : FAVORITE_REMOVE_ERROR_MESSAGE),
+  };
+}
+
 /**
  * Inserts a favorite row for the currently authenticated renter.
  * If the row already exists (duplicate key error 23505), treats it as successfully saved (#97).
