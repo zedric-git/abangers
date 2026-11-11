@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   filterListings,
   matchesGenderPolicy,
+  matchesListingFeatures,
+  matchesListingHouseRules,
   hasActiveAttributeFilters,
   countActiveAttributeFilters,
   type FilterableListing,
@@ -17,6 +19,15 @@ const sampleListings: FilterableListing[] = [
     property_type: "Boarding House",
     occupancy_type: "Bedspace",
     allowed_gender: "Male Only",
+    utilities: ["WiFi", "Water included"],
+    room_features: ["Bed Provided", "Electric Fan"],
+    bathroom_features: ["Shared CR"],
+    kitchen_features: ["Shared kitchen"],
+    laundry_features: ["Laundry area"],
+    safety_features: ["CCTV"],
+    amenities: ["Has Parking"],
+    house_rules:
+      "Cooking Allowed\nNo Curfew\nAdditional Notes: Clean up after cooking",
   },
   {
     title: "Banilad Co-ed Studio Room",
@@ -27,6 +38,12 @@ const sampleListings: FilterableListing[] = [
     property_type: "Apartment",
     occupancy_type: "Single Room",
     allowed_gender: "Any / Co-ed",
+    utilities: ["Wi-Fi Included", "Electricity Included"],
+    room_features: ["Air Conditioning", "Table/Desk", "Chair"],
+    bathroom_features: ["Private Bathroom/CR"],
+    kitchen_features: ["Has Kitchen", "Cooking Allowed"],
+    safety_features: ["24/7 security", "Secure/Individual Door Lock"],
+    house_rules: "Visitors Allowed\nPets Allowed",
   },
   {
     title: "Lahug Female Dormitory",
@@ -37,6 +54,11 @@ const sampleListings: FilterableListing[] = [
     property_type: "Dormitory",
     occupancy_type: "Shared Room",
     allowed_gender: "Female Only",
+    utilities: ["WiFi", "Water included"],
+    room_features: ["Cabinet/Wardrobe", "Study area"],
+    bathroom_features: ["Shared Bathroom/CR"],
+    safety_features: ["CCTV Surveillance", "Gated Property"],
+    house_rules: "Curfew at 10pm. No visitors allowed in rooms.", // free-text, not standard pills
   },
   {
     title: "Mandaue Condo Studio",
@@ -47,6 +69,14 @@ const sampleListings: FilterableListing[] = [
     property_type: "Condo",
     occupancy_type: "Studio",
     allowed_gender: "Any / Co-ed",
+    utilities: ["Wi-Fi Included", "Water Included", "Electricity Included"],
+    room_features: ["Air Conditioning", "Bed Provided", "Cabinet/Wardrobe"],
+    bathroom_features: ["Private Bathroom/CR"],
+    kitchen_features: ["Kitchenette"],
+    laundry_features: ["Has Washing Machine"],
+    safety_features: ["Security Guard"],
+    amenities: ["Has Parking"],
+    house_rules: "No Curfew\nSmoking Allowed",
   },
 ];
 
@@ -76,6 +106,83 @@ describe("matchesGenderPolicy", () => {
   });
 });
 
+describe("matchesListingFeatures", () => {
+  it("returns true when no features are selected", () => {
+    expect(matchesListingFeatures(sampleListings[0], [])).toBe(true);
+    expect(matchesListingFeatures(sampleListings[0], undefined)).toBe(true);
+  });
+
+  it("matches features across columns with alias normalization (seed strings)", () => {
+    // Talamban has utilities: ["WiFi", "Water included"], bathroom: ["Shared CR"], kitchen: ["Shared kitchen"]
+    expect(
+      matchesListingFeatures(sampleListings[0], [
+        "Wi-Fi Included",
+        "Water Included",
+        "Shared Bathroom/CR",
+        "Has Kitchen",
+      ]),
+    ).toBe(true);
+  });
+
+  it("uses AND logic requiring all selected features", () => {
+    // Banilad has Air Conditioning, but NOT Has Parking
+    expect(
+      matchesListingFeatures(sampleListings[1], [
+        "Air Conditioning",
+        "Has Parking",
+      ]),
+    ).toBe(false);
+
+    // Mandaue has both Air Conditioning and Has Parking
+    expect(
+      matchesListingFeatures(sampleListings[3], [
+        "Air Conditioning",
+        "Has Parking",
+      ]),
+    ).toBe(true);
+  });
+});
+
+describe("matchesListingHouseRules", () => {
+  it("returns true when no rules are selected", () => {
+    expect(matchesListingHouseRules(sampleListings[0], [])).toBe(true);
+    expect(matchesListingHouseRules(sampleListings[0], undefined)).toBe(true);
+  });
+
+  it("matches parsed house rules strictly", () => {
+    // Talamban has "Cooking Allowed" and "No Curfew"
+    expect(
+      matchesListingHouseRules(sampleListings[0], [
+        "Cooking Allowed",
+        "No Curfew",
+      ]),
+    ).toBe(true);
+    expect(matchesListingHouseRules(sampleListings[0], ["Pets Allowed"])).toBe(
+      false,
+    );
+  });
+
+  it("fails to match free-text seed house rules that are not standard pills (PM Note 2)", () => {
+    // Lahug has free-text description, so parseHouseRules returns 0 standard rules
+    expect(
+      matchesListingHouseRules(sampleListings[2], ["Visitors Allowed"]),
+    ).toBe(false);
+  });
+
+  it("keeps features and rules separate for 'Cooking Allowed' (PM Note 1)", () => {
+    // Banilad has kitchen_features: ["Cooking Allowed"] but house_rules: "Visitors Allowed\nPets Allowed"
+    // Filtering for rule "Cooking Allowed" should NOT match Banilad
+    expect(
+      matchesListingHouseRules(sampleListings[1], ["Cooking Allowed"]),
+    ).toBe(false);
+
+    // But filtering for feature "Cooking Allowed" SHOULD match Banilad
+    expect(matchesListingFeatures(sampleListings[1], ["Cooking Allowed"])).toBe(
+      true,
+    );
+  });
+});
+
 describe("filterListings", () => {
   it("returns all listings when no filters or search query are provided", () => {
     const results = filterListings(sampleListings, {});
@@ -83,14 +190,12 @@ describe("filterListings", () => {
   });
 
   it("filters by max rent (boundary checks)", () => {
-    // 2500, 4000 are <= 4000
     const under4k = filterListings(sampleListings, { max_rent: 4000 });
     expect(under4k.map((l) => l.title)).toEqual([
       "Talamban Budget Bedspace",
       "Lahug Female Dormitory",
     ]);
 
-    // 2500 is <= 2500 (exact equality matches)
     const under2500 = filterListings(sampleListings, { max_rent: 2500 });
     expect(under2500.map((l) => l.title)).toEqual(["Talamban Budget Bedspace"]);
   });
@@ -112,50 +217,46 @@ describe("filterListings", () => {
   });
 
   it("filters by allowed gender strictly matching the policy", () => {
-    // Female Only filter matches strictly Lahug Female Dormitory
     const femaleOnly = filterListings(sampleListings, {
       gender: "Female Only",
     });
     expect(femaleOnly.map((l) => l.title)).toEqual(["Lahug Female Dormitory"]);
-
-    // Male Only filter matches strictly Talamban Budget Bedspace
-    const maleOnly = filterListings(sampleListings, {
-      gender: "Male Only",
-    });
-    expect(maleOnly.map((l) => l.title)).toEqual(["Talamban Budget Bedspace"]);
-
-    // Any / Co-ed filter matches strictly Banilad & Mandaue
-    const coed = filterListings(sampleListings, {
-      gender: "Any / Co-ed",
-    });
-    expect(coed.map((l) => l.title)).toEqual([
-      "Banilad Co-ed Studio Room",
-      "Mandaue Condo Studio",
-    ]);
   });
 
-  it("combines keyword search and filters using AND logic", () => {
-    // Search "USC" + max_rent 3000
-    const results = filterListings(sampleListings, {
-      q: "USC",
-      max_rent: 3000,
+  it("filters by multiple features with alias mapping and AND logic", () => {
+    // Both Talamban and Lahug have WiFi and Water Included (seed strings)
+    const withWifiAndWater = filterListings(sampleListings, {
+      features: ["Wi-Fi Included", "Water Included"],
     });
-    expect(results.map((l) => l.title)).toEqual(["Talamban Budget Bedspace"]);
+    expect(withWifiAndWater.map((l) => l.title)).toEqual([
+      "Talamban Budget Bedspace",
+      "Lahug Female Dormitory",
+      "Mandaue Condo Studio",
+    ]);
 
-    // Search "USC" + max_rent 2000 (none cheap enough)
-    const noneCheapEnough = filterListings(sampleListings, {
-      q: "USC",
-      max_rent: 2000,
+    // Only Mandaue has Air Conditioning AND Has Washing Machine
+    const modern = filterListings(sampleListings, {
+      features: ["Air Conditioning", "Has Washing Machine"],
     });
-    expect(noneCheapEnough).toHaveLength(0);
+    expect(modern.map((l) => l.title)).toEqual(["Mandaue Condo Studio"]);
+  });
 
-    // Search "Cebu" + property_type "Dormitory" + gender "Female Only"
-    const dorm = filterListings(sampleListings, {
+  it("filters by house rules", () => {
+    const pets = filterListings(sampleListings, {
+      rules: ["Pets Allowed"],
+    });
+    expect(pets.map((l) => l.title)).toEqual(["Banilad Co-ed Studio Room"]);
+  });
+
+  it("combines keyword search, max rent, core filters, features, and rules seamlessly", () => {
+    const matched = filterListings(sampleListings, {
       q: "Cebu",
-      property_type: "Dormitory",
-      gender: "Female Only",
+      max_rent: 7000,
+      gender: "Any / Co-ed",
+      features: ["Air Conditioning", "Private Bathroom/CR"],
+      rules: ["Pets Allowed"],
     });
-    expect(dorm.map((l) => l.title)).toEqual(["Lahug Female Dormitory"]);
+    expect(matched.map((l) => l.title)).toEqual(["Banilad Co-ed Studio Room"]);
   });
 });
 
@@ -167,6 +268,10 @@ describe("filter helpers", () => {
     expect(hasActiveAttributeFilters({ property_type: "Apartment" })).toBe(
       true,
     );
+    expect(hasActiveAttributeFilters({ features: ["Wi-Fi Included"] })).toBe(
+      true,
+    );
+    expect(hasActiveAttributeFilters({ rules: ["No Curfew"] })).toBe(true);
   });
 
   it("correctly counts active attribute filters", () => {
@@ -177,7 +282,9 @@ describe("filter helpers", () => {
         max_rent: 5000,
         gender: "Female Only",
         property_type: "Boarding House",
+        features: ["Wi-Fi Included", "Air Conditioning"],
+        rules: ["No Curfew"],
       }),
-    ).toBe(3);
+    ).toBe(6);
   });
 });

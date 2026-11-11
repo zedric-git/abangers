@@ -12,7 +12,7 @@ export const metadata = {
 };
 
 const PUBLIC_LISTING_COLUMNS =
-  "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, created_at";
+  "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, created_at, amenities, utilities, room_features, bathroom_features, kitchen_features, laundry_features, safety_features, house_rules";
 
 export default async function ListingsPage() {
   const supabase = await createClient();
