@@ -1,8 +1,14 @@
 import Link from "next/link";
-import { Home, AlertTriangle, RefreshCw } from "lucide-react";
+import { redirect } from "next/navigation";
+import { AlertCircle, AlertTriangle, Home, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { dashboardFor, parseRole } from "@/lib/auth/post-login";
 import PublicListingsView from "@/components/PublicListingsView";
 import HeaderAuthButtons from "@/components/HeaderAuthButtons";
+import {
+  MISSING_LISTING_NOTICE,
+  MISSING_PUBLIC_LISTING_NOTE,
+} from "@/lib/listing-lookup";
 import type { ListingPreview } from "@/types/listing";
 import { parseListingFilterParams } from "@/lib/validations/listing-filters";
 
@@ -20,34 +26,36 @@ export default async function PublicListingsPage({
 }: PublicListingsPageProps) {
   const resolvedParams = await searchParams;
   const initialFilters = parseListingFilterParams(resolvedParams);
+  // A missing listing's page sends the visitor here with ?notice= (#93).
+  const showMissingListingNote =
+    resolvedParams.notice === MISSING_LISTING_NOTICE;
 
   const supabase = await createClient();
 
   // Check if user is logged in to show a quick dashboard shortcut in the header
-  // and to enable heart-saving favorites on listing cards.
+  // and to hide the favorite hearts from landlords and admins.
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   let dashboardPath: string | null = null;
   let userRole: string | null = null;
-  let favoritedIds: string[] = [];
 
   if (user) {
-    const [{ data: profile }, { data: favRows }] = await Promise.all([
-      supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
-      supabase.from("favorites").select("listing_id").eq("renter_id", user.id),
-    ]);
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
 
-    userRole = profile?.role ?? "renter";
-    favoritedIds = (favRows ?? []).map((r) => r.listing_id);
-
-    if (profile?.role === "landlord") {
-      dashboardPath = "/dashboard/landlord";
-    } else if (profile?.role === "admin") {
-      dashboardPath = "/dashboard/admin";
-    } else {
-      dashboardPath = "/dashboard/renter";
+    const role = parseRole(profile?.role);
+    // Renters browse in their dashboard's Find a Place, not here.
+    if (role === "renter") {
+      redirect("/dashboard/renter");
+    }
+    userRole = role;
+    if (role) {
+      dashboardPath = dashboardFor(role);
     }
   }
 
@@ -95,6 +103,17 @@ export default async function PublicListingsPage({
 
       {/* Main Content: Natural document scrolling down the page */}
       <main className="mx-auto flex h-full min-h-0 w-full max-w-7xl flex-1 flex-col overflow-hidden px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 lg:px-8">
+        {/* After a missing listing's redirect: say why they landed here (#93) */}
+        {showMissingListingNote && (
+          <div
+            role="status"
+            className="mb-4 flex shrink-0 items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <p>{MISSING_PUBLIC_LISTING_NOTE}</p>
+          </div>
+        )}
+
         <div className="flex h-full min-h-0 w-full flex-1 flex-col">
           {/* Error state if database query fails (distinct from 0 listings) */}
           {error ? (
@@ -123,7 +142,6 @@ export default async function PublicListingsPage({
             <PublicListingsView
               listings={listings}
               initialFilters={initialFilters}
-              favoritedIds={favoritedIds}
               userRole={userRole}
               isAuthenticated={Boolean(user)}
               variant="public"
