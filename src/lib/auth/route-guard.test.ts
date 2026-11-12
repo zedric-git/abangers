@@ -2,22 +2,23 @@ import { describe, expect, it } from "vitest";
 import { guardRedirect, isGuardedPath } from "./route-guard";
 
 describe("isGuardedPath", () => {
-  it("guards the dashboards and profile setup", () => {
+  it("guards the dashboards, profile setup, and listing detail pages", () => {
     expect(isGuardedPath("/dashboard")).toBe(true);
     expect(isGuardedPath("/dashboard/landlord")).toBe(true);
     expect(isGuardedPath("/dashboard/renter/saved")).toBe(true);
     expect(isGuardedPath("/profile-setup")).toBe(true);
     expect(isGuardedPath("/renter/profile-setup")).toBe(true);
+    expect(isGuardedPath("/listings/123")).toBe(true);
   });
 
-  it("leaves other pages alone", () => {
+  it("leaves public pages alone", () => {
     expect(isGuardedPath("/")).toBe(false);
     expect(isGuardedPath("/listings")).toBe(false);
-    expect(isGuardedPath("/listings/123")).toBe(false);
     // Only whole path segments count.
     expect(isGuardedPath("/dashboards")).toBe(false);
     expect(isGuardedPath("/profile-setup-help")).toBe(false);
     expect(isGuardedPath("/renter/profile-setup-help")).toBe(false);
+    expect(isGuardedPath("/listings-help")).toBe(false);
   });
 });
 
@@ -25,15 +26,11 @@ describe("guardRedirect", () => {
   describe("public pages (#85)", () => {
     it("never redirects unauthenticated guests on /listings", () => {
       expect(guardRedirect("/listings", false, null)).toBeNull();
-      expect(guardRedirect("/listings/123", false, null)).toBeNull();
       expect(guardRedirect("/", false, null)).toBeNull();
     });
 
     it("never redirects authenticated users on /listings", () => {
       expect(guardRedirect("/listings", true, "/dashboard/renter")).toBeNull();
-      expect(
-        guardRedirect("/listings/123", true, "/dashboard/landlord"),
-      ).toBeNull();
     });
   });
   describe("/profile-setup (#233)", () => {
@@ -61,6 +58,29 @@ describe("guardRedirect", () => {
 
     it("sends a user with no usable role to the home page", () => {
       expect(guardRedirect("/profile-setup", true, null)).toBe("/");
+    });
+  });
+
+  describe("/listings/<id> (#93)", () => {
+    it("sends a signed-out visitor to the home page", () => {
+      expect(guardRedirect("/listings/123", false, null)).toBe("/");
+    });
+
+    it("lets any signed-in user with a valid role view the listing details", () => {
+      expect(
+        guardRedirect("/listings/123", true, "/dashboard/renter"),
+      ).toBeNull();
+      expect(
+        guardRedirect("/listings/123", true, "/dashboard/landlord"),
+      ).toBeNull();
+      expect(
+        guardRedirect("/listings/123", true, "/dashboard/admin"),
+      ).toBeNull();
+      expect(guardRedirect("/listings/123", true, "/profile-setup")).toBeNull();
+    });
+
+    it("sends a user with no usable role to the home page", () => {
+      expect(guardRedirect("/listings/123", true, null)).toBe("/");
     });
   });
 

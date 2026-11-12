@@ -405,7 +405,10 @@ export default function LandlordListingForm({
 
           {/* Shared Detail Component */}
           <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-2xs sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
-            <ListingDetailView listing={getValues() as ListingInput} />
+            <ListingDetailView
+              listing={getValues() as ListingInput}
+              audience="landlord"
+            />
           </div>
 
           {/* Bottom Actions Footer */}

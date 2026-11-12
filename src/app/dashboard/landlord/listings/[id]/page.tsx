@@ -99,7 +99,10 @@ export default async function LandlordListingDetailPage({
 
       {/* Reusable Public Listing Detail View */}
       <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <ListingDetailView listing={listingRowToFormValues(listing)} />
+        <ListingDetailView
+          listing={listingRowToFormValues(listing)}
+          audience="landlord"
+        />
       </div>
     </div>
   );

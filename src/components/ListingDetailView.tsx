@@ -28,6 +28,7 @@ interface ListingDetailViewProps {
   // in, and saved rows can have empty optional columns.
   listing: Partial<ListingInput>;
   isPreview?: boolean;
+  audience?: "landlord" | "renter";
   /**
    * Optional action slot (e.g. FavoriteButton on public detail page, S2-08 #96).
    */
@@ -36,6 +37,7 @@ interface ListingDetailViewProps {
 
 export default function ListingDetailView({
   listing,
+  audience = "renter",
   action,
 }: ListingDetailViewProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<string>(
@@ -87,7 +89,7 @@ export default function ListingDetailView({
 
           {/* Status Badge Overlay */}
           <div className="absolute top-4 left-4 z-10 flex flex-wrap gap-2">
-            {isCoverActive && (
+            {audience === "landlord" && isCoverActive && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-purple-700/90 px-3.5 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur-md dark:bg-purple-600/90">
                 <Star className="h-3.5 w-3.5 fill-current text-yellow-300" />
                 Cover Photo
@@ -487,7 +489,9 @@ export default function ListingDetailView({
               Landlord Contact Details
             </h3>
             <p className="mt-0.5 text-xs text-purple-700 dark:text-purple-300">
-              Renters will reach out to you via the contact info below.
+              {audience === "landlord"
+                ? "Renters will reach out to you via the contact info below."
+                : "Reach out to the landlord via the contact info below."}
             </p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-purple-950 shadow-xs dark:bg-purple-900 dark:text-purple-100">
