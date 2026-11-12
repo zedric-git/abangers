@@ -20,8 +20,8 @@ export default function RenterFavoritesPage() {
         </div>
         <h2 className="mt-4 text-base font-semibold">No favorites saved yet</h2>
         <p className="text-muted-foreground mx-auto mt-1.5 max-w-sm text-sm">
-          Saving listings to your favorites is coming soon. In the meantime, you
-          can browse available boarding houses and rooms.
+          Listings you save will show up here soon. In the meantime, you can
+          browse available boarding houses and rooms.
         </p>
         <div className="mt-6">
           <Button
