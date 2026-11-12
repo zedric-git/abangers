@@ -20,6 +20,10 @@ interface PublicListingCardProps {
    * Intercepts card click for unauthenticated guests, opening the Auth Modal (#86).
    */
   onRequireAuth?: (listing: ListingPreview) => void;
+  /**
+   * Optional custom footer slot (e.g. 2-tier action buttons for favorites).
+   */
+  footer?: React.ReactNode;
 }
 
 /**
@@ -33,6 +37,7 @@ export default function PublicListingCard({
   action,
   flagOccupied = false,
   onRequireAuth,
+  footer,
 }: PublicListingCardProps) {
   const coverPhoto = listing.cover_image || listing.images?.[0] || "";
   const statusView = listingStatusView(listing.availability_status);
@@ -166,6 +171,13 @@ export default function PublicListingCard({
             </span>
           )}
         </div>
+
+        {/* Optional Action Buttons Footer (e.g. 2-Tier Buttons from S2-09.1 #98) */}
+        {footer && (
+          <div className="relative z-20 mt-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+            {footer}
+          </div>
+        )}
       </div>
     </article>
   );

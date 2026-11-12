@@ -2,10 +2,20 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Heart, Search, X } from "lucide-react";
+import {
+  Heart,
+  Search,
+  X,
+  Trash2,
+  Eye,
+  MessageSquare,
+  CalendarCheck,
+} from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
 import PublicListingCard from "@/components/PublicListingCard";
 import FavoriteButton from "@/components/FavoriteButton";
+import { createClient } from "@/lib/supabase/client";
+import { removeFavorite } from "@/lib/favorites";
 
 interface RenterFavoritesListProps {
   initialListings: ListingPreview[];
@@ -27,6 +37,7 @@ export default function RenterFavoritesList({
 }: RenterFavoritesListProps) {
   const [listings, setListings] = useState<ListingPreview[]>(initialListings);
   const [searchQuery, setSearchQuery] = useState("");
+  const supabase = createClient();
 
   const handleToggle = (listing: ListingPreview, nextState: boolean) => {
     if (!nextState) {
@@ -39,6 +50,11 @@ export default function RenterFavoritesList({
         return [listing, ...prev];
       });
     }
+  };
+
+  const handleRemove = async (id: string) => {
+    setListings((prev) => prev.filter((item) => item.id !== id));
+    await removeFavorite(supabase, id);
   };
 
   const filteredListings = listings.filter((item) => {
@@ -160,6 +176,47 @@ export default function RenterFavoritesList({
                   userRole="renter"
                   onToggle={(favorited) => handleToggle(listing, favorited)}
                 />
+              }
+              footer={
+                <div className="space-y-2.5">
+                  {/* Row 1: Remove on left, View & Inquire on right */}
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(listing.id)}
+                      className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-rose-500 transition-colors hover:text-rose-600"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Remove</span>
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      <Link
+                        href={`/dashboard/renter/listings/${listing.id}?from=favorites`}
+                        className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-purple-600"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>View</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/renter/messages"
+                        className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-purple-600"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        <span>Inquire</span>
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Row 2: Schedule Viewing full-width button */}
+                  <Link
+                    href="/dashboard/renter/viewings"
+                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-purple-600 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-purple-700 active:bg-purple-800"
+                  >
+                    <CalendarCheck className="h-3.5 w-3.5" />
+                    <span>Schedule Viewing</span>
+                  </Link>
+                </div>
               }
             />
           ))}
