@@ -295,6 +295,27 @@ export default function PublicListingsView({
   const router = useRouter();
   const pathname = usePathname();
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  // The listing a guest tried to open, for the sign-up prompt (#86). Null
+  // when the prompt was opened from a favorite heart.
+  const [promptListing, setPromptListing] = useState<ListingPreview | null>(
+    null,
+  );
+
+  // Guests get the sign-up prompt instead of the listing page (#86). It
+  // names the listing, and logging in from it opens that listing.
+  const openListingPrompt = (listing: ListingPreview) => {
+    setPromptListing(listing);
+    setAuthModalOpen(true);
+  };
+
+  const handleListingLinkClick = (
+    event: React.MouseEvent<HTMLAnchorElement>,
+    listing: ListingPreview,
+  ) => {
+    if (isAuthenticated) return;
+    event.preventDefault();
+    openListingPrompt(listing);
+  };
 
   const resolvedInitialQuery = initialFilters?.q ?? initialSearchQuery;
 
@@ -707,10 +728,12 @@ export default function PublicListingsView({
         longitude: lng,
         coverImage: cover,
         landlordVerified: true,
-        href: `/listings/${listing.id}`,
+        // No link for guests: the pin's View button opens the sign-up
+        // prompt instead (onViewDetails below, #86).
+        href: isAuthenticated ? `/listings/${listing.id}` : undefined,
       };
     });
-  }, [filteredListings]);
+  }, [filteredListings, isAuthenticated]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
@@ -1293,6 +1316,10 @@ export default function PublicListingsView({
                 listings={mapPins}
                 selectedId={selectedMapListingId}
                 onSelectListing={(id) => setSelectedMapListingId(id)}
+                onViewDetails={(id) => {
+                  const listing = filteredListings.find((l) => l.id === id);
+                  if (listing) openListingPrompt(listing);
+                }}
                 onToggleView={() => setViewMode("grid")}
               />
             </div>
@@ -1361,6 +1388,7 @@ export default function PublicListingsView({
                     <div className="relative h-52 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                       <Link
                         href={`/listings/${listing.id}`}
+                        onClick={(e) => handleListingLinkClick(e, listing)}
                         tabIndex={-1}
                         aria-hidden="true"
                         className="block h-full w-full"
@@ -1475,6 +1503,9 @@ export default function PublicListingsView({
                             <h2 className="mt-1 line-clamp-1 text-lg font-bold text-zinc-900 transition-colors group-hover:text-purple-600 dark:text-zinc-50 dark:group-hover:text-purple-400">
                               <Link
                                 href={`/listings/${listing.id}`}
+                                onClick={(e) =>
+                                  handleListingLinkClick(e, listing)
+                                }
                                 className="focus:outline-none"
                               >
                                 {listing.title}
@@ -1515,6 +1546,7 @@ export default function PublicListingsView({
                         <div className="flex items-center gap-2">
                           <Link
                             href={`/listings/${listing.id}`}
+                            onClick={(e) => handleListingLinkClick(e, listing)}
                             className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 py-2 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-500"
                           >
                             <Eye className="h-3.5 w-3.5" />
@@ -1592,13 +1624,31 @@ export default function PublicListingsView({
         </div>
       )}
 
-      {/* Guest Login / Sign-up Modal when clicking Favorite while signed out */}
-      <LandlordAuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        initialMode="login"
-        initialRole="renter"
-      />
+      {/* Guest Login / Sign-up Modal: from a listing (#86), or from a
+          favorite heart while signed out. Mounted only while open, so each
+          opening starts with its own mode and text. */}
+      {authModalOpen && (
+        <LandlordAuthModal
+          isOpen
+          onClose={() => {
+            setAuthModalOpen(false);
+            setPromptListing(null);
+          }}
+          initialMode={promptListing ? "signup" : "login"}
+          initialRole="renter"
+          promptTitle={
+            promptListing ? "Create an account to view details" : undefined
+          }
+          promptDescription={
+            promptListing
+              ? `Sign up or log in to view full photos, rules, and contact information for "${promptListing.title}".`
+              : undefined
+          }
+          redirectTo={
+            promptListing ? `/listings/${promptListing.id}` : undefined
+          }
+        />
+      )}
     </div>
   );
 }

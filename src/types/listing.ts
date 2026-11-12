@@ -15,7 +15,10 @@ import type { Database } from "@/types/database";
 export type Listing = Database["public"]["Tables"]["listings"]["Row"];
 
 /**
- * The subset of columns sent to the public browse page (S2-04, #14).
+ * The subset of columns sent to the public browse page (S2-04, S2-05, S2-06, #14, #15, #18).
+ * The amenity and house rule columns feed the filters, and the coordinates
+ * place the pins on the map view. Contact details (contact_info) are left
+ * out: they're reserved for signed-in detail views (#19).
  */
 export type ListingPreview = Pick<
   Listing,
@@ -34,20 +37,14 @@ export type ListingPreview = Pick<
   | "images"
   | "availability_status"
   | "created_at"
+  | "amenities"
+  | "utilities"
+  | "room_features"
+  | "bathroom_features"
+  | "kitchen_features"
+  | "laundry_features"
+  | "safety_features"
+  | "house_rules"
 > &
-  Partial<
-    Pick<
-      Listing,
-      | "amenities"
-      | "utilities"
-      | "room_features"
-      | "bathroom_features"
-      | "kitchen_features"
-      | "laundry_features"
-      | "safety_features"
-      | "house_rules"
-      | "contact_info"
-      | "latitude"
-      | "longitude"
-    >
-  >;
+  // Optional: the map view skips a listing without them.
+  Partial<Pick<Listing, "latitude" | "longitude">>;

@@ -10,6 +10,7 @@ import {
   UserCheck,
   Banknote,
   ChevronDown,
+  Sparkles,
 } from "lucide-react";
 import {
   PROPERTY_TYPES,
@@ -21,6 +22,11 @@ import {
 } from "@/lib/validations/listing";
 import type { ListingFilterParams } from "@/lib/validations/listing-filters";
 import { countActiveAttributeFilters } from "@/lib/filter-listings";
+import {
+  FEATURE_CATEGORIES,
+  HOUSE_RULES_OPTIONS,
+} from "@/lib/listing-features";
+import FilterCheckboxGroup from "@/components/FilterCheckboxGroup";
 import {
   Select,
   SelectContent,
@@ -47,13 +53,15 @@ const RENT_BUDGET_PRESETS = [
 ];
 
 /**
- * Filter controls for public listing discovery (S2-05, #15, #89).
+ * Filter controls for public listing discovery (S2-05, S2-06, #15, #18, #89, #91).
  *
  * Provides responsive controls for:
  * - Maximum rent (quick presets + custom input)
  * - Property type
  * - Room / occupancy type
  * - Allowed gender policy
+ * - 7 Detailed feature categories (Utilities, Room, Bathroom, Kitchen, Laundry, Safety, Parking)
+ * - Standard House Rules
  * - Active filter badges with one-click dismiss and "Reset all"
  */
 export default function ListingFilterControls({
@@ -63,6 +71,14 @@ export default function ListingFilterControls({
   className = "",
 }: ListingFilterControlsProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const selectedFeaturesCount = filters.features?.length ?? 0;
+  const selectedRulesCount = filters.rules?.length ?? 0;
+  const hasExtendedFilters =
+    selectedFeaturesCount > 0 || selectedRulesCount > 0;
+
+  const [isAmenitiesExpanded, setIsAmenitiesExpanded] =
+    useState(hasExtendedFilters);
+
   const [customRentInput, setCustomRentInput] = useState(
     filters.max_rent ? String(filters.max_rent) : "",
   );
@@ -90,6 +106,22 @@ export default function ListingFilterControls({
       setCustomRentInput("");
       onFilterChange("max_rent", undefined);
     }
+  };
+
+  const handleFeatureToggle = (featureName: string, checked: boolean) => {
+    const current = filters.features ?? [];
+    const next = checked
+      ? Array.from(new Set([...current, featureName]))
+      : current.filter((f) => f !== featureName);
+    onFilterChange("features", next.length > 0 ? next : undefined);
+  };
+
+  const handleRuleToggle = (ruleName: string, checked: boolean) => {
+    const current = filters.rules ?? [];
+    const next = checked
+      ? Array.from(new Set([...current, ruleName]))
+      : current.filter((r) => r !== ruleName);
+    onFilterChange("rules", next.length > 0 ? next : undefined);
   };
 
   return (
@@ -138,6 +170,7 @@ export default function ListingFilterControls({
           isMobileOpen ? "block" : "hidden"
         } mt-3 rounded-2xl border border-zinc-200 bg-white p-4 shadow-xs sm:mt-0 sm:block dark:border-zinc-800 dark:bg-zinc-900/70`}
       >
+        {/* Core Attributes Grid */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* 1. Max Rent Filter */}
           <div>
@@ -331,6 +364,61 @@ export default function ListingFilterControls({
           </div>
         </div>
 
+        {/* Detailed Amenities & House Rules Disclosure Header */}
+        <div className="mt-4 border-t border-zinc-100 pt-3 dark:border-zinc-800/80">
+          <button
+            type="button"
+            id="toggle-amenities-filters"
+            onClick={() => setIsAmenitiesExpanded((prev) => !prev)}
+            aria-expanded={isAmenitiesExpanded}
+            aria-controls="amenities-filters-panel"
+            className="flex items-center gap-2 text-xs font-semibold text-zinc-700 hover:text-purple-600 dark:text-zinc-300 dark:hover:text-purple-400"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
+            <span>Amenities & House Rules</span>
+            {(selectedFeaturesCount > 0 || selectedRulesCount > 0) && (
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-purple-600 px-1 text-[10px] font-bold text-white">
+                {selectedFeaturesCount + selectedRulesCount}
+              </span>
+            )}
+            <ChevronDown
+              className={`h-3.5 w-3.5 text-zinc-400 transition-transform ${
+                isAmenitiesExpanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {/* 7 Feature Groups + House Rules Checkboxes */}
+          {isAmenitiesExpanded && (
+            <div
+              id="amenities-filters-panel"
+              role="region"
+              aria-labelledby="toggle-amenities-filters"
+              className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-4"
+            >
+              {FEATURE_CATEGORIES.map((cat) => (
+                <FilterCheckboxGroup
+                  key={cat.id}
+                  id={cat.id}
+                  title={cat.title}
+                  options={cat.options}
+                  selectedValues={filters.features ?? []}
+                  onChange={handleFeatureToggle}
+                />
+              ))}
+
+              {/* 8. House Rules Group */}
+              <FilterCheckboxGroup
+                id="house-rules"
+                title="House Rules"
+                options={HOUSE_RULES_OPTIONS}
+                selectedValues={filters.rules ?? []}
+                onChange={handleRuleToggle}
+              />
+            </div>
+          )}
+        </div>
+
         {/* Active Filter Badges Bar */}
         {activeCount > 0 && (
           <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800/80">
@@ -338,6 +426,7 @@ export default function ListingFilterControls({
               Active filters:
             </span>
 
+            {/* Max Rent Badge */}
             {filters.max_rent !== undefined && (
               <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
                 ≤ ₱{filters.max_rent.toLocaleString()}
@@ -355,6 +444,7 @@ export default function ListingFilterControls({
               </span>
             )}
 
+            {/* Property Type Badge */}
             {filters.property_type && (
               <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
                 {filters.property_type}
@@ -369,6 +459,7 @@ export default function ListingFilterControls({
               </span>
             )}
 
+            {/* Occupancy Type Badge */}
             {filters.occupancy && (
               <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
                 {filters.occupancy}
@@ -383,6 +474,7 @@ export default function ListingFilterControls({
               </span>
             )}
 
+            {/* Allowed Gender Badge */}
             {filters.gender && (
               <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
                 {filters.gender}
@@ -396,6 +488,42 @@ export default function ListingFilterControls({
                 </button>
               </span>
             )}
+
+            {/* Feature Badges */}
+            {filters.features?.map((feature) => (
+              <span
+                key={feature}
+                className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300"
+              >
+                {feature}
+                <button
+                  type="button"
+                  onClick={() => handleFeatureToggle(feature, false)}
+                  className="rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
+                  aria-label={`Remove feature ${feature} filter`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+
+            {/* House Rule Badges */}
+            {filters.rules?.map((rule) => (
+              <span
+                key={rule}
+                className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2.5 py-1 text-xs font-medium text-purple-700 dark:bg-purple-950/50 dark:text-purple-300"
+              >
+                Rule: {rule}
+                <button
+                  type="button"
+                  onClick={() => handleRuleToggle(rule, false)}
+                  className="rounded-full p-0.5 hover:bg-purple-200 dark:hover:bg-purple-800"
+                  aria-label={`Remove rule ${rule} filter`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
 
             <button
               type="button"

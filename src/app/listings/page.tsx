@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Home, AlertTriangle, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PublicListingsView from "@/components/PublicListingsView";
-import ListingsNavbarActions from "@/components/ListingsNavbarActions";
+import HeaderAuthButtons from "@/components/HeaderAuthButtons";
 import type { ListingPreview } from "@/types/listing";
 import { parseListingFilterParams } from "@/lib/validations/listing-filters";
 
@@ -62,20 +62,34 @@ export default async function PublicListingsPage({
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-zinc-50/70 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
-      {/* Top Navigation Bar (3rd Pic: Abangers logo on left, Home + Sign-in + Log-in on right) */}
+      {/* Top Navigation Bar: Abangers logo on the left; Home and Log In /
+          Sign Up (guests) or My Dashboard / Log Out (signed in) on the right (#86) */}
       <header className="sticky top-0 z-30 shrink-0 border-b border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
           <Link
             href="/"
-            className="flex items-center gap-2.5 text-lg font-bold tracking-tight transition-opacity hover:opacity-85"
+            className="flex shrink-0 items-center gap-2 transition-opacity hover:opacity-90 sm:gap-2.5"
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-600 text-white shadow-sm shadow-purple-500/20">
-              <Home className="h-4.5 w-4.5" />
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-600 text-white shadow-xs">
+              <Home className="h-5 w-5" />
             </div>
-            <span>Abangers</span>
+            <span className="text-base font-bold tracking-tight text-zinc-950 sm:text-lg dark:text-zinc-50">
+              Abangers
+            </span>
           </Link>
 
-          <ListingsNavbarActions dashboardPath={dashboardPath} />
+          <nav className="flex items-center gap-1.5 sm:gap-3">
+            <Link
+              href="/"
+              className="rounded-xl px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900 sm:px-3.5 sm:py-2 sm:text-sm dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
+            >
+              Home
+            </Link>
+            <HeaderAuthButtons
+              isAuthenticated={Boolean(user)}
+              dashboardPath={dashboardPath}
+            />
+          </nav>
         </div>
       </header>
 
