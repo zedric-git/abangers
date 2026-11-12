@@ -106,14 +106,14 @@ export default function RenterLayout({
             ? "overflow-hidden p-3 md:p-4"
             : isFindPlacePage
               ? "flex h-full flex-col overflow-hidden p-4 md:px-6 md:pt-6 md:pb-4"
-              : "custom-scrollbar overflow-y-auto px-4 py-6 md:px-8 md:py-8"
+              : "custom-scrollbar overflow-y-auto p-4 md:px-6 md:pt-6 md:pb-8"
         }`}
       >
         <div
           className={
             isMessagesPage || isFindPlacePage
               ? "flex h-full min-h-0 w-full flex-1 flex-col"
-              : "mx-auto max-w-6xl"
+              : "w-full"
           }
         >
           {children}
