@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Building, MapPin, Users } from "lucide-react";
+import { AlertCircle, Building, MapPin, Users } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
 import { listingStatusView } from "@/lib/listing-status-view";
+import { cn } from "@/lib/utils";
 
 interface PublicListingCardProps {
   listing: ListingPreview;
@@ -11,9 +12,18 @@ interface PublicListingCardProps {
    */
   action?: React.ReactNode;
   /**
+   * Visually flag if the listing is occupied/unavailable with an alert banner
+   * and subtle muted overlay (S2-09.2, #99).
+   */
+  flagOccupied?: boolean;
+  /**
    * Intercepts card click for unauthenticated guests, opening the Auth Modal (#86).
    */
   onRequireAuth?: (listing: ListingPreview) => void;
+  /**
+   * Optional custom footer slot (e.g. 2-tier action buttons for favorites).
+   */
+  footer?: React.ReactNode;
 }
 
 /**
@@ -25,13 +35,23 @@ interface PublicListingCardProps {
 export default function PublicListingCard({
   listing,
   action,
+  flagOccupied = false,
   onRequireAuth,
+  footer,
 }: PublicListingCardProps) {
   const coverPhoto = listing.cover_image || listing.images?.[0] || "";
   const statusView = listingStatusView(listing.availability_status);
+  const isOccupied = statusView.group === "occupied";
+  const showOccupiedFlag = flagOccupied && isOccupied;
 
   return (
-    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
+    <article
+      className={cn(
+        "group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700",
+        showOccupiedFlag &&
+          "border-rose-200/70 opacity-90 dark:border-rose-950/50 dark:opacity-85",
+      )}
+    >
       {/* Clickable Overlay — Link when authenticated, or Auth Prompt button for guests (#86) */}
       {onRequireAuth ? (
         <button
@@ -83,6 +103,14 @@ export default function PublicListingCard({
 
       {/* Content */}
       <div className="flex flex-1 flex-col p-4 sm:p-5">
+        {/* Occupancy Warning Banner (S2-09.2, #99) */}
+        {showOccupiedFlag && (
+          <div className="mb-3 flex items-center gap-1.5 rounded-lg bg-rose-50 px-2.5 py-1.5 text-xs font-semibold text-rose-700 dark:bg-rose-950/60 dark:text-rose-300">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-rose-600 dark:text-rose-400" />
+            <span>This property is currently full.</span>
+          </div>
+        )}
+
         {/* Price & Occupancy */}
         <div className="flex items-baseline justify-between gap-2">
           <div className="flex items-baseline gap-1">
@@ -143,6 +171,13 @@ export default function PublicListingCard({
             </span>
           )}
         </div>
+
+        {/* Optional Action Buttons Footer (e.g. 2-Tier Buttons from S2-09.1 #98) */}
+        {footer && (
+          <div className="relative z-20 mt-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+            {footer}
+          </div>
+        )}
       </div>
     </article>
   );

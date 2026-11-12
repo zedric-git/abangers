@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/types/database";
+import type { ListingPreview } from "@/types/listing";
 
 export const DUPLICATE_KEY_ERROR_CODE = "23505";
 export const FAVORITE_SAVE_ERROR_MESSAGE =
@@ -8,11 +9,16 @@ export const FAVORITE_REMOVE_ERROR_MESSAGE =
   "Unable to remove from favorites. Please try again.";
 export const FAVORITE_UNAUTHENTICATED_MESSAGE =
   "You must be logged in as a renter to save favorites.";
+export const FAVORITES_LOAD_ERROR_MESSAGE =
+  "We couldn't load your saved favorites. Refresh the page to try again.";
 
 export type FavoriteActionResult = {
   ok: boolean;
   error?: string;
 };
+
+export type FavoritedListingsResult =
+  { ok: true; listings: ListingPreview[] } | { ok: false; error: string };
 
 export interface FavoriteTransitionState {
   isFavorited: boolean;
@@ -132,4 +138,49 @@ export async function getFavoritedListingIds(
   }
 
   return new Set(data.map((row) => row.listing_id));
+}
+
+export const FAVORITE_LISTING_COLUMNS =
+  "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, created_at";
+
+/**
+ * Fetches the saved listings for the currently authenticated renter (#98).
+ * Joined with listings and sorted newest saved first (created_at descending).
+ * Returns a failed result if the query errors out, never an empty list.
+ */
+export async function getFavoritedListings(
+  supabase: SupabaseClient<Database>,
+): Promise<FavoritedListingsResult> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { ok: false, error: FAVORITE_UNAUTHENTICATED_MESSAGE };
+  }
+
+  const { data, error } = await supabase
+    .from("favorites")
+    .select(
+      `
+      created_at,
+      listing_id,
+      listing:listings!favorites_listing_id_fkey (${FAVORITE_LISTING_COLUMNS})
+    `,
+    )
+    .eq("renter_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return { ok: false, error: FAVORITES_LOAD_ERROR_MESSAGE };
+  }
+
+  const listings: ListingPreview[] = [];
+  for (const row of data || []) {
+    if (row.listing) {
+      listings.push(row.listing as unknown as ListingPreview);
+    }
+  }
+
+  return { ok: true, listings };
 }

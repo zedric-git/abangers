@@ -5,11 +5,13 @@ import {
   addFavorite,
   removeFavorite,
   getFavoritedListingIds,
+  getFavoritedListings,
   resolveFavoriteStateAfterAction,
   DUPLICATE_KEY_ERROR_CODE,
   FAVORITE_SAVE_ERROR_MESSAGE,
   FAVORITE_REMOVE_ERROR_MESSAGE,
   FAVORITE_UNAUTHENTICATED_MESSAGE,
+  FAVORITES_LOAD_ERROR_MESSAGE,
 } from "./favorites";
 
 const TEST_USER_ID = "00000000-0000-0000-0000-000000000001";
@@ -19,7 +21,7 @@ function makeMockClient({
   userId = TEST_USER_ID as string | null,
   insertError = null as { code: string; message: string } | null,
   deleteError = null as { code: string; message: string } | null,
-  selectData = null as { listing_id: string }[] | null,
+  selectData = null as unknown[] | null,
   selectError = null as { code: string; message: string } | null,
 } = {}) {
   let insertedPayload: unknown = null;
@@ -55,6 +57,7 @@ function makeMockClient({
         select: () => {
           const chain = {
             eq: () => chain,
+            order: () => chain,
             then: async (
               resolve: (val: {
                 data: typeof selectData;
@@ -204,6 +207,97 @@ describe("getFavoritedListingIds (#97)", () => {
     const ids = await getFavoritedListingIds(client);
 
     expect(ids.size).toBe(0);
+  });
+});
+
+describe("getFavoritedListings (#98)", () => {
+  const sampleListing1 = {
+    id: "l-1",
+    title: "Cozy Studio near CITU",
+    monthly_rent: 4500,
+    available_rooms: 2,
+    total_rooms: 4,
+    property_type: "Studio",
+    occupancy_type: "Single",
+    allowed_gender: "Any",
+    address: "123 N. Bacalso Ave",
+    city: "Cebu City",
+    description: "Quiet study room",
+    cover_image: "https://example.com/1.jpg",
+    images: [],
+    availability_status: "available",
+    created_at: "2026-11-08T00:00:00Z",
+  };
+
+  const sampleListing2 = {
+    id: "l-2",
+    title: "Spacious Bedspace in Lahug",
+    monthly_rent: 3000,
+    available_rooms: 0,
+    total_rooms: 6,
+    property_type: "Bedspace",
+    occupancy_type: "Shared",
+    allowed_gender: "Female only",
+    address: "456 Salinas Dr",
+    city: "Cebu City",
+    description: "Near IT Park",
+    cover_image: "https://example.com/2.jpg",
+    images: [],
+    availability_status: "fully_occupied",
+    created_at: "2026-11-07T00:00:00Z",
+  };
+
+  it("returns list of favorited listings sorted and filters out missing listings", async () => {
+    const { client } = makeMockClient({
+      selectData: [
+        {
+          created_at: "2026-11-09T01:00:00Z",
+          listing_id: "l-1",
+          listing: sampleListing1,
+        },
+        {
+          created_at: "2026-11-08T01:00:00Z",
+          listing_id: "l-2",
+          listing: sampleListing2,
+        },
+        {
+          created_at: "2026-11-07T01:00:00Z",
+          listing_id: "l-deleted",
+          listing: null,
+        },
+      ],
+    });
+    const result = await getFavoritedListings(client);
+
+    expect(result).toEqual({
+      ok: true,
+      listings: [sampleListing1, sampleListing2],
+    });
+  });
+
+  it("returns unauthenticated error when user is not logged in", async () => {
+    const { client } = makeMockClient({ userId: null });
+    const result = await getFavoritedListings(client);
+
+    expect(result).toEqual({
+      ok: false,
+      error: FAVORITE_UNAUTHENTICATED_MESSAGE,
+    });
+  });
+
+  it("returns user-friendly error message when query fails", async () => {
+    const { client } = makeMockClient({
+      selectError: {
+        code: "50000",
+        message: "Failed to connect to database",
+      },
+    });
+    const result = await getFavoritedListings(client);
+
+    expect(result).toEqual({
+      ok: false,
+      error: FAVORITES_LOAD_ERROR_MESSAGE,
+    });
   });
 });
 
