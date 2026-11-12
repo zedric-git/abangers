@@ -7,6 +7,7 @@ import {
   Heart,
   User,
   LogOut,
+  Bell,
   CalendarCheck,
   MessageSquare,
 } from "lucide-react";
@@ -32,7 +33,7 @@ export default function RenterLayout({
     // Top Group
     {
       label: "Find a Place",
-      href: "/listings",
+      href: "/dashboard/renter",
       icon: Search,
       description: "Search properties and explore listings",
     },
@@ -59,6 +60,14 @@ export default function RenterLayout({
     },
 
     // Bottom Group
+    {
+      label: "Notifications",
+      href: "/dashboard/renter/notifications",
+      icon: Bell,
+      badge: 2,
+      position: "bottom",
+      description: "Recent updates and alerts",
+    },
     {
       label: "Profile",
       href: "/dashboard/renter/profile",
@@ -90,7 +99,6 @@ export default function RenterLayout({
         userRoleLabel="Renter Dashboard"
       />
 
-      {/* Main Content Area: route-aware content scrolling */}
       {/* Main Content Area: route-aware content scrolling */}
       <main
         className={`bg-background min-w-0 flex-1 ${

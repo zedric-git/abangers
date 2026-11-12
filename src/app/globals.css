@@ -65,6 +65,7 @@ input:-webkit-autofill:active {
 }
 
 /* Remove native Windows arrow buttons on scrollbars */
+*::-webkit-scrollbar-button,
 ::-webkit-scrollbar-button {
   display: none !important;
   width: 0 !important;
@@ -75,12 +76,6 @@ input:-webkit-autofill:active {
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;
-  /*
-    Only the scrollbar transitions here. Theme background fades come from
-    the shared --background transition on <html> (see top of file), so
-    don't add background-color here; a second, separate transition is what
-    let <main> and the sidebar's active tab drift out of sync.
-  */
   transition: scrollbar-color 0.2s ease;
 }
 
@@ -121,4 +116,48 @@ input:-webkit-autofill:active {
 
 .dark .custom-scrollbar:hover::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.45);
+}
+
+/* Leaflet popup customization for Renter Map View */
+.renter-map-popup .leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  overflow: hidden !important;
+  border-radius: 1rem !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.renter-map-popup .leaflet-popup-content {
+  margin: 0 !important;
+  line-height: inherit !important;
+}
+
+.renter-map-popup .leaflet-popup-tip-container {
+  margin-top: -1px;
+}
+
+.renter-map-popup a {
+  color: inherit !important;
+}
+
+.renter-map-popup .leaflet-popup-close-button {
+  top: 8px !important;
+  right: 8px !important;
+  color: #71717a !important;
+  font-size: 16px !important;
+  z-index: 20 !important;
+  width: 22px !important;
+  height: 22px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 9999px !important;
+  background-color: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(4px) !important;
+  transition: all 0.15s ease !important;
+}
+
+.renter-map-popup .leaflet-popup-close-button:hover {
+  color: #18181b !important;
+  background-color: #ffffff !important;
 }

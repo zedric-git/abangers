@@ -1,77 +1,70 @@
 import Link from "next/link";
-import { Suspense } from "react";
-import { AlertCircle, Home } from "lucide-react";
+import { Home, AlertTriangle, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
-import { dashboardFor, parseRole } from "@/lib/auth/post-login";
 import PublicListingsView from "@/components/PublicListingsView";
 import HeaderAuthButtons from "@/components/HeaderAuthButtons";
+import type { ListingPreview } from "@/types/listing";
+import { parseListingFilterParams } from "@/lib/validations/listing-filters";
 
-export const metadata = {
-  title: "Browse Listings | Abangers",
-  description:
-    "Search boarding houses, bedspaces, and apartments for rent near universities and workplaces in Cebu.",
-};
+export const dynamic = "force-dynamic";
 
-const PUBLIC_LISTING_COLUMNS =
-  "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, created_at, amenities, utilities, room_features, bathroom_features, kitchen_features, laundry_features, safety_features, house_rules";
+export const PUBLIC_LISTING_COLUMNS =
+  "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, amenities, utilities, room_features, bathroom_features, kitchen_features, laundry_features, safety_features, house_rules, latitude, longitude, created_at";
 
-export default async function ListingsPage() {
+interface PublicListingsPageProps {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+export default async function PublicListingsPage({
+  searchParams,
+}: PublicListingsPageProps) {
+  const resolvedParams = await searchParams;
+  const initialFilters = parseListingFilterParams(resolvedParams);
+
   const supabase = await createClient();
 
-  // Load public available listings and current user session in parallel
-  const [{ data: rawListings, error }, { data: authData }] = await Promise.all([
-    supabase
-      .from("listings")
-      .select(PUBLIC_LISTING_COLUMNS)
-      .in("availability_status", ["available", "almost_full"])
-      .order("created_at", { ascending: false }),
-    supabase.auth.getUser(),
-  ]);
+  // Check if user is logged in to show a quick dashboard shortcut in the header
+  // and to enable heart-saving favorites on listing cards.
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (error) {
-    console.error("Failed to load listings:", error);
-    return (
-      <div className="min-h-screen bg-zinc-50 px-4 py-12 font-sans dark:bg-black">
-        <div className="mx-auto max-w-5xl">
-          <div
-            role="alert"
-            className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200"
-          >
-            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-            <div>
-              <h2 className="font-semibold">Unable to load listings</h2>
-              <p className="mt-1">
-                We couldn&apos;t load listings right now. Please refresh the
-                page or try again in a few moments.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Look up dashboard link if signed in (#14)
   let dashboardPath: string | null = null;
-  if (authData?.user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", authData.user.id)
-      .maybeSingle();
+  let userRole: string | null = null;
+  let favoritedIds: string[] = [];
 
-    const role = parseRole(profile?.role);
-    if (role) {
-      dashboardPath = dashboardFor(role);
+  if (user) {
+    const [{ data: profile }, { data: favRows }] = await Promise.all([
+      supabase.from("profiles").select("role").eq("id", user.id).maybeSingle(),
+      supabase.from("favorites").select("listing_id").eq("renter_id", user.id),
+    ]);
+
+    userRole = profile?.role ?? "renter";
+    favoritedIds = (favRows ?? []).map((r) => r.listing_id);
+
+    if (profile?.role === "landlord") {
+      dashboardPath = "/dashboard/landlord";
+    } else if (profile?.role === "admin") {
+      dashboardPath = "/dashboard/admin";
+    } else {
+      dashboardPath = "/dashboard/renter";
     }
   }
 
-  const listings = rawListings ?? [];
+  // Fetch all available listings (newest first), excluding private landlord columns
+  const { data: rows, error } = await supabase
+    .from("listings")
+    .select(PUBLIC_LISTING_COLUMNS)
+    .eq("availability_status", "available")
+    .order("created_at", { ascending: false });
+
+  const listings: ListingPreview[] = rows ?? [];
 
   return (
-    <div className="min-h-screen bg-zinc-50 font-sans text-zinc-900 dark:bg-black dark:text-zinc-100">
-      {/* Top Header / Navigation */}
-      <header className="sticky top-0 z-30 border-b border-zinc-200/80 bg-white/80 backdrop-blur-md dark:border-zinc-800/80 dark:bg-zinc-950/80">
+    <div className="flex h-dvh flex-col overflow-hidden bg-zinc-50/70 font-sans text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+      {/* Top Navigation Bar: Abangers logo on the left; Home and Log In /
+          Sign Up (guests) or My Dashboard / Log Out (signed in) on the right (#86) */}
+      <header className="sticky top-0 z-30 shrink-0 border-b border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-950">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-2 px-4 sm:px-6 lg:px-8">
           <Link
             href="/"
@@ -93,21 +86,50 @@ export default async function ListingsPage() {
               Home
             </Link>
             <HeaderAuthButtons
-              isAuthenticated={Boolean(authData?.user)}
+              isAuthenticated={Boolean(user)}
               dashboardPath={dashboardPath}
             />
           </nav>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
-        <Suspense fallback={null}>
-          <PublicListingsView
-            initialListings={listings}
-            isAuthenticated={Boolean(authData?.user)}
-          />
-        </Suspense>
+      {/* Main Content: Natural document scrolling down the page */}
+      <main className="mx-auto flex h-full min-h-0 w-full max-w-7xl flex-1 flex-col overflow-hidden px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 lg:px-8">
+        <div className="flex h-full min-h-0 w-full flex-1 flex-col">
+          {/* Error state if database query fails (distinct from 0 listings) */}
+          {error ? (
+            <div className="mx-auto mt-8 max-w-lg rounded-2xl border border-rose-200 bg-rose-50/70 p-6 text-center dark:border-rose-900/60 dark:bg-rose-950/30">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400">
+                <AlertTriangle className="h-6 w-6" />
+              </div>
+              <h2 className="mt-4 text-base font-bold text-rose-950 dark:text-rose-100">
+                Unable to load listings right now
+              </h2>
+              <p className="mt-1.5 text-xs leading-relaxed text-rose-700 sm:text-sm dark:text-rose-300">
+                We ran into a temporary problem reaching the database. Please
+                refresh the page or try again in a moment.
+              </p>
+              <div className="mt-5">
+                <Link
+                  href="/listings"
+                  className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-rose-700"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Try Again
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <PublicListingsView
+              listings={listings}
+              initialFilters={initialFilters}
+              favoritedIds={favoritedIds}
+              userRole={userRole}
+              isAuthenticated={Boolean(user)}
+              variant="public"
+            />
+          )}
+        </div>
       </main>
     </div>
   );
