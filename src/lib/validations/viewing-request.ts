@@ -35,6 +35,7 @@ export const MAX_MESSAGE_LENGTH = 500;
 
 /** The longest decline reason: 0017's decline_reason_only_when_declined CHECK. */
 export const MAX_DECLINE_REASON_LENGTH = 500;
+export const DECLINE_REASON_MAX_LENGTH = 500;
 
 /**
  * A time of day: HH:MM, or HH:MM:SS, which is how Postgres sends a time
@@ -87,3 +88,19 @@ export const viewingRequestSchema = z
   );
 
 export type ViewingRequestInput = z.infer<typeof viewingRequestSchema>;
+
+export const declineViewingSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(
+      3,
+      "Please provide a reason for declining the viewing (min 3 characters).",
+    )
+    .max(
+      DECLINE_REASON_MAX_LENGTH,
+      `Decline reason cannot exceed ${DECLINE_REASON_MAX_LENGTH} characters.`,
+    ),
+});
+
+export type DeclineViewingInput = z.infer<typeof declineViewingSchema>;

@@ -16,6 +16,10 @@ interface PublicListingCardProps {
    * and subtle muted overlay (S2-09.2, #99).
    */
   flagOccupied?: boolean;
+  /**
+   * Intercepts card click for unauthenticated guests, opening the Auth Modal (#86).
+   */
+  onRequireAuth?: (listing: ListingPreview) => void;
 }
 
 /**
@@ -28,6 +32,7 @@ export default function PublicListingCard({
   listing,
   action,
   flagOccupied = false,
+  onRequireAuth,
 }: PublicListingCardProps) {
   const coverPhoto = listing.cover_image || listing.images?.[0] || "";
   const statusView = listingStatusView(listing.availability_status);
@@ -42,14 +47,25 @@ export default function PublicListingCard({
           "border-rose-200/70 opacity-90 dark:border-rose-950/50 dark:opacity-85",
       )}
     >
-      {/* Clickable Overlay Link */}
-      <Link
-        href={`/listings/${listing.id}`}
-        aria-label={`View details for ${listing.title}`}
-        className="absolute inset-0 z-10"
-      >
-        <span className="sr-only">View {listing.title}</span>
-      </Link>
+      {/* Clickable Overlay — Link when authenticated, or Auth Prompt button for guests (#86) */}
+      {onRequireAuth ? (
+        <button
+          type="button"
+          onClick={() => onRequireAuth(listing)}
+          aria-label={`View details for ${listing.title} (Requires sign in)`}
+          className="absolute inset-0 z-10 cursor-pointer text-left"
+        >
+          <span className="sr-only">View {listing.title}</span>
+        </button>
+      ) : (
+        <Link
+          href={`/listings/${listing.id}`}
+          aria-label={`View details for ${listing.title}`}
+          className="absolute inset-0 z-10"
+        >
+          <span className="sr-only">View {listing.title}</span>
+        </Link>
+      )}
 
       {/* Image Container */}
       <div className="relative aspect-[16/10] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">

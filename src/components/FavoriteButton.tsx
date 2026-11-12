@@ -1,9 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Heart } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { addFavorite, removeFavorite } from "@/lib/favorites";
+import {
+  addFavorite,
+  removeFavorite,
+  resolveFavoriteStateAfterAction,
+} from "@/lib/favorites";
 import { cn } from "@/lib/utils";
 
 interface FavoriteButtonProps {
@@ -38,6 +43,8 @@ interface FavoriteButtonProps {
  * - Hidden from landlords and admins (#95).
  * - Opens auth prompt for guests (#86).
  * - Performs optimistic updates with rollback and friendly error handling for renters (#97).
+ * - Calls router.refresh() after successful changes so browser Back navigation restores fresh data.
+ * - Single aria-label with aria-pressed to prevent screen readers from announcing duplicate state.
  * - Disabled while network request is in flight to prevent duplicate requests.
  */
 export default function FavoriteButton({
@@ -49,8 +56,10 @@ export default function FavoriteButton({
   variant = "card",
   className,
 }: FavoriteButtonProps) {
+  const router = useRouter();
   const [isFavorited, setIsFavorited] = useState(initialFavorited);
   const [isPending, setIsPending] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Landlords and admins cannot save favorites (Rule 1 & #95 RLS) — hide the button.
   if (userRole === "landlord" || userRole === "admin") {
@@ -72,6 +81,7 @@ export default function FavoriteButton({
       return;
     }
 
+    setErrorMessage(null);
     const previousState = isFavorited;
     const nextState = !previousState;
 
@@ -86,74 +96,107 @@ export default function FavoriteButton({
         ? await addFavorite(supabase, listingId)
         : await removeFavorite(supabase, listingId);
 
-      if (!result.ok) {
-        // Rollback on failure
-        setIsFavorited(previousState);
-        onToggle?.(previousState);
+      const transition = resolveFavoriteStateAfterAction(
+        previousState,
+        nextState,
+        result,
+      );
+      setIsFavorited(transition.isFavorited);
+      setErrorMessage(transition.errorMessage);
+
+      if (result.ok) {
+        router.refresh();
+      } else {
+        onToggle?.(transition.isFavorited);
       }
     } catch {
-      // Rollback on unexpected error
-      setIsFavorited(previousState);
-      onToggle?.(previousState);
+      const transition = resolveFavoriteStateAfterAction(
+        previousState,
+        nextState,
+        { ok: false },
+      );
+      setIsFavorited(transition.isFavorited);
+      setErrorMessage(transition.errorMessage);
+      onToggle?.(transition.isFavorited);
     } finally {
       setIsPending(false);
     }
   };
 
-  const label = isFavorited ? "Remove from favorites" : "Save to favorites";
+  const fixedLabel = "Save to favorites";
 
   if (variant === "detail") {
     return (
+      <div className="flex flex-col items-end gap-1">
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={isPending}
+          aria-label={fixedLabel}
+          aria-pressed={isFavorited}
+          title={isFavorited ? "Saved to favorites" : "Save to favorites"}
+          className={cn(
+            "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 disabled:opacity-60",
+            isFavorited
+              ? "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/50 dark:text-rose-400 dark:hover:bg-rose-900/50"
+              : "border-zinc-200 bg-white text-zinc-700 hover:border-rose-200 hover:text-rose-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:text-rose-400",
+            className,
+          )}
+        >
+          <Heart
+            className={cn(
+              "h-3.5 w-3.5 transition-transform",
+              isFavorited
+                ? "fill-rose-600 text-rose-600 dark:fill-rose-400 dark:text-rose-400"
+                : "text-zinc-500 dark:text-zinc-400",
+            )}
+          />
+          <span>{isFavorited ? "Saved" : "Save"}</span>
+        </button>
+        {errorMessage && (
+          <span
+            role="alert"
+            className="text-[11px] font-medium text-rose-600 dark:text-rose-400"
+          >
+            {errorMessage}
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative inline-flex items-center">
       <button
         type="button"
         onClick={handleClick}
         disabled={isPending}
-        aria-label={label}
+        aria-label={fixedLabel}
         aria-pressed={isFavorited}
-        title={label}
+        title={isFavorited ? "Saved to favorites" : "Save to favorites"}
         className={cn(
-          "inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl border px-3 text-xs font-semibold transition-all duration-200 disabled:opacity-60",
+          "flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-white/20 shadow-xs backdrop-blur-md transition-all duration-200 active:scale-95 disabled:opacity-60",
           isFavorited
-            ? "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:border-rose-900/50 dark:bg-rose-950/50 dark:text-rose-400 dark:hover:bg-rose-900/50"
-            : "border-zinc-200 bg-white text-zinc-700 hover:border-rose-200 hover:text-rose-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:border-zinc-700 dark:hover:text-rose-400",
+            ? "bg-rose-600 text-white shadow-md hover:bg-rose-700"
+            : "bg-black/40 text-white hover:bg-black/60",
           className,
         )}
       >
         <Heart
           className={cn(
-            "h-3.5 w-3.5 transition-transform",
-            isFavorited
-              ? "fill-rose-600 text-rose-600 dark:fill-rose-400 dark:text-rose-400"
-              : "text-zinc-500 dark:text-zinc-400",
+            "h-4 w-4 transition-transform",
+            isFavorited ? "fill-current" : "",
           )}
         />
-        <span>{isFavorited ? "Saved" : "Save"}</span>
       </button>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={isPending}
-      aria-label={label}
-      aria-pressed={isFavorited}
-      title={label}
-      className={cn(
-        "flex h-8 w-8 cursor-pointer items-center justify-center rounded-full border border-white/20 shadow-xs backdrop-blur-md transition-all duration-200 active:scale-95 disabled:opacity-60",
-        isFavorited
-          ? "bg-rose-600 text-white shadow-md hover:bg-rose-700"
-          : "bg-black/40 text-white hover:bg-black/60",
-        className,
+      {errorMessage && (
+        <div
+          role="alert"
+          className="absolute top-10 right-0 z-30 w-44 rounded-xl border border-rose-200 bg-white p-2 text-[11px] font-medium text-rose-700 shadow-lg dark:border-rose-900/50 dark:bg-zinc-900 dark:text-rose-300"
+        >
+          {errorMessage}
+        </div>
       )}
-    >
-      <Heart
-        className={cn(
-          "h-4 w-4 transition-transform",
-          isFavorited ? "fill-current" : "",
-        )}
-      />
-    </button>
+    </div>
   );
 }

@@ -20,7 +20,6 @@ export default async function RenterFavoritesPage() {
             Keep track of boarding houses and dorms you are interested in.
           </p>
         </div>
-
         <div className="rounded-2xl border border-rose-200 bg-rose-50/50 p-8 text-center dark:border-rose-900/50 dark:bg-rose-950/20">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/50 dark:text-rose-400">
             <AlertTriangle className="h-6 w-6" />
