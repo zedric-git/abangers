@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Search, Heart, User, LogOut } from "lucide-react";
+import { Search, Heart, User, LogOut, Bell } from "lucide-react";
 import DashboardSidebar, { NavItem } from "@/components/DashboardSidebar";
 import LogoutConfirmModal from "@/components/LogoutConfirmModal";
 import SignedInOnly from "@/components/SignedInOnly";
@@ -37,6 +37,14 @@ export default function RenterLayout({
     },
 
     // Bottom Group
+    {
+      label: "Notifications",
+      href: "/dashboard/renter/notifications",
+      icon: Bell,
+      badge: 2,
+      position: "bottom",
+      description: "Recent updates and alerts",
+    },
     {
       label: "Profile",
       href: "/dashboard/renter/profile",
