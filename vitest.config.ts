@@ -39,6 +39,22 @@ export default defineConfig({
           include: ["src/**/*.db.test.ts"],
           // Network round-trips to Supabase are slower than unit tests.
           testTimeout: 20_000,
+          // Run the DB test files one at a time, in one worker (#311).
+          // Some tests change a seed row for a moment and put it back in a
+          // `finally` (rls-listings blanks landlord1's contact number, and
+          // rls-profiles renames landlord2), and another file running at
+          // the same time could read the row in between: that made the
+          // landlord-status test fail now and then. Keep it, even though
+          // the DB tests take longer this way.
+          // - `fileParallelism: false` would do the same, but Vitest 3 only
+          //   accepts it for the whole run, so the unit tests would slow
+          //   down too.
+          // - `singleFork` only applies to the "forks" pool. That's
+          //   Vitest's default, spelled out here so it stays that way.
+          // - Our own modules still load afresh for each file (`isolate`
+          //   stays on).
+          pool: "forks",
+          poolOptions: { forks: { singleFork: true } },
         },
       },
     ],
