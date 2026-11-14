@@ -33,6 +33,8 @@ import {
   type OccupationStatus,
 } from "@/lib/validations/profile";
 
+const RENTER_GENDERS = GENDERS.filter((g) => g !== "Prefer not to say");
+
 interface RenterProfileFormProps {
   /**
    * "setup" renders the standalone card for onboarding (/renter/profile-setup).
@@ -146,15 +148,26 @@ export default function RenterProfileForm({
       occupation_status: occupationStatus || undefined,
     });
 
-    if (!validation.success) {
+    if (!validation.success || !occupationStatus) {
       const errors: Record<string, string> = {};
-      for (const issue of validation.error.issues) {
-        const field = String(issue.path[0]);
-        errors[field] ??= issue.message;
+
+      if (!occupationStatus) {
+        errors.occupation_status = "Student / worker status is required.";
       }
+
+      if (!validation.success) {
+        for (const issue of validation.error.issues) {
+          const field = String(issue.path[0]);
+          errors[field] ??= issue.message;
+        }
+      }
+
       setFieldErrors(errors);
       setError(
-        validation.error.issues[0]?.message ||
+        errors.full_name ||
+          errors.gender ||
+          errors.occupation_status ||
+          errors.contact_number ||
           "Please check the form for errors.",
       );
       return;
@@ -263,7 +276,7 @@ export default function RenterProfileForm({
   // Dashboard Edit View (PM note #3: drops onboarding layout, uses dashboard page card)
   if (isEdit) {
     return (
-      <div className="space-y-4">
+      <div className="w-full space-y-4">
         {/* Header */}
         <div>
           <div className="mb-0.5 flex items-center gap-1.5 text-xs text-zinc-400 dark:text-zinc-500">
@@ -391,7 +404,7 @@ export default function RenterProfileForm({
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                   <SelectContent>
-                    {GENDERS.map((g) => (
+                    {RENTER_GENDERS.map((g) => (
                       <SelectItem key={g} value={g}>
                         {g}
                       </SelectItem>
@@ -407,35 +420,33 @@ export default function RenterProfileForm({
 
               {/* Student / Worker Status */}
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label
-                    htmlFor="occupation_status"
-                    className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300"
-                  >
-                    Student / Worker Status
-                  </label>
-                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
-                    Optional
-                  </span>
-                </div>
+                <label
+                  htmlFor="occupation_status"
+                  className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300"
+                >
+                  Student / Worker Status{" "}
+                  <span className="text-red-500">*</span>
+                </label>
                 <Select
-                  value={occupationStatus || "none"}
+                  value={occupationStatus || undefined}
                   onValueChange={(val) => {
-                    setOccupationStatus(
-                      val === "none" ? "" : (val as OccupationStatus),
-                    );
+                    setOccupationStatus(val as OccupationStatus);
+                    if (fieldErrors.occupation_status) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.occupation_status;
+                        return next;
+                      });
+                    }
                   }}
                 >
                   <SelectTrigger
                     id="occupation_status"
                     className="h-10 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 text-sm text-zinc-900 transition-colors focus-visible:border-purple-600 focus-visible:ring-1 focus-visible:ring-purple-600 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:focus-visible:border-purple-500"
                   >
-                    <SelectValue placeholder="Select status (optional)" />
+                    <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">
-                      Select status (optional)
-                    </SelectItem>
                     {OCCUPATION_STATUSES.map((status) => (
                       <SelectItem key={status} value={status}>
                         {status}
@@ -604,7 +615,7 @@ export default function RenterProfileForm({
               <SelectValue placeholder="Select gender" />
             </SelectTrigger>
             <SelectContent>
-              {GENDERS.map((g) => (
+              {RENTER_GENDERS.map((g) => (
                 <SelectItem key={g} value={g}>
                   {g}
                 </SelectItem>
@@ -646,33 +657,32 @@ export default function RenterProfileForm({
 
         {/* Occupation Status */}
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label
-              htmlFor="occupation_status"
-              className="text-xs font-bold text-zinc-700 dark:text-zinc-300"
-            >
-              Student / Worker Status
-            </label>
-            <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
-              Optional
-            </span>
-          </div>
+          <label
+            htmlFor="occupation_status"
+            className="text-xs font-bold text-zinc-700 dark:text-zinc-300"
+          >
+            Student / Worker Status <span className="text-red-500">*</span>
+          </label>
           <Select
-            value={occupationStatus || "none"}
+            value={occupationStatus || undefined}
             onValueChange={(val) => {
-              setOccupationStatus(
-                val === "none" ? "" : (val as OccupationStatus),
-              );
+              setOccupationStatus(val as OccupationStatus);
+              if (fieldErrors.occupation_status) {
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.occupation_status;
+                  return next;
+                });
+              }
             }}
           >
             <SelectTrigger
               id="occupation_status"
               className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 text-sm text-zinc-900 transition-colors focus-visible:border-purple-600 focus-visible:ring-1 focus-visible:ring-purple-600 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:focus-visible:border-purple-500"
             >
-              <SelectValue placeholder="Select status (optional)" />
+              <SelectValue placeholder="Select status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">Select status (optional)</SelectItem>
               {OCCUPATION_STATUSES.map((status) => (
                 <SelectItem key={status} value={status}>
                   {status}

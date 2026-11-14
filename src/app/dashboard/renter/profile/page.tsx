@@ -16,7 +16,7 @@ export default async function RenterProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-4">
+    <div className="w-full space-y-4">
       <RenterProfileForm mode="edit" />
     </div>
   );
