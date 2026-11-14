@@ -619,7 +619,11 @@ entry in the PR that closes it.
   throwaway Supabase) and on the shared project after every database
   merge. Run by hand, they use `.env.local` and the seed data, so they
   hit the **shared** project. Any new table's RLS policies should get a
-  test here; DB tests must leave shared data unchanged. They sign in as
+  test here; DB tests must leave shared data unchanged. The files run
+  one at a time (`singleFork` in `vitest.config.ts`, #311): some tests
+  change a seed row for a moment and put it back in a `finally`, and
+  another file running at the same time could read it in between, so
+  keep it that way even though it's slower. They sign in as
   the seed accounts about 50 times per run, so the shared project's
   limit on password sign-ins must allow that, or they fail with
   "Request rate limit reached". In the dashboard (Authentication → Rate
