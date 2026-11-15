@@ -18,6 +18,11 @@ import {
   AlertCircle,
   Sparkles,
 } from "lucide-react";
+import {
+  NOMINATIM_HEADERS,
+  searchPlaces,
+  type PlaceResult,
+} from "@/lib/nominatim";
 
 // Fix Leaflet's default marker icon paths in Next.js bundler
 const createCustomIcon = () => {
@@ -54,13 +59,6 @@ export interface LocationAddressDetails {
   fullDisplayName?: string;
 }
 
-interface SearchResult {
-  place_id: number;
-  display_name: string;
-  lat: string;
-  lon: string;
-}
-
 interface LocationPickerProps {
   latitude?: number | null;
   longitude?: number | null;
@@ -88,12 +86,7 @@ async function fetchReverseGeocode(
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
-      {
-        headers: {
-          "Accept-Language": "en",
-          "User-Agent": "AbangersApp/1.0 (student-project)",
-        },
-      },
+      { headers: NOMINATIM_HEADERS },
     );
     if (!response.ok) return undefined;
     const data = await response.json();
@@ -202,7 +195,7 @@ export default function LocationPicker({
     : defaultCenter;
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [searchResults, setSearchResults] = useState<PlaceResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isGeocoding, setIsGeocoding] = useState(false);
   const [detectedAddressInfo, setDetectedAddressInfo] = useState<string | null>(
@@ -288,7 +281,8 @@ export default function LocationPicker({
     }
   }, [updateLocationWithReverseGeocode]);
 
-  // Handle OSM Nominatim address search
+  // Handle OSM Nominatim address search (the lookup itself is shared with
+  // Find a Place's "Near" box, in src/lib/nominatim.ts)
   const handleExecuteSearch = async () => {
     if (!searchQuery.trim()) return;
 
@@ -297,27 +291,11 @@ export default function LocationPicker({
     setSearchResults([]);
 
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          searchQuery,
-        )}&limit=5`,
-        {
-          headers: {
-            "Accept-Language": "en",
-            "User-Agent": "AbangersApp/1.0 (student-project)",
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to reach geocoding service.");
-      }
-
-      const data: SearchResult[] = await response.json();
-      if (data.length === 0) {
+      const places = await searchPlaces(searchQuery);
+      if (places.length === 0) {
         setSearchError("No location results found for your query.");
       } else {
-        setSearchResults(data);
+        setSearchResults(places);
       }
     } catch (err) {
       console.error("Geocoding error:", err);
@@ -329,10 +307,8 @@ export default function LocationPicker({
     }
   };
 
-  const selectSearchResult = (result: SearchResult) => {
-    const lat = parseFloat(result.lat);
-    const lng = parseFloat(result.lon);
-    updateLocationWithReverseGeocode(lat, lng);
+  const selectSearchResult = (result: PlaceResult) => {
+    updateLocationWithReverseGeocode(result.lat, result.lng);
     setSearchResults([]);
   };
 
@@ -380,14 +356,14 @@ export default function LocationPicker({
             <div className="max-h-48 overflow-y-auto">
               {searchResults.map((res) => (
                 <button
-                  key={res.place_id}
+                  key={res.id}
                   type="button"
                   onClick={() => selectSearchResult(res)}
                   className="flex w-full items-start gap-2.5 rounded-xl p-2.5 text-left text-xs transition-colors hover:bg-purple-50 dark:hover:bg-purple-950/40"
                 >
                   <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-purple-600 dark:text-purple-400" />
                   <span className="line-clamp-2 text-zinc-800 dark:text-zinc-200">
-                    {res.display_name}
+                    {res.name}
                   </span>
                 </button>
               ))}
