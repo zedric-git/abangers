@@ -8,6 +8,12 @@ import { cn } from "@/lib/utils";
 interface PublicListingCardProps {
   listing: ListingPreview;
   /**
+   * Where the card leads. The renter's Favorites passes the renter's own
+   * listing page (/dashboard/renter/listings/<id>), so the card doesn't go
+   * through /listings/<id> and its redirect (#309).
+   */
+  href: string;
+  /**
    * Optional action button slot in top corner (e.g. favorite toggle from #96).
    */
   action?: React.ReactNode;
@@ -30,10 +36,11 @@ interface PublicListingCardProps {
  * Public listing card for renters and guests (S2-04, #87).
  *
  * Displays listing photo, price, availability status, title, location,
- * room availability, and links to the public detail page (/listings/[id]).
+ * room availability, and links to `href` (the renter's Favorites, #98).
  */
 export default function PublicListingCard({
   listing,
+  href,
   action,
   flagOccupied = false,
   onRequireAuth,
@@ -64,7 +71,7 @@ export default function PublicListingCard({
         </button>
       ) : (
         <Link
-          href={`/listings/${listing.id}`}
+          href={href}
           aria-label={`View details for ${listing.title}`}
           className="absolute inset-0 z-10"
         >

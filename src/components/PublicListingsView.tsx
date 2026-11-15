@@ -18,14 +18,12 @@ import {
   Check,
   PanelLeft,
   ChevronDown,
-  Heart,
   Loader2,
 } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
 import type { ListingFilterParams } from "@/lib/validations/listing-filters";
 import { matchesListingSearch } from "@/lib/search-listings";
 import { parseHouseRules } from "@/lib/house-rules";
-import { createClient } from "@/lib/supabase/client";
 import {
   DEFAULT_SEARCH_RADIUS_KM,
   formatDistance,
@@ -40,6 +38,7 @@ import {
   emptyResultsMessage,
   type PlaceLookupStatus,
 } from "@/lib/empty-results";
+import FavoriteButton from "@/components/FavoriteButton";
 import LandlordAuthModal from "@/components/LandlordAuthModal";
 import NearbySearch from "@/components/NearbySearch";
 import { ListingsMap } from "@/components/map";
@@ -275,18 +274,21 @@ export default function PublicListingsView({
   variant = "public",
 }: PublicListingsViewProps) {
   const pathname = usePathname();
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  // The listing a guest tried to open, for the sign-up prompt (#86). Null
-  // when the prompt was opened from a favorite heart.
-  const [promptListing, setPromptListing] = useState<ListingPreview | null>(
-    null,
-  );
+  // The sign-up prompt a guest gets instead of the listing page (#86) or
+  // instead of saving it (#96): which listing, and what they tried to do
+  // with it. Null while the prompt is closed.
+  const [signUpPrompt, setSignUpPrompt] = useState<{
+    listing: ListingPreview;
+    reason: "view" | "save";
+  } | null>(null);
 
-  // Guests get the sign-up prompt instead of the listing page (#86). It
-  // names the listing, and logging in from it opens that listing.
-  const openListingPrompt = (listing: ListingPreview) => {
-    setPromptListing(listing);
-    setAuthModalOpen(true);
+  // The prompt names the listing, and logging in from it opens that
+  // listing.
+  const openListingPrompt = (
+    listing: ListingPreview,
+    reason: "view" | "save" = "view",
+  ) => {
+    setSignUpPrompt({ listing, reason });
   };
 
   const handleListingLinkClick = (
@@ -397,68 +399,25 @@ export default function PublicListingsView({
   // View Mode: Grid vs Map
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
 
-  // Favorites tracking (optimistic + Postgres sync)
-  const [savedListingIds, setSavedListingIds] = useState<Set<string>>(
+  // The listings the renter has saved. Each heart is a FavoriteButton
+  // (#96), which saves on its own, shows an error and puts the heart back
+  // if that fails (#309), and reports the result through onToggle. Keeping
+  // track here means a card that's filtered out and comes back shows the
+  // right heart.
+  const [savedListingIds, setSavedListingIds] = useState<ReadonlySet<string>>(
     () => new Set(favoritedIds),
   );
 
-  const handleToggleFavorite = async (listingId: string) => {
-    if (!isAuthenticated) {
-      setAuthModalOpen(true);
-      return;
-    }
-
-    if (userRole === "landlord" || userRole === "admin") {
-      return;
-    }
-
-    const isSaved = savedListingIds.has(listingId);
-
-    // Optimistic UI update
+  const rememberFavorite = (listingId: string, favorited: boolean) => {
     setSavedListingIds((prev) => {
       const next = new Set(prev);
-      if (isSaved) {
-        next.delete(listingId);
-      } else {
+      if (favorited) {
         next.add(listingId);
+      } else {
+        next.delete(listingId);
       }
       return next;
     });
-
-    try {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setAuthModalOpen(true);
-        return;
-      }
-
-      if (isSaved) {
-        await supabase
-          .from("favorites")
-          .delete()
-          .eq("renter_id", user.id)
-          .eq("listing_id", listingId);
-      } else {
-        await supabase
-          .from("favorites")
-          .insert({ renter_id: user.id, listing_id: listingId });
-      }
-    } catch {
-      // Rollback on failure
-      setSavedListingIds((prev) => {
-        const next = new Set(prev);
-        if (isSaved) {
-          next.add(listingId);
-        } else {
-          next.delete(listingId);
-        }
-        return next;
-      });
-    }
   };
 
   const toggleAccordion = (key: AccordionCategoryKey) => {
@@ -1510,7 +1469,6 @@ export default function PublicListingsView({
                   ...(listing.amenities ?? []).slice(0, 2),
                 ].filter((tag, idx, self) => tag && self.indexOf(tag) === idx);
 
-                const isSaved = savedListingIds.has(listing.id);
                 // How far it is from the search point, if there is one.
                 const distance = distanceById?.get(listing.id);
                 const listingPage = listingPagePath(listing.id, userRole);
@@ -1572,38 +1530,23 @@ export default function PublicListingsView({
                         </span>
                       </div>
 
-                      {/* Top-right Favorite Heart Button */}
-                      {userRole !== "landlord" && userRole !== "admin" && (
-                        <div className="absolute top-3 right-3 z-10">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleToggleFavorite(listing.id);
-                            }}
-                            title={
-                              isSaved
-                                ? "Remove from Favorites"
-                                : "Save to Favorites"
-                            }
-                            aria-label={
-                              isSaved
-                                ? "Remove from Favorites"
-                                : "Save to Favorites"
-                            }
-                            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-white/40 bg-white/80 text-zinc-600 shadow-md backdrop-blur-md transition-all hover:scale-110 hover:bg-white hover:text-rose-600 dark:border-zinc-700/60 dark:bg-zinc-900/80 dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-rose-500"
-                          >
-                            <Heart
-                              className={`h-4.5 w-4.5 transition-colors ${
-                                isSaved
-                                  ? "fill-rose-500 text-rose-500"
-                                  : "text-zinc-700 dark:text-zinc-200"
-                              }`}
-                            />
-                          </button>
-                        </div>
-                      )}
+                      {/* Top-right Favorite Heart: the same FavoriteButton
+                          as Favorites (#96). It saves for renters, opens
+                          the sign-up prompt for guests, and isn't shown to
+                          landlords and admins. */}
+                      <div className="absolute top-3 right-3 z-10">
+                        <FavoriteButton
+                          listingId={listing.id}
+                          initialFavorited={savedListingIds.has(listing.id)}
+                          userRole={userRole}
+                          onRequireAuth={() =>
+                            openListingPrompt(listing, "save")
+                          }
+                          onToggle={(favorited) =>
+                            rememberFavorite(listing.id, favorited)
+                          }
+                        />
+                      </div>
 
                       {/* Bottom-right Price Tag */}
                       <div className="pointer-events-none absolute right-3 bottom-3 rounded-xl bg-zinc-950/85 px-3 py-1.5 text-right backdrop-blur-md">
@@ -1764,29 +1707,27 @@ export default function PublicListingsView({
         </div>
       )}
 
-      {/* Guest Login / Sign-up Modal: from a listing (#86), or from a
-          favorite heart while signed out. Mounted only while open, so each
-          opening starts with its own mode and text. */}
-      {authModalOpen && (
+      {/* Guest sign-up prompt, with Renter picked: from a listing (#86)
+          or from its heart (#96, #309). Mounted only while open, so each
+          opening starts with its own text. Logging in from it opens the
+          listing; /listings/<id> sends renters on to their own page. */}
+      {signUpPrompt && (
         <LandlordAuthModal
           isOpen
-          onClose={() => {
-            setAuthModalOpen(false);
-            setPromptListing(null);
-          }}
-          initialMode={promptListing ? "signup" : "login"}
+          onClose={() => setSignUpPrompt(null)}
+          initialMode="signup"
           initialRole="renter"
           promptTitle={
-            promptListing ? "Create an account to view details" : undefined
+            signUpPrompt.reason === "save"
+              ? "Create an account to save favorites"
+              : "Create an account to view details"
           }
           promptDescription={
-            promptListing
-              ? `Sign up or log in to view full photos, rules, and contact information for "${promptListing.title}".`
-              : undefined
+            signUpPrompt.reason === "save"
+              ? `Sign up or log in as a renter to save "${signUpPrompt.listing.title}" to your favorites.`
+              : `Sign up or log in to view full photos, rules, and contact information for "${signUpPrompt.listing.title}".`
           }
-          redirectTo={
-            promptListing ? `/listings/${promptListing.id}` : undefined
-          }
+          redirectTo={`/listings/${signUpPrompt.listing.id}`}
         />
       )}
     </div>

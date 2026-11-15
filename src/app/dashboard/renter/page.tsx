@@ -2,7 +2,9 @@ import Link from "next/link";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PublicListingsView from "@/components/PublicListingsView";
+import MissingListingNote from "@/components/MissingListingNote";
 import { PUBLIC_LISTING_COLUMNS } from "@/app/listings/page";
+import { MISSING_LISTING_NOTICE } from "@/lib/listing-lookup";
 import type { ListingPreview } from "@/types/listing";
 import { parseListingFilterParams } from "@/lib/validations/listing-filters";
 
@@ -17,6 +19,10 @@ export default async function RenterDashboardPage({
 }: RenterDashboardPageProps) {
   const resolvedParams = await searchParams;
   const initialFilters = parseListingFilterParams(resolvedParams);
+  // A listing page whose listing is gone sends the renter here with
+  // ?notice=listing-not-found (#309).
+  const showMissingListingNote =
+    resolvedParams.notice === MISSING_LISTING_NOTICE;
 
   const supabase = await createClient();
 
@@ -65,13 +71,18 @@ export default async function RenterDashboardPage({
   }
 
   return (
-    <PublicListingsView
-      listings={listings}
-      initialFilters={initialFilters}
-      favoritedIds={favoritedIds}
-      userRole="renter"
-      isAuthenticated={Boolean(user)}
-      variant="dashboard"
-    />
+    <>
+      {showMissingListingNote && (
+        <MissingListingNote className="mb-4 shrink-0" />
+      )}
+      <PublicListingsView
+        listings={listings}
+        initialFilters={initialFilters}
+        favoritedIds={favoritedIds}
+        userRole="renter"
+        isAuthenticated={Boolean(user)}
+        variant="dashboard"
+      />
+    </>
   );
 }
