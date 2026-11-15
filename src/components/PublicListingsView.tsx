@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import dynamic from "next/dynamic";
+import { useState, useMemo, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Search,
   SlidersHorizontal,
   MapPin,
-  Map,
+  // Renamed so it doesn't hide JavaScript's own Map, used below.
+  Map as MapIcon,
   ShieldCheck,
   Building2,
   X,
@@ -19,26 +19,31 @@ import {
   PanelLeft,
   ChevronDown,
   Heart,
+  Loader2,
 } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
 import type { ListingFilterParams } from "@/lib/validations/listing-filters";
 import { matchesListingSearch } from "@/lib/search-listings";
 import { parseHouseRules } from "@/lib/house-rules";
 import { createClient } from "@/lib/supabase/client";
+import {
+  DEFAULT_SEARCH_RADIUS_KM,
+  formatDistance,
+  formatRadius,
+  listingCoordinates,
+  listingsWithinRadius,
+  type SearchCenter,
+  type SearchRadiusKm,
+} from "@/lib/geo";
+import { RENTAL_PLACE_SEARCH, searchPlaces } from "@/lib/nominatim";
+import {
+  emptyResultsMessage,
+  type PlaceLookupStatus,
+} from "@/lib/empty-results";
 import LandlordAuthModal from "@/components/LandlordAuthModal";
-import type { MapPinItem } from "@/components/RenterFindPlaceMap";
-
-const RenterFindPlaceMapDynamic = dynamic(
-  () => import("@/components/RenterFindPlaceMap"),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex h-full min-h-[480px] w-full items-center justify-center rounded-3xl border border-zinc-200 bg-zinc-100 text-sm font-medium text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
-        Loading interactive map...
-      </div>
-    ),
-  },
-);
+import NearbySearch from "@/components/NearbySearch";
+import { ListingsMap } from "@/components/map";
+import type { MapPinItem } from "@/components/map/ListingsMap";
 
 // Filter option constants matching .Abangers UI & database schema
 const UTILITY_OPTIONS = [
@@ -103,14 +108,6 @@ const HOUSE_RULE_OPTIONS = [
   "Pets Allowed",
   "No Curfew",
   "Smoking Allowed",
-] as const;
-
-const DISTANCE_OPTIONS = [
-  { value: "", label: "Select distance" },
-  { value: "0.5", label: "Within 500m" },
-  { value: "1", label: "Within 1 km" },
-  { value: "2", label: "Within 2 km" },
-  { value: "5", label: "Within 5 km" },
 ] as const;
 
 function getMapThumbnailPhoto(locationText: string = ""): string {
@@ -245,28 +242,13 @@ function matchesHouseRuleOption(
   return lowerRaw.includes(lowerRule);
 }
 
-function getFallbackCoordinates(
-  listing: ListingPreview,
-  index: number,
-): [number, number] {
-  if (
-    typeof listing.latitude === "number" &&
-    Number.isFinite(listing.latitude) &&
-    typeof listing.longitude === "number" &&
-    Number.isFinite(listing.longitude)
-  ) {
-    return [listing.latitude, listing.longitude];
-  }
-  // Deterministic offsets around Cebu City center so every listing appears on the map
-  const offsets: [number, number][] = [
-    [10.3051, 123.8907],
-    [10.3268, 123.9062],
-    [10.3541, 123.9115],
-    [10.2983, 123.8984],
-    [10.3321, 123.9098],
-    [10.2966, 123.8969],
-  ];
-  return offsets[index % offsets.length];
+// A listing's page for whoever is browsing. Renters have their own, inside
+// their dashboard (#291); everyone else uses /listings/<id>. Linking renters
+// straight there saves the redirect from /listings/<id> (#309).
+function listingPagePath(listingId: string, userRole: string | null): string {
+  return userRole === "renter"
+    ? `/dashboard/renter/listings/${listingId}`
+    : `/listings/${listingId}`;
 }
 
 interface PublicListingsViewProps {
@@ -292,7 +274,6 @@ export default function PublicListingsView({
   isAuthenticated = false,
   variant = "public",
 }: PublicListingsViewProps) {
-  const router = useRouter();
   const pathname = usePathname();
   const [authModalOpen, setAuthModalOpen] = useState(false);
   // The listing a guest tried to open, for the sign-up prompt (#86). Null
@@ -323,6 +304,33 @@ export default function PublicListingsView({
   const [searchQuery, setSearchQuery] = useState(resolvedInitialQuery);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(true);
 
+  // The search bar's place lookup (plan update on #28): Search with words
+  // that no listing has looks them up as a place. `words` says which words
+  // the status belongs to.
+  const [placeLookup, setPlaceLookup] = useState<{
+    words: string;
+    status: PlaceLookupStatus;
+  } | null>(null);
+  // Bumped whenever the words change, so a lookup that answers after the
+  // visitor typed something else is ignored.
+  const placeLookupIdRef = useRef(0);
+
+  // True when the words in the search bar are in no listing's name,
+  // address or description (#14's matching), whatever the other filters.
+  const wordsMatchNoListing = useMemo(() => {
+    const words = searchQuery.trim();
+    return (
+      words !== "" &&
+      !listings.some((listing) => matchesListingSearch(listing, words))
+    );
+  }, [listings, searchQuery]);
+
+  // How the place lookup went, but only for the words in the box now.
+  const lookupStatus =
+    placeLookup && placeLookup.words === searchQuery.trim()
+      ? placeLookup.status
+      : null;
+
   // Rent Range
   const [minRent, setMinRent] = useState<string>("");
   const [maxRent, setMaxRent] = useState<string>(
@@ -331,9 +339,23 @@ export default function PublicListingsView({
       : "",
   );
 
-  // Location Filter
-  const [locationNear, setLocationNear] = useState<string>("");
-  const [locationWithin, setLocationWithin] = useState<string>("");
+  // The radius search (S2-10, #102): the point to measure from (null until
+  // one is picked) and how far around it to look. Both come from the URL
+  // when it has them, so a reload or a shared link keeps the search.
+  const [searchCenter, setSearchCenter] = useState<SearchCenter | null>(() =>
+    initialFilters?.lat !== undefined && initialFilters?.lng !== undefined
+      ? {
+          lat: initialFilters.lat,
+          lng: initialFilters.lng,
+          label: initialFilters.near ?? null,
+        }
+      : null,
+  );
+  const [radiusKm, setRadiusKm] = useState<SearchRadiusKm>(
+    initialFilters?.radius_km ?? DEFAULT_SEARCH_RADIUS_KM,
+  );
+  // Bumped by "Reset", to start the Location section's "Near" box afresh.
+  const [filtersResetCount, setFiltersResetCount] = useState(0);
 
   // Amenities (Parking)
   const [hasParking, setHasParking] = useState<boolean>(false);
@@ -374,9 +396,6 @@ export default function PublicListingsView({
 
   // View Mode: Grid vs Map
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
-  const [selectedMapListingId, setSelectedMapListingId] = useState<
-    string | null
-  >(null);
 
   // Favorites tracking (optimistic + Postgres sync)
   const [savedListingIds, setSavedListingIds] = useState<Set<string>>(
@@ -455,12 +474,19 @@ export default function PublicListingsView({
     );
   };
 
+  // Puts the search in the URL, so a reload or a shared link opens the same
+  // search. It uses the browser's History API, which Next 16 supports,
+  // rather than router.replace: the filtering all happens here in the
+  // browser, so there's no need to re-run the page's server query on every
+  // change, like each tap on the map (S2-10).
   const syncUrlParams = (overrides?: {
     q?: string;
     max_rent?: string;
     propertyTypes?: string[];
     occupancyTypes?: string[];
     genders?: string[];
+    center?: SearchCenter | null;
+    radiusKm?: SearchRadiusKm;
   }) => {
     const params = new URLSearchParams();
     const qVal = (overrides?.q ?? searchQuery).trim();
@@ -483,14 +509,90 @@ export default function PublicListingsView({
       params.set("gender", genTypes[0]);
     }
 
+    // The radius search (S2-10): only with a point, since a radius on its
+    // own means nothing. Five decimals is about a meter.
+    const center =
+      overrides && "center" in overrides ? overrides.center : searchCenter;
+    if (center) {
+      params.set("lat", center.lat.toFixed(5));
+      params.set("lng", center.lng.toFixed(5));
+      params.set("radius_km", String(overrides?.radiusKm ?? radiusKm));
+      if (center.label) params.set("near", center.label);
+    }
+
     const queryString = params.toString();
     const targetUrl = queryString ? `${pathname}?${queryString}` : pathname;
-    router.replace(targetUrl, { scroll: false });
+    window.history.replaceState(null, "", targetUrl);
   };
 
-  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  // The radius search (S2-10, #102): the point comes from the "Near" box, a
+  // tap on the map or a drag of the point, and null clears it.
+  const changeSearchCenter = (center: SearchCenter | null) => {
+    setSearchCenter(center);
+    syncUrlParams({ center });
+  };
+
+  const changeRadius = (radius: SearchRadiusKm) => {
+    setRadiusKm(radius);
+    syncUrlParams({ radiusKm: radius });
+  };
+
+  // Empties the search bar: its X, and the map message's "Clear search".
+  const clearSearchWords = () => {
+    placeLookupIdRef.current += 1;
+    setPlaceLookup(null);
+    setSearchQuery("");
+    syncUrlParams({ q: "" });
+  };
+
+  // Search, or Enter in the search bar. Words that some listing's name,
+  // address or description has just filter the listings, as before. Words
+  // that no listing has are looked up as a place, with one Nominatim
+  // lookup per press, and the search becomes "within the radius of that
+  // place" (plan update on #28).
+  const handleSearchSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    syncUrlParams();
+    const words = searchQuery.trim();
+    if (!wordsMatchNoListing) {
+      syncUrlParams();
+      return;
+    }
+    if (lookupStatus === "searching") return;
+
+    const lookupId = ++placeLookupIdRef.current;
+    setPlaceLookup({ words, status: "searching" });
+    try {
+      // The best match only: in the Philippines, Metro Cebu first.
+      const [place] = await searchPlaces(words, {
+        ...RENTAL_PLACE_SEARCH,
+        limit: 1,
+      });
+      // The visitor changed the words while this was on its way.
+      if (lookupId !== placeLookupIdRef.current) return;
+
+      if (!place) {
+        setPlaceLookup({ words, status: "not-found" });
+        syncUrlParams();
+        return;
+      }
+
+      // Found it: search around the place instead. The words go, since
+      // they'd hide every listing near it that doesn't mention them.
+      const center: SearchCenter = {
+        lat: place.lat,
+        lng: place.lng,
+        label: place.shortName,
+      };
+      setPlaceLookup(null);
+      setSearchQuery("");
+      setSearchCenter(center);
+      syncUrlParams({ q: "", center });
+    } catch (error) {
+      console.error("Place lookup failed:", error);
+      if (lookupId !== placeLookupIdRef.current) return;
+      setPlaceLookup({ words, status: "failed" });
+      syncUrlParams();
+    }
   };
 
   // Count active filters
@@ -498,8 +600,7 @@ export default function PublicListingsView({
     let count = 0;
     if (minRent.trim() !== "") count++;
     if (maxRent.trim() !== "") count++;
-    if (locationNear.trim() !== "") count++;
-    if (locationWithin !== "") count++;
+    if (searchCenter) count++;
     if (hasParking) count++;
     count += selectedUtilities.length;
     count += selectedRoom.length;
@@ -515,8 +616,7 @@ export default function PublicListingsView({
   }, [
     minRent,
     maxRent,
-    locationNear,
-    locationWithin,
+    searchCenter,
     hasParking,
     selectedUtilities,
     selectedRoom,
@@ -531,11 +631,14 @@ export default function PublicListingsView({
   ]);
 
   const clearAllFilters = () => {
+    placeLookupIdRef.current += 1;
+    setPlaceLookup(null);
     setSearchQuery("");
     setMinRent("");
     setMaxRent("");
-    setLocationNear("");
-    setLocationWithin("");
+    setSearchCenter(null);
+    setRadiusKm(DEFAULT_SEARCH_RADIUS_KM);
+    setFiltersResetCount((count) => count + 1);
     setHasParking(false);
     setSelectedUtilities([]);
     setSelectedRoom([]);
@@ -547,11 +650,11 @@ export default function PublicListingsView({
     setSelectedOccupancyTypes([]);
     setSelectedGenders([]);
     setSelectedHouseRules([]);
-    router.replace(pathname, { scroll: false });
+    window.history.replaceState(null, "", pathname);
   };
 
-  // Filtered listings
-  const filteredListings = useMemo(() => {
+  // The listings that pass every filter except the radius search
+  const listingsMatchingFilters = useMemo(() => {
     return listings.filter((listing) => {
       // 1. Search bar query
       if (searchQuery.trim() !== "") {
@@ -577,12 +680,8 @@ export default function PublicListingsView({
         return false;
       }
 
-      // 3. Location Near
-      if (locationNear.trim() !== "") {
-        if (!matchesListingSearch(listing, locationNear)) {
-          return false;
-        }
-      }
+      // 3. Location: the radius search, applied below (S2-10). The "Near"
+      // box used to be a second text search; the search bar does that.
 
       // 4. Parking
       if (hasParking) {
@@ -693,7 +792,6 @@ export default function PublicListingsView({
     searchQuery,
     minRent,
     maxRent,
-    locationNear,
     hasParking,
     selectedUtilities,
     selectedRoom,
@@ -707,33 +805,96 @@ export default function PublicListingsView({
     selectedHouseRules,
   ]);
 
-  // Map pin items derived from filteredListings
+  // The radius search (S2-10, #102): with a point, only the listings within
+  // the radius stay, nearest first, and each one's distance is kept for the
+  // cards and the map. Without one, nothing changes (newest first).
+  const { filteredListings, distanceById } = useMemo(() => {
+    if (!searchCenter) {
+      return { filteredListings: listingsMatchingFilters, distanceById: null };
+    }
+    const nearby = listingsWithinRadius(
+      listingsMatchingFilters,
+      searchCenter,
+      radiusKm,
+    );
+    return {
+      filteredListings: nearby.map(({ listing }) => listing),
+      distanceById: new Map(
+        nearby.map(({ listing, distanceKm }) => [listing.id, distanceKm]),
+      ),
+    };
+  }, [listingsMatchingFilters, searchCenter, radiusKm]);
+
+  // The map's pins: the same listings as the cards (#101), minus any
+  // without a pin of their own, which can't be placed. (They used to be
+  // pinned at made-up spots around Cebu City, #309.)
   const mapPins = useMemo<MapPinItem[]>(() => {
-    return filteredListings.map((listing, idx) => {
-      const [lat, lng] = getFallbackCoordinates(listing, idx);
-      const cover =
-        listing.cover_image ||
-        (listing.images && listing.images.length > 0 ? listing.images[0] : "");
-      return {
+    const pins: MapPinItem[] = [];
+    for (const listing of filteredListings) {
+      const point = listingCoordinates(listing);
+      if (!point) continue;
+
+      pins.push({
         id: listing.id,
         title: listing.title,
-        address: listing.address,
-        city: listing.city ?? "Cebu City",
         monthlyRent: listing.monthly_rent,
         propertyType: listing.property_type ?? "Boarding House",
         occupancyType: listing.occupancy_type ?? "Room",
         allowedGender: listing.allowed_gender ?? "Any / Co-ed",
-        availableRooms: listing.available_rooms,
-        latitude: lat,
-        longitude: lng,
-        coverImage: cover,
-        landlordVerified: true,
+        latitude: point.lat,
+        longitude: point.lng,
+        coverImage: listing.cover_image || listing.images?.[0] || null,
+        distanceKm: distanceById?.get(listing.id) ?? null,
         // No link for guests: the pin's View button opens the sign-up
         // prompt instead (onViewDetails below, #86).
-        href: isAuthenticated ? `/listings/${listing.id}` : undefined,
-      };
-    });
-  }, [filteredListings, isAuthenticated]);
+        href: isAuthenticated
+          ? listingPagePath(listing.id, userRole)
+          : undefined,
+      });
+    }
+    return pins;
+  }, [filteredListings, distanceById, isAuthenticated, userRole]);
+
+  // What to say when nothing is left to show (plan update on #28). The
+  // cards and the map get their reason from the same helper, so they agree.
+  const emptyMessageInput = {
+    totalListings: listings.length,
+    searchWords: searchQuery.trim(),
+    wordsMatchNoListing,
+    placeLookup: lookupStatus,
+    center: searchCenter,
+    radiusKm,
+  };
+  const listEmptyMessage = emptyResultsMessage(emptyMessageInput);
+  // The map can be empty while the cards aren't: results without a pin.
+  const mapEmptyMessage =
+    mapPins.length === 0
+      ? emptyResultsMessage({
+          ...emptyMessageInput,
+          resultsWithoutPins: filteredListings.length,
+        })
+      : null;
+
+  // Changes whenever the search does, so a map message closed with its X
+  // comes back for a new search.
+  const searchSignature = JSON.stringify([
+    searchQuery.trim(),
+    minRent,
+    maxRent,
+    searchCenter,
+    radiusKm,
+    hasParking,
+    selectedUtilities,
+    selectedRoom,
+    selectedBathroom,
+    selectedKitchen,
+    selectedLaundry,
+    selectedSafety,
+    selectedPropertyTypes,
+    selectedOccupancyTypes,
+    selectedGenders,
+    selectedHouseRules,
+  ]);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
@@ -816,7 +977,11 @@ export default function PublicListingsView({
             <input
               type="search"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                // New words: a lookup still on its way is for the old ones.
+                placeLookupIdRef.current += 1;
+                setSearchQuery(e.target.value);
+              }}
               aria-label="Search by university, street, or boarding house name"
               placeholder="Search by university, street, or boarding house name (e.g. UST, Katipunan, Taft)..."
               className="flex h-11 w-full rounded-2xl border border-zinc-200 bg-white py-2 pr-10 pl-10 text-xs shadow-2xs transition-colors placeholder:text-zinc-400 focus:border-purple-600 focus:ring-2 focus:ring-purple-500/20 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-purple-400"
@@ -824,10 +989,7 @@ export default function PublicListingsView({
             {searchQuery && (
               <button
                 type="button"
-                onClick={() => {
-                  setSearchQuery("");
-                  syncUrlParams({ q: "" });
-                }}
+                onClick={clearSearchWords}
                 aria-label="Clear search query"
                 className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-full p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
               >
@@ -839,9 +1001,14 @@ export default function PublicListingsView({
           {/* Separate Search Button on the right side */}
           <button
             type="submit"
-            className="inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-purple-600 px-5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-purple-700 active:scale-[0.99] dark:bg-purple-600 dark:hover:bg-purple-500"
+            disabled={lookupStatus === "searching"}
+            className="inline-flex h-11 shrink-0 cursor-pointer items-center justify-center gap-2 rounded-2xl bg-purple-600 px-5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-purple-700 active:scale-[0.99] disabled:cursor-wait disabled:opacity-70 dark:bg-purple-600 dark:hover:bg-purple-500"
           >
-            <Search className="h-4 w-4" />
+            {lookupStatus === "searching" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
             <span>Search</span>
           </button>
         </form>
@@ -864,16 +1031,10 @@ export default function PublicListingsView({
                   }}
                 />
               )}
-              {locationNear && (
+              {searchCenter && (
                 <FilterPill
-                  label={`Near: ${locationNear}`}
-                  onRemove={() => setLocationNear("")}
-                />
-              )}
-              {locationWithin && (
-                <FilterPill
-                  label={`Within ${locationWithin} km`}
-                  onRemove={() => setLocationWithin("")}
+                  label={`Within ${formatRadius(radiusKm)} of ${searchCenter.label ?? "the pin"}`}
+                  onRemove={() => changeSearchCenter(null)}
                 />
               )}
               {hasParking && (
@@ -1026,49 +1187,18 @@ export default function PublicListingsView({
                   </div>
                 </div>
 
-                {/* Location Section */}
+                {/* Location Section: the radius search (S2-10, #102) */}
                 <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
                   <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
                     Location
                   </p>
-                  <div className="space-y-2.5">
-                    <div>
-                      <label
-                        htmlFor="filter-location-near"
-                        className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400"
-                      >
-                        Near:
-                      </label>
-                      <input
-                        id="filter-location-near"
-                        type="text"
-                        value={locationNear}
-                        onChange={(e) => setLocationNear(e.target.value)}
-                        placeholder="University, street, landmark..."
-                        className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="filter-location-within"
-                        className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400"
-                      >
-                        Within:
-                      </label>
-                      <select
-                        id="filter-location-within"
-                        value={locationWithin}
-                        onChange={(e) => setLocationWithin(e.target.value)}
-                        className="w-full cursor-pointer rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-700 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200"
-                      >
-                        {DISTANCE_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                  <NearbySearch
+                    key={filtersResetCount}
+                    center={searchCenter}
+                    radiusKm={radiusKm}
+                    onCenterChange={changeSearchCenter}
+                    onRadiusChange={changeRadius}
+                  />
                 </div>
 
                 {/* Amenities Section */}
@@ -1312,15 +1442,21 @@ export default function PublicListingsView({
           {/* MAIN CONTENT: MAP VIEW OR CARDS GRID */}
           {viewMode === "map" ? (
             <div className="relative isolate z-0 min-h-0 w-full flex-1 overflow-hidden rounded-3xl border border-zinc-200 dark:border-zinc-800">
-              <RenterFindPlaceMapDynamic
+              <ListingsMap
                 listings={mapPins}
-                selectedId={selectedMapListingId}
-                onSelectListing={(id) => setSelectedMapListingId(id)}
+                searchCenter={searchCenter}
+                radiusKm={radiusKm}
+                onSearchCenterChange={changeSearchCenter}
+                onRadiusChange={changeRadius}
                 onViewDetails={(id) => {
                   const listing = filteredListings.find((l) => l.id === id);
                   if (listing) openListingPrompt(listing);
                 }}
                 onToggleView={() => setViewMode("grid")}
+                emptyMessage={mapEmptyMessage}
+                searchKey={searchSignature}
+                onClearSearch={clearSearchWords}
+                onResetFilters={clearAllFilters}
               />
             </div>
           ) : filteredListings.length === 0 ? (
@@ -1329,15 +1465,12 @@ export default function PublicListingsView({
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-purple-100 text-purple-600 dark:bg-purple-950/60 dark:text-purple-400">
                 <Building2 className="h-7 w-7" />
               </div>
-              <h3 className="mt-4 text-lg font-bold text-zinc-900 dark:text-zinc-50">
-                {listings.length === 0
-                  ? "No available listings right now"
-                  : "No boarding houses match your filters"}
+              {/* Same reason as the map gives (src/lib/empty-results.ts) */}
+              <h3 className="mt-4 text-lg font-bold break-words text-zinc-900 dark:text-zinc-50">
+                {listEmptyMessage.title}
               </h3>
               <p className="mt-1.5 max-w-md text-sm text-zinc-500 dark:text-zinc-400">
-                {listings.length === 0
-                  ? "Check back soon as verified landlords post new boarding houses and rooms."
-                  : "Try broadening your rent range, removing a few amenity filters, or searching for a different street or university."}
+                {listEmptyMessage.hint}
               </p>
               {(activeFilterCount > 0 || searchQuery.trim() !== "") && (
                 <button
@@ -1378,6 +1511,9 @@ export default function PublicListingsView({
                 ].filter((tag, idx, self) => tag && self.indexOf(tag) === idx);
 
                 const isSaved = savedListingIds.has(listing.id);
+                // How far it is from the search point, if there is one.
+                const distance = distanceById?.get(listing.id);
+                const listingPage = listingPagePath(listing.id, userRole);
 
                 return (
                   <article
@@ -1387,7 +1523,7 @@ export default function PublicListingsView({
                     {/* Card Image Header */}
                     <div className="relative h-52 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
                       <Link
-                        href={`/listings/${listing.id}`}
+                        href={listingPage}
                         onClick={(e) => handleListingLinkClick(e, listing)}
                         tabIndex={-1}
                         aria-hidden="true"
@@ -1502,7 +1638,7 @@ export default function PublicListingsView({
 
                             <h2 className="mt-1 line-clamp-1 text-lg font-bold text-zinc-900 transition-colors group-hover:text-purple-600 dark:text-zinc-50 dark:group-hover:text-purple-400">
                               <Link
-                                href={`/listings/${listing.id}`}
+                                href={listingPage}
                                 onClick={(e) =>
                                   handleListingLinkClick(e, listing)
                                 }
@@ -1519,6 +1655,11 @@ export default function PublicListingsView({
                           <span className="line-clamp-1">
                             {listing.address}, {listing.city}
                           </span>
+                          {distance !== undefined && (
+                            <span className="shrink-0 font-semibold whitespace-nowrap text-purple-700 dark:text-purple-300">
+                              · {formatDistance(distance)} away
+                            </span>
+                          )}
                         </p>
 
                         {/* Quick Feature Tags */}
@@ -1545,7 +1686,7 @@ export default function PublicListingsView({
 
                         <div className="flex items-center gap-2">
                           <Link
-                            href={`/listings/${listing.id}`}
+                            href={listingPage}
                             onClick={(e) => handleListingLinkClick(e, listing)}
                             className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 py-2 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-500"
                           >
@@ -1583,12 +1724,11 @@ export default function PublicListingsView({
         </div>
       </div>
 
-      {/* Floating Google Maps Style Thumbnail Switcher - Shown only in Grid Mode */}
+      {/* Floating Google Maps Style Thumbnail Switcher - Shown only in Grid
+          Mode. z-30 keeps it under the sign-up prompt (z-50); it used to sit
+          on top of it (#309). */}
       {viewMode === "grid" && (
-        <div
-          style={{ zIndex: 1001 }}
-          className="fixed right-6 bottom-6 z-30 md:right-8"
-        >
+        <div className="fixed right-6 bottom-6 z-30 md:right-8">
           <button
             type="button"
             onClick={() => setViewMode("map")}
@@ -1597,7 +1737,7 @@ export default function PublicListingsView({
           >
             {/* Background image preview - Philippines default or chosen location */}
             <Image
-              src={getMapThumbnailPhoto(locationNear || searchQuery)}
+              src={getMapThumbnailPhoto(searchCenter?.label || searchQuery)}
               alt="Map View preview"
               fill
               sizes="(max-width: 768px) 180px, 180px"
@@ -1610,7 +1750,7 @@ export default function PublicListingsView({
 
             {/* Bottom Badge - Text stays fixed at normal size, matches Pic 1 */}
             <div className="absolute right-2.5 bottom-2.5 left-2.5 z-10 flex items-center justify-center gap-1.5 px-1">
-              <Map className="h-4 w-4 shrink-0 text-white drop-shadow-xs" />
+              <MapIcon className="h-4 w-4 shrink-0 text-white drop-shadow-xs" />
               <div className="flex flex-col text-left leading-tight">
                 <span className="text-[10px] font-extrabold tracking-tight text-white drop-shadow-xs">
                   View in
