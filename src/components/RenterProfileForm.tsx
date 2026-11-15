@@ -33,8 +33,6 @@ import {
   type OccupationStatus,
 } from "@/lib/validations/profile";
 
-const RENTER_GENDERS = GENDERS.filter((g) => g !== "Prefer not to say");
-
 interface RenterProfileFormProps {
   /**
    * "setup" renders the standalone card for onboarding (/renter/profile-setup).
@@ -148,18 +146,12 @@ export default function RenterProfileForm({
       occupation_status: occupationStatus || undefined,
     });
 
-    if (!validation.success || !occupationStatus) {
+    if (!validation.success) {
       const errors: Record<string, string> = {};
 
-      if (!occupationStatus) {
-        errors.occupation_status = "Student / worker status is required.";
-      }
-
-      if (!validation.success) {
-        for (const issue of validation.error.issues) {
-          const field = String(issue.path[0]);
-          errors[field] ??= issue.message;
-        }
+      for (const issue of validation.error.issues) {
+        const field = String(issue.path[0]);
+        errors[field] ??= issue.message;
       }
 
       setFieldErrors(errors);
@@ -336,7 +328,16 @@ export default function RenterProfileForm({
                   required
                   placeholder="e.g. Ana Reyes"
                   value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
+                  onChange={(e) => {
+                    setFullName(e.target.value);
+                    if (fieldErrors.full_name) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.full_name;
+                        return next;
+                      });
+                    }
+                  }}
                   className="h-10 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-800"
                 />
                 {fieldErrors.full_name && (
@@ -404,7 +405,7 @@ export default function RenterProfileForm({
                     <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                   <SelectContent>
-                    {RENTER_GENDERS.map((g) => (
+                    {GENDERS.map((g) => (
                       <SelectItem key={g} value={g}>
                         {g}
                       </SelectItem>
@@ -420,17 +421,23 @@ export default function RenterProfileForm({
 
               {/* Student / Worker Status */}
               <div className="space-y-1">
-                <label
-                  htmlFor="occupation_status"
-                  className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300"
-                >
-                  Student / Worker Status{" "}
-                  <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="occupation_status"
+                    className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300"
+                  >
+                    Student / Worker Status
+                  </label>
+                  <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+                    Optional
+                  </span>
+                </div>
                 <Select
-                  value={occupationStatus || undefined}
+                  value={occupationStatus || "none"}
                   onValueChange={(val) => {
-                    setOccupationStatus(val as OccupationStatus);
+                    setOccupationStatus(
+                      val === "none" ? "" : (val as OccupationStatus),
+                    );
                     if (fieldErrors.occupation_status) {
                       setFieldErrors((prev) => {
                         const next = { ...prev };
@@ -444,9 +451,12 @@ export default function RenterProfileForm({
                     id="occupation_status"
                     className="h-10 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-3.5 text-sm text-zinc-900 transition-colors focus-visible:border-purple-600 focus-visible:ring-1 focus-visible:ring-purple-600 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:focus-visible:border-purple-500"
                   >
-                    <SelectValue placeholder="Select status" />
+                    <SelectValue placeholder="Select status (optional)" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="none">
+                      Select status (optional)
+                    </SelectItem>
                     {OCCUPATION_STATUSES.map((status) => (
                       <SelectItem key={status} value={status}>
                         {status}
@@ -477,7 +487,16 @@ export default function RenterProfileForm({
                 <PhMobileNumberInput
                   id="contact_number"
                   value={contactNumber}
-                  onChange={setContactNumber}
+                  onChange={(val) => {
+                    setContactNumber(val);
+                    if (fieldErrors.contact_number) {
+                      setFieldErrors((prev) => {
+                        const next = { ...prev };
+                        delete next.contact_number;
+                        return next;
+                      });
+                    }
+                  }}
                   required={false}
                   className="h-10"
                 />
@@ -559,7 +578,16 @@ export default function RenterProfileForm({
             required
             placeholder="e.g. Ana Reyes"
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            onChange={(e) => {
+              setFullName(e.target.value);
+              if (fieldErrors.full_name) {
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.full_name;
+                  return next;
+                });
+              }
+            }}
             className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 text-sm text-zinc-900 placeholder-zinc-400 transition-colors focus:border-purple-600 focus:bg-white focus:ring-1 focus:ring-purple-600 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:placeholder-zinc-500 dark:focus:border-purple-500 dark:focus:bg-zinc-800"
           />
           {fieldErrors.full_name && (
@@ -615,7 +643,7 @@ export default function RenterProfileForm({
               <SelectValue placeholder="Select gender" />
             </SelectTrigger>
             <SelectContent>
-              {RENTER_GENDERS.map((g) => (
+              {GENDERS.map((g) => (
                 <SelectItem key={g} value={g}>
                   {g}
                 </SelectItem>
@@ -645,7 +673,16 @@ export default function RenterProfileForm({
           <PhMobileNumberInput
             id="contact_number"
             value={contactNumber}
-            onChange={setContactNumber}
+            onChange={(val) => {
+              setContactNumber(val);
+              if (fieldErrors.contact_number) {
+                setFieldErrors((prev) => {
+                  const next = { ...prev };
+                  delete next.contact_number;
+                  return next;
+                });
+              }
+            }}
             required={false}
           />
           {fieldErrors.contact_number && (
@@ -657,16 +694,23 @@ export default function RenterProfileForm({
 
         {/* Occupation Status */}
         <div className="space-y-1.5">
-          <label
-            htmlFor="occupation_status"
-            className="text-xs font-bold text-zinc-700 dark:text-zinc-300"
-          >
-            Student / Worker Status <span className="text-red-500">*</span>
-          </label>
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="occupation_status"
+              className="text-xs font-bold text-zinc-700 dark:text-zinc-300"
+            >
+              Student / Worker Status
+            </label>
+            <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
+              Optional
+            </span>
+          </div>
           <Select
-            value={occupationStatus || undefined}
+            value={occupationStatus || "none"}
             onValueChange={(val) => {
-              setOccupationStatus(val as OccupationStatus);
+              setOccupationStatus(
+                val === "none" ? "" : (val as OccupationStatus),
+              );
               if (fieldErrors.occupation_status) {
                 setFieldErrors((prev) => {
                   const next = { ...prev };
@@ -680,9 +724,10 @@ export default function RenterProfileForm({
               id="occupation_status"
               className="h-11 w-full rounded-xl border border-zinc-200 bg-zinc-50/50 px-4 text-sm text-zinc-900 transition-colors focus-visible:border-purple-600 focus-visible:ring-1 focus-visible:ring-purple-600 dark:border-zinc-700 dark:bg-zinc-800/80 dark:text-zinc-100 dark:focus-visible:border-purple-500"
             >
-              <SelectValue placeholder="Select status" />
+              <SelectValue placeholder="Select status (optional)" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="none">Select status (optional)</SelectItem>
               {OCCUPATION_STATUSES.map((status) => (
                 <SelectItem key={status} value={status}>
                   {status}
