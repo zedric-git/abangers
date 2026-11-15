@@ -2,12 +2,14 @@ import { redirect } from "next/navigation";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import FavoriteButton from "@/components/FavoriteButton";
 import ListingDetailView from "@/components/ListingDetailView";
 import RenterListingDetailHeader from "@/components/RenterListingDetailHeader";
 import SignedInOnly from "@/components/SignedInOnly";
 import {
   LISTING_LOAD_ERROR_MESSAGE,
   lookupListing,
+  missingRenterListingRedirectPath,
 } from "@/lib/listing-lookup";
 import { listingRowToFormValues } from "@/lib/validations/listing";
 import type { Listing } from "@/types/listing";
@@ -58,12 +60,10 @@ export default async function RenterListingDetailPage({
     await supabase.from("listings").select("*").eq("id", id).maybeSingle(),
   );
 
+  // Deleted or mistyped id in the URL: back to the list the renter came
+  // from, with a note saying why, instead of a 404 page (#244, #309).
   if (lookup.kind === "missing") {
-    redirect(
-      from === "favorites"
-        ? "/dashboard/renter/favorites"
-        : "/dashboard/renter",
-    );
+    redirect(missingRenterListingRedirectPath(from));
   }
 
   if (lookup.kind === "failed") {
@@ -97,41 +97,48 @@ export default async function RenterListingDetailPage({
   const listing = lookup.listing;
   const formValues = listingRowToFormValues(listing);
 
-  // Check if favorited
-  const { data: favRow } = await supabase
+  // Has the renter saved it? `favorites` has no id column (its key is
+  // renter_id + listing_id), so ask for listing_id: asking for "id" made
+  // the lookup fail, and every listing looked unsaved (#309). If the read
+  // fails, the button starts at "Save": saving it again is harmless.
+  const { data: favoriteRow, error: favoriteError } = await supabase
     .from("favorites")
-    .select("id")
+    .select("listing_id")
     .eq("renter_id", user.id)
-    .eq("listing_id", id)
+    .eq("listing_id", listing.id)
     .maybeSingle();
 
-  const isFavorited = Boolean(favRow);
-
-  const subtitle = [
-    listing.property_type,
-    listing.occupancy_type,
-    listing.allowed_gender,
-  ]
-    .filter(Boolean)
-    .join(" • ");
+  if (favoriteError) {
+    console.error("Error checking the favorite:", favoriteError);
+  }
 
   return (
     <div className="space-y-6 pb-12">
       <SignedInOnly />
 
-      {/* Top Header Card & Callout (Matches Pic 1 prototype) */}
+      {/* Breadcrumb, the way back, and Chat Landlord */}
       <RenterListingDetailHeader
-        listingId={listing.id}
         title={listing.title}
-        subtitle={subtitle}
-        initialFavorited={isFavorited}
         from={from}
         landlordContact={listing.contact_info}
       />
 
-      {/* Reusable Listing Detail Specs & Photo Gallery */}
+      {/* The listing: its title (shown once, #309), photos and details.
+          Save sits next to its tags: the one save button (#96), which
+          shows an error and puts the heart back if saving fails. */}
       <div className="rounded-3xl border border-zinc-200 bg-white p-4 shadow-xs sm:p-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <ListingDetailView listing={formValues} audience="renter" />
+        <ListingDetailView
+          listing={formValues}
+          audience="renter"
+          action={
+            <FavoriteButton
+              listingId={listing.id}
+              initialFavorited={favoriteRow !== null}
+              userRole="renter"
+              variant="detail"
+            />
+          }
+        />
       </div>
     </div>
   );

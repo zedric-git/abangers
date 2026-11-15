@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  ADMIN_DASHBOARD_PATH,
+  ADMIN_VERIFICATIONS_PATH,
   REVIEW_NOTICES,
   REVIEW_NOTICE_TEXT,
   approveDialogText,
@@ -18,7 +18,11 @@ import {
 } from "./admin-review-view";
 
 describe("the admin dashboard's paths", () => {
-  it("puts each submission's review page under the dashboard", () => {
+  it("puts the list on the Verifications page", () => {
+    expect(ADMIN_VERIFICATIONS_PATH).toBe("/dashboard/admin/verifications");
+  });
+
+  it("puts each submission's review page under the list", () => {
     expect(reviewPagePath("b1b2c3d4-0000-4000-8000-000000000002")).toBe(
       "/dashboard/admin/verifications/b1b2c3d4-0000-4000-8000-000000000002",
     );
@@ -32,9 +36,11 @@ describe("the admin dashboard's paths", () => {
 });
 
 describe("the note above the list", () => {
+  // The Verifications page reads ?notice=; the dashboard's home doesn't
+  // (#309).
   it.each(REVIEW_NOTICES)("goes through the URL and back: %s", (notice) => {
     const url = new URL(listPathWithNotice(notice), "http://localhost");
-    expect(url.pathname).toBe(ADMIN_DASHBOARD_PATH);
+    expect(url.pathname).toBe(ADMIN_VERIFICATIONS_PATH);
     expect(reviewNoticeOf(url.searchParams.get("notice") ?? undefined)).toBe(
       notice,
     );

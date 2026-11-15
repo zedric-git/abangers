@@ -2,10 +2,21 @@ import Link from "next/link";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getFavoritedListings } from "@/lib/favorites";
+import { MISSING_LISTING_NOTICE } from "@/lib/listing-lookup";
+import MissingListingNote from "@/components/MissingListingNote";
 import RenterFavoritesList from "@/components/RenterFavoritesList";
 import { Button } from "@/components/ui/button";
 
-export default async function RenterFavoritesPage() {
+export default async function RenterFavoritesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // A listing opened from here that's gone sends the renter back with
+  // ?notice=listing-not-found (#309).
+  const { notice } = await searchParams;
+  const showMissingListingNote = notice === MISSING_LISTING_NOTICE;
+
   const supabase = await createClient();
   const result = await getFavoritedListings(supabase);
 
@@ -47,5 +58,10 @@ export default async function RenterFavoritesPage() {
     );
   }
 
-  return <RenterFavoritesList initialListings={result.listings} />;
+  return (
+    <div className="space-y-6">
+      {showMissingListingNote && <MissingListingNote />}
+      <RenterFavoritesList initialListings={result.listings} />
+    </div>
+  );
 }

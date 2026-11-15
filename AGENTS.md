@@ -134,8 +134,10 @@ https://github.com/users/zedric-git/projects/3
   pending submission to approved or rejected, recording themselves in
   `reviewed_by`. Only the four review columns can change, a reviewed
   submission can't be changed again from the app, and nobody can delete
-  one. The admin dashboard (`/dashboard/admin`, #256) lists the pending
-  ones and reviews each through `src/lib/auth/review-verification.ts`:
+  one. The admin's Verifications page (`/dashboard/admin/verifications`,
+  #256) lists the pending ones (the dashboard's home, `/dashboard/admin`,
+  shows the oldest few and real counts, #309) and reviews each through
+  `src/lib/auth/review-verification.ts`:
   it shows the photos through signed links that work for 10 minutes,
   made with the admin's own session (no service key), and
   `<Image unoptimized>`, so Next's image optimizer never downloads or

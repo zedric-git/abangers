@@ -1,21 +1,25 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertCircle, AlertTriangle, Home, RefreshCw } from "lucide-react";
+import { AlertTriangle, Home, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { dashboardFor, parseRole } from "@/lib/auth/post-login";
 import PublicListingsView from "@/components/PublicListingsView";
 import HeaderAuthButtons from "@/components/HeaderAuthButtons";
-import {
-  MISSING_LISTING_NOTICE,
-  MISSING_PUBLIC_LISTING_NOTE,
-} from "@/lib/listing-lookup";
+import MissingListingNote from "@/components/MissingListingNote";
+import { MISSING_LISTING_NOTICE } from "@/lib/listing-lookup";
+import { loadBrowsableListings } from "@/lib/public-listings";
 import type { ListingPreview } from "@/types/listing";
 import { parseListingFilterParams } from "@/lib/validations/listing-filters";
 
 export const dynamic = "force-dynamic";
 
-export const PUBLIC_LISTING_COLUMNS =
-  "id, title, monthly_rent, available_rooms, total_rooms, property_type, occupancy_type, allowed_gender, address, city, description, cover_image, images, availability_status, amenities, utilities, room_features, bathroom_features, kitchen_features, laundry_features, safety_features, house_rules, latitude, longitude, created_at";
+// The browser tab's title (#309: #300 dropped it).
+export const metadata: Metadata = {
+  title: "Browse Listings | Abangers",
+  description:
+    "Search boarding houses, bedspaces, and apartments for rent near universities and workplaces in Cebu.",
+};
 
 interface PublicListingsPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -59,12 +63,9 @@ export default async function PublicListingsPage({
     }
   }
 
-  // Fetch all available listings (newest first), excluding private landlord columns
-  const { data: rows, error } = await supabase
-    .from("listings")
-    .select(PUBLIC_LISTING_COLUMNS)
-    .eq("availability_status", "available")
-    .order("created_at", { ascending: false });
+  // The available and almost-full listings, newest first, without the
+  // landlords' contact details (src/lib/public-listings.ts)
+  const { data: rows, error } = await loadBrowsableListings(supabase);
 
   const listings: ListingPreview[] = rows ?? [];
 
@@ -105,13 +106,7 @@ export default async function PublicListingsPage({
       <main className="mx-auto flex h-full min-h-0 w-full max-w-7xl flex-1 flex-col overflow-hidden px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 lg:px-8">
         {/* After a missing listing's redirect: say why they landed here (#93) */}
         {showMissingListingNote && (
-          <div
-            role="status"
-            className="mb-4 flex shrink-0 items-center gap-2.5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
-          >
-            <AlertCircle className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
-            <p>{MISSING_PUBLIC_LISTING_NOTE}</p>
-          </div>
+          <MissingListingNote className="mb-4 shrink-0" />
         )}
 
         <div className="flex h-full min-h-0 w-full flex-1 flex-col">

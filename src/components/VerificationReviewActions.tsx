@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { reviewVerificationAction } from "@/app/dashboard/admin/verifications/actions";
 import {
-  ADMIN_DASHBOARD_PATH,
+  ADMIN_VERIFICATIONS_PATH,
   REJECT_DIALOG,
   approveDialogText,
   listPathWithNotice,
@@ -72,7 +72,7 @@ function SaveProblemNote({ problem }: { problem: SaveProblem }) {
         <p>{problem.message}</p>
         {problem.alreadyReviewed && (
           <Link
-            href={ADMIN_DASHBOARD_PATH}
+            href={ADMIN_VERIFICATIONS_PATH}
             className="font-semibold underline underline-offset-2"
           >
             Back to the list

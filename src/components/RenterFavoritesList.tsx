@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
+  AlertCircle,
   Heart,
   Search,
   X,
@@ -15,7 +17,10 @@ import type { ListingPreview } from "@/types/listing";
 import PublicListingCard from "@/components/PublicListingCard";
 import FavoriteButton from "@/components/FavoriteButton";
 import { createClient } from "@/lib/supabase/client";
-import { removeFavorite } from "@/lib/favorites";
+import { FAVORITE_REMOVE_ERROR_MESSAGE, removeFavorite } from "@/lib/favorites";
+
+// Find a Place: renters browse in their dashboard, not /listings (#309).
+const FIND_A_PLACE_PATH = "/dashboard/renter";
 
 interface RenterFavoritesListProps {
   initialListings: ListingPreview[];
@@ -26,36 +31,70 @@ interface RenterFavoritesListProps {
  *
  * Implements the prototype layout and visual hierarchy from .Abangers UI:
  * - Breadcrumb 'Renter / Favorites' and 'Saved Favorites' title with pill badge
- * - 'Find More Places' action button leading to /listings
+ * - 'Find More Places' action button leading to Find a Place
  * - In-place search filter for quickly finding saved boarding houses
  * - Responsive grid of saved listing cards with occupied status warning (#99)
- * - Smooth instant removal when unfavorited without full page reload (#98)
+ * - Smooth instant removal when unfavorited without full page reload (#98),
+ *   and the card back with an error if the removal failed (#309)
  * - Informative empty state with 'Start Browsing Places' call-to-action
  */
 export default function RenterFavoritesList({
   initialListings,
 }: RenterFavoritesListProps) {
-  const [listings, setListings] = useState<ListingPreview[]>(initialListings);
-  const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
   const supabase = createClient();
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const handleToggle = (listing: ListingPreview, nextState: boolean) => {
-    if (!nextState) {
-      setListings((prev) => prev.filter((item) => item.id !== listing.id));
+  // The cards the renter took off the list. A card goes as soon as its
+  // heart or Remove is clicked, and comes back, in the same place, if the
+  // database didn't remove it (#309). The page's own list then follows
+  // the server again (router.refresh() after each removal).
+  const [removedIds, setRemovedIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [removeError, setRemoveError] = useState<string | null>(null);
+
+  const hideCard = (listingId: string) => {
+    setRemovedIds((prev) => new Set(prev).add(listingId));
+  };
+
+  const showCardAgain = (listingId: string) => {
+    setRemovedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(listingId);
+      return next;
+    });
+  };
+
+  // The heart (FavoriteButton) calls this with false as soon as it's
+  // clicked, and with true if the database said no. Its own error message
+  // goes with the card, so the list shows it instead.
+  const handleToggle = (listingId: string, favorited: boolean) => {
+    if (favorited) {
+      showCardAgain(listingId);
+      setRemoveError(FAVORITE_REMOVE_ERROR_MESSAGE);
     } else {
-      setListings((prev) => {
-        if (prev.some((item) => item.id === listing.id)) {
-          return prev;
-        }
-        return [listing, ...prev];
-      });
+      setRemoveError(null);
+      hideCard(listingId);
     }
   };
 
-  const handleRemove = async (id: string) => {
-    setListings((prev) => prev.filter((item) => item.id !== id));
-    await removeFavorite(supabase, id);
+  // The Remove button. supabase-js returns errors instead of throwing, so
+  // check the result: it used to be ignored, and a failed removal still
+  // looked removed (#309).
+  const handleRemove = async (listingId: string) => {
+    setRemoveError(null);
+    hideCard(listingId);
+    const result = await removeFavorite(supabase, listingId);
+    if (result.ok) {
+      router.refresh();
+      return;
+    }
+    showCardAgain(listingId);
+    setRemoveError(result.error ?? FAVORITE_REMOVE_ERROR_MESSAGE);
   };
+
+  const listings = initialListings.filter((item) => !removedIds.has(item.id));
 
   const filteredListings = listings.filter((item) => {
     const q = searchQuery.trim().toLowerCase();
@@ -94,13 +133,24 @@ export default function RenterFavoritesList({
         </div>
 
         <Link
-          href="/listings"
+          href={FIND_A_PLACE_PATH}
           className="inline-flex h-10 items-center gap-2 self-start rounded-xl bg-purple-600 px-4 text-xs font-semibold text-white shadow-xs hover:bg-purple-700 sm:self-auto"
         >
           <Search className="h-4 w-4" />
           Find More Places
         </Link>
       </div>
+
+      {/* A removal the database refused: the card is back, and this says why */}
+      {removeError && (
+        <div
+          role="alert"
+          className="flex items-center gap-2.5 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200"
+        >
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <p>{removeError}</p>
+        </div>
+      )}
 
       {/* In-place search filter (from .Abangers UI) */}
       {listings.length > 0 && (
@@ -141,7 +191,7 @@ export default function RenterFavoritesList({
           </p>
           <div className="mt-5">
             <Link
-              href="/listings"
+              href={FIND_A_PLACE_PATH}
               className="inline-flex h-10 items-center gap-2 rounded-xl bg-purple-600 px-5 text-xs font-semibold text-white shadow-xs hover:bg-purple-700"
             >
               <Search className="h-4 w-4" />
@@ -164,62 +214,69 @@ export default function RenterFavoritesList({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredListings.map((listing) => (
-            <PublicListingCard
-              key={listing.id}
-              listing={listing}
-              flagOccupied
-              action={
-                <FavoriteButton
-                  listingId={listing.id}
-                  initialFavorited={true}
-                  userRole="renter"
-                  onToggle={(favorited) => handleToggle(listing, favorited)}
-                />
-              }
-              footer={
-                <div className="space-y-2.5">
-                  {/* Row 1: Remove on left, View & Inquire on right */}
-                  <div className="flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => handleRemove(listing.id)}
-                      className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-rose-500 transition-colors hover:text-rose-600"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                      <span>Remove</span>
-                    </button>
+          {filteredListings.map((listing) => {
+            // The renter's own listing page, which leads back here (#309)
+            const listingPage = `/dashboard/renter/listings/${listing.id}?from=favorites`;
+            return (
+              <PublicListingCard
+                key={listing.id}
+                listing={listing}
+                href={listingPage}
+                flagOccupied
+                action={
+                  <FavoriteButton
+                    listingId={listing.id}
+                    initialFavorited={true}
+                    userRole="renter"
+                    onToggle={(favorited) =>
+                      handleToggle(listing.id, favorited)
+                    }
+                  />
+                }
+                footer={
+                  <div className="space-y-2.5">
+                    {/* Row 1: Remove on left, View & Inquire on right */}
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => handleRemove(listing.id)}
+                        className="inline-flex cursor-pointer items-center gap-1 text-xs font-semibold text-rose-500 transition-colors hover:text-rose-600"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Remove</span>
+                      </button>
 
-                    <div className="flex items-center gap-1.5">
-                      <Link
-                        href={`/dashboard/renter/listings/${listing.id}?from=favorites`}
-                        className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-purple-600"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        <span>View</span>
-                      </Link>
-                      <Link
-                        href="/dashboard/renter/messages"
-                        className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-purple-600"
-                      >
-                        <MessageSquare className="h-3.5 w-3.5" />
-                        <span>Inquire</span>
-                      </Link>
+                      <div className="flex items-center gap-1.5">
+                        <Link
+                          href={listingPage}
+                          className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-purple-600"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          <span>View</span>
+                        </Link>
+                        <Link
+                          href="/dashboard/renter/messages"
+                          className="inline-flex items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 shadow-2xs transition-colors hover:border-purple-300 hover:text-purple-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-purple-600"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                          <span>Inquire</span>
+                        </Link>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Row 2: Schedule Viewing full-width button */}
-                  <Link
-                    href="/dashboard/renter/viewings"
-                    className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-purple-600 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-purple-700 active:bg-purple-800"
-                  >
-                    <CalendarCheck className="h-3.5 w-3.5" />
-                    <span>Schedule Viewing</span>
-                  </Link>
-                </div>
-              }
-            />
-          ))}
+                    {/* Row 2: Schedule Viewing full-width button */}
+                    <Link
+                      href="/dashboard/renter/viewings"
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-purple-600 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-purple-700 active:bg-purple-800"
+                    >
+                      <CalendarCheck className="h-3.5 w-3.5" />
+                      <span>Schedule Viewing</span>
+                    </Link>
+                  </div>
+                }
+              />
+            );
+          })}
         </div>
       )}
     </div>

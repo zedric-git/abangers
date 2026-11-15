@@ -14,12 +14,18 @@ import { ID_TYPE_LABELS, idTypeSchema } from "@/lib/validations/verification";
  * under src/app/dashboard/admin/.
  */
 
-/** The admin's dashboard: the list of verifications waiting for review. */
+/**
+ * The admin dashboard's home: a few numbers and the oldest verifications
+ * waiting (src/lib/admin-overview.ts). Its layout holds every admin page.
+ */
 export const ADMIN_DASHBOARD_PATH = "/dashboard/admin";
+
+/** The Verifications page: the list of verifications waiting for review. */
+export const ADMIN_VERIFICATIONS_PATH = `${ADMIN_DASHBOARD_PATH}/verifications`;
 
 /** One submission's review page. */
 export function reviewPagePath(submissionId: string): string {
-  return `${ADMIN_DASHBOARD_PATH}/verifications/${encodeURIComponent(submissionId)}`;
+  return `${ADMIN_VERIFICATIONS_PATH}/${encodeURIComponent(submissionId)}`;
 }
 
 // ── The note above the list ─────────────────────────────────────────
@@ -44,9 +50,13 @@ export const REVIEW_NOTICE_TEXT: Record<ReviewNotice, string> = {
     "That verification was already reviewed, or it no longer exists.",
 };
 
-/** The list's URL with a note above it. */
+/**
+ * The list's URL with a note above it: the Verifications page, which reads
+ * ?notice=. The dashboard's home doesn't, so a note sent there never
+ * showed (#309).
+ */
 export function listPathWithNotice(notice: ReviewNotice): string {
-  return `${ADMIN_DASHBOARD_PATH}?notice=${notice}`;
+  return `${ADMIN_VERIFICATIONS_PATH}?notice=${notice}`;
 }
 
 /** The ?notice= value, if it's one of ours (anything else shows nothing). */

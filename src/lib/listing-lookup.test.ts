@@ -4,6 +4,7 @@ import {
   lookupListing,
   MISSING_LISTING_NOTICE,
   MISSING_LISTING_REDIRECT_PATH,
+  missingRenterListingRedirectPath,
 } from "./listing-lookup";
 
 const listing = { id: "a1b2c3d4-0000-0000-0000-000000000001", title: "Room" };
@@ -53,5 +54,28 @@ describe("MISSING_LISTING_REDIRECT_PATH", () => {
     const url = new URL(MISSING_LISTING_REDIRECT_PATH, "http://localhost");
     expect(url.pathname).toBe("/dashboard/landlord/listings");
     expect(url.searchParams.get("notice")).toBe(MISSING_LISTING_NOTICE);
+  });
+});
+
+describe("missingRenterListingRedirectPath (#309)", () => {
+  it("goes back to Find a Place with the missing-listing note", () => {
+    const url = new URL(missingRenterListingRedirectPath(), "http://localhost");
+    expect(url.pathname).toBe("/dashboard/renter");
+    expect(url.searchParams.get("notice")).toBe(MISSING_LISTING_NOTICE);
+  });
+
+  it("goes back to Favorites when the listing was opened from there", () => {
+    const url = new URL(
+      missingRenterListingRedirectPath("favorites"),
+      "http://localhost",
+    );
+    expect(url.pathname).toBe("/dashboard/renter/favorites");
+    expect(url.searchParams.get("notice")).toBe(MISSING_LISTING_NOTICE);
+  });
+
+  it("goes to Find a Place for any other ?from=", () => {
+    expect(missingRenterListingRedirectPath("https://evil.example")).toBe(
+      `/dashboard/renter?notice=${MISSING_LISTING_NOTICE}`,
+    );
   });
 });

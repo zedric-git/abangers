@@ -15,7 +15,7 @@ import {
   loadSubmissionForReview,
 } from "@/lib/auth/review-verification";
 import {
-  ADMIN_DASHBOARD_PATH,
+  ADMIN_VERIFICATIONS_PATH,
   PHOTOS_LOAD_ERROR,
   REVIEW_LOAD_ERROR,
   WHAT_TO_CHECK,
@@ -63,7 +63,7 @@ export default async function ReviewVerificationPage({
 
   const backLink = (
     <Link
-      href={ADMIN_DASHBOARD_PATH}
+      href={ADMIN_VERIFICATIONS_PATH}
       className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-600 transition-colors hover:text-zinc-900 sm:text-sm dark:text-zinc-400 dark:hover:text-zinc-100"
     >
       <ArrowLeft className="h-4 w-4" />

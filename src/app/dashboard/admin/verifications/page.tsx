@@ -1,9 +1,7 @@
+import { redirect } from "next/navigation";
 import { AlertCircle, Info } from "lucide-react";
 import PendingVerificationList from "@/components/PendingVerificationList";
-import {
-  loadPendingVerifications,
-  type PendingVerification,
-} from "@/lib/auth/review-verification";
+import { loadPendingVerifications } from "@/lib/auth/review-verification";
 import {
   PENDING_LIST_LOAD_ERROR,
   REVIEW_NOTICE_TEXT,
@@ -12,30 +10,11 @@ import {
 } from "@/lib/admin-review-view";
 import { createClient } from "@/lib/supabase/server";
 
-const demoVerifications: PendingVerification[] = [
-  {
-    id: "VER-891",
-    idType: "philippine_passport",
-    submittedAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-    landlordName: "Rodrigo D. Alonzo",
-    landlordEmail: "rodrigo.alonzo@gmail.com",
-  },
-  {
-    id: "VER-890",
-    idType: "drivers_license",
-    submittedAt: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
-    landlordName: "Teresa Ramos Castro",
-    landlordEmail: "teresa.castro@gmail.com",
-  },
-  {
-    id: "VER-889",
-    idType: "umid",
-    submittedAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
-    landlordName: "Mateo S. Bernardo",
-    landlordEmail: "mateo.bernardo@gmail.com",
-  },
-];
-
+/**
+ * The verifications waiting for review (S2-11.2, #256), oldest first, with
+ * the note after a review (?notice=). The proxy only lets admins in
+ * (src/lib/auth/route-guard.ts).
+ */
 export default async function AdminVerificationsPage({
   searchParams,
 }: {
@@ -50,20 +29,16 @@ export default async function AdminVerificationsPage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  let pendingItems: PendingVerification[] = [];
-  let isOk = true;
-
-  if (user) {
-    const pending = await loadPendingVerifications(supabase);
-    if (pending.ok) {
-      pendingItems = pending.items;
-    } else {
-      isOk = false;
-    }
-  } else {
-    // In demo sandbox mode, show the sample pending verifications
-    pendingItems = demoVerifications;
+  // The proxy already sends signed-out users home; this is for a session
+  // that ends between the two. (It used to show sample verifications
+  // instead, #309.)
+  if (!user) {
+    redirect("/");
   }
+
+  const pending = await loadPendingVerifications(supabase);
+  const isOk = pending.ok;
+  const pendingItems = pending.ok ? pending.items : [];
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
