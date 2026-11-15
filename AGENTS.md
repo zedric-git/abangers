@@ -560,14 +560,25 @@ map/geocoding provider without asking the team.
 
 **Library:** Leaflet + `react-leaflet` with OSM tiles. Existing map
 components live in `src/components/map/` (`LocationPicker` is used by
-the add/edit listing form, `ReadOnlyMap` by the listing detail view;
-both are loaded through `DynamicMap` without SSR). Reuse these before
-writing new map code.
+the add/edit listing form, `ReadOnlyMap` by the listing detail view,
+`ListingsMap` by Find a Place and `/listings`; all three are loaded
+through `DynamicMap` without SSR). Reuse these before writing new map
+code, along with `src/lib/geo.ts` (distances) and `src/lib/nominatim.ts`
+(the place lookup both maps' search boxes use).
 
-**Scope beyond that is not decided** (listing pins on search results,
-directions, search by area or distance). Don't assume a scope — check
-the relevant issue/backlog item or ask before building new map
-features.
+**Built so far** (S1-13, S2-10): pinning a listing's location, showing
+it on its page, and on Find a Place and `/listings`, pins for the
+filtered results plus a radius search. A renter or guest taps the map
+or looks a place up (in "Near", or with the search bar when no listing
+has the words), picks 500 m, 1 km or 5 km, and the cards and pins show only
+the listings within that distance, nearest first. The browser
+measures the distance (straight line, `distanceKm`), like the other
+filters, and the point and radius are kept in the URL
+(`listingFilterParamsSchema`).
+
+**Scope beyond that is not decided** (directions, search by a drawn
+area, the visitor's own location). Don't assume a scope — check the
+relevant issue/backlog item or ask before building new map features.
 
 Constraints that come with OSM (keep these in mind when building):
 

@@ -9,9 +9,17 @@ import {
 } from "@/lib/validations/listing";
 import { HOUSE_RULES_OPTIONS } from "@/lib/listing-features";
 import { canonicalizeFeature } from "@/lib/amenity-aliases";
+import { SEARCH_RADII_KM, type SearchRadiusKm } from "@/lib/geo";
+
+// "10.35300" gives 10.353. Missing, blank or not a number gives undefined.
+function toOptionalNumber(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === "") return undefined;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : undefined;
+}
 
 /**
- * URL query parameters schema for listing search, core attributes, amenities, and house rules (S2-04, S2-05, S2-06, #18, #92).
+ * URL query parameters schema for listing search, core attributes, amenities, house rules, and the radius search (S2-04, S2-05, S2-06, S2-10, #18, #92, #102).
  *
  * Safely parses and sanitizes:
  * - `q`: keyword search term (trimmed, max 100 chars, defaults to "")
@@ -21,6 +29,11 @@ import { canonicalizeFeature } from "@/lib/amenity-aliases";
  * - `gender`: matches GENDER_POLICIES (ignores unrecognized values)
  * - `features`: list of canonical feature strings, parsed from comma-separated string or array
  * - `rules`: list of standard house rule strings, parsed from comma-separated string or array
+ * - `lat` / `lng`: the radius search's point (ignores anything off the map;
+ *   parseListingFilterParams keeps them only as a pair)
+ * - `radius_km`: 0.5, 1 or 5, from SEARCH_RADII_KM (ignores anything else,
+ *   like an old link's 10; the page then starts at DEFAULT_SEARCH_RADIUS_KM)
+ * - `near`: the name of the place the point came from (trimmed, cut to 100 chars)
  */
 export const listingFilterParamsSchema = z.object({
   q: z.string().trim().max(100).optional().catch(undefined).default(""),
@@ -78,6 +91,26 @@ export const listingFilterParamsSchema = z.object({
     }, z.array(z.string()).optional())
     .optional()
     .catch(undefined),
+  lat: z
+    .preprocess(toOptionalNumber, z.number().min(-90).max(90).optional())
+    .optional()
+    .catch(undefined),
+  lng: z
+    .preprocess(toOptionalNumber, z.number().min(-180).max(180).optional())
+    .optional()
+    .catch(undefined),
+  radius_km: z
+    .preprocess(toOptionalNumber, z.literal(SEARCH_RADII_KM).optional())
+    .optional()
+    .catch(undefined),
+  near: z
+    .preprocess(
+      (val) =>
+        typeof val === "string" ? val.trim().slice(0, 100) || undefined : val,
+      z.string().optional(),
+    )
+    .optional()
+    .catch(undefined),
 });
 
 export type ListingFilterParams = {
@@ -88,6 +121,12 @@ export type ListingFilterParams = {
   gender?: GenderPolicy;
   features?: string[];
   rules?: string[];
+  /** The radius search's point (S2-10): always both, or neither. */
+  lat?: number;
+  lng?: number;
+  radius_km?: SearchRadiusKm;
+  /** The looked-up place the point came from; none for a spot picked on the map. */
+  near?: string;
 };
 
 /**
@@ -145,11 +184,21 @@ export function parseListingFilterParams(
     gender: getFirst("gender"),
     features: getList("features"),
     rules: getList("rules"),
+    lat: getFirst("lat"),
+    lng: getFirst("lng"),
+    radius_km: getFirst("radius_km"),
+    near: getFirst("near"),
   });
 
   if (!parsed.success) {
     return { q: "" };
   }
+
+  // Half a point (or one with a broken number) is no point at all: drop it,
+  // and the place name with it.
+  const { lat, lng, near } = parsed.data;
+  const point =
+    lat !== undefined && lng !== undefined ? { lat, lng, near } : {};
 
   return {
     q: parsed.data.q,
@@ -159,5 +208,7 @@ export function parseListingFilterParams(
     gender: parsed.data.gender,
     features: parsed.data.features,
     rules: parsed.data.rules,
+    radius_km: parsed.data.radius_km,
+    ...point,
   };
 }
