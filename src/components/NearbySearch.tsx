@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { AlertCircle, Loader2, MapPin, Search, X } from "lucide-react";
 import {
   SEARCH_RADII_KM,
@@ -43,6 +43,13 @@ export default function NearbySearch({
   const [places, setPlaces] = useState<PlaceResult[]>([]);
   const [status, setStatus] = useState<LookupStatus>("idle");
 
+  // The labels' ids, different in each copy of this box: below lg the
+  // filters can be in the page twice, in the hidden sidebar and in the
+  // drawer (#316). With fixed ids, the drawer's labels would point at the
+  // hidden box.
+  const nearInputId = useId();
+  const radiusSelectId = useId();
+
   // One Nominatim request per press of Find (or Enter), never while
   // typing, and none while one is on its way (AGENTS.md, "Maps and
   // location").
@@ -70,14 +77,14 @@ export default function NearbySearch({
     <div className="space-y-2.5">
       <div>
         <label
-          htmlFor="filter-location-near"
+          htmlFor={nearInputId}
           className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400"
         >
           Near:
         </label>
         <div className="flex items-center gap-2">
           <input
-            id="filter-location-near"
+            id={nearInputId}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -146,13 +153,13 @@ export default function NearbySearch({
 
       <div>
         <label
-          htmlFor="filter-location-within"
+          htmlFor={radiusSelectId}
           className="mb-1 block text-xs font-medium text-zinc-500 dark:text-zinc-400"
         >
           Within:
         </label>
         <select
-          id="filter-location-within"
+          id={radiusSelectId}
           value={radiusKm}
           onChange={(e) => {
             const radius = Number(e.target.value);
