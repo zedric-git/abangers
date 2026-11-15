@@ -82,6 +82,28 @@ export async function loadPendingVerifications(
   };
 }
 
+/**
+ * How many submissions are waiting for review, for the admin sidebar's
+ * Verifications badge (#309: it used to be a made-up 3). Counts without
+ * loading the rows. null if the count couldn't be read, so the sidebar
+ * shows no badge rather than a wrong number.
+ */
+export async function countPendingVerifications(
+  supabase: SupabaseClient<Database>,
+): Promise<number | null> {
+  const { count, error } = await supabase
+    .from("landlord_verifications")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "pending");
+
+  if (error) {
+    console.error("Pending verifications count error:", error);
+    return null;
+  }
+
+  return count ?? 0;
+}
+
 // ── One submission, for the review page ─────────────────────────────
 
 /** The landlord's profile, as the review page shows it. */

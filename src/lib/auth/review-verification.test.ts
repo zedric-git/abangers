@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Database } from "@/types/database";
 import {
+  countPendingVerifications,
   loadPendingVerifications,
   photoPathsOf,
   photosWithLinks,
@@ -348,5 +349,52 @@ describe("loadPendingVerifications", () => {
       error: { message: "network error" },
     });
     expect(await loadPendingVerifications(supabase)).toEqual({ ok: false });
+  });
+});
+
+describe("countPendingVerifications (#309)", () => {
+  /** A stand-in client whose count query answers with `result`. */
+  function clientCounting(result: { count: number | null; error: unknown }) {
+    const asked: unknown[][] = [];
+    const chain = {
+      select: (...args: unknown[]) => {
+        asked.push(["select", ...args]);
+        return chain;
+      },
+      eq: async (...args: unknown[]) => {
+        asked.push(["eq", ...args]);
+        return result;
+      },
+    };
+    const supabase = {
+      from: (table: string) => {
+        asked.push(["from", table]);
+        return chain;
+      },
+    } as unknown as SupabaseClient<Database>;
+    return { supabase, asked };
+  }
+
+  it("counts the pending submissions without loading them", async () => {
+    const { supabase, asked } = clientCounting({ count: 2, error: null });
+    expect(await countPendingVerifications(supabase)).toBe(2);
+    expect(asked).toEqual([
+      ["from", "landlord_verifications"],
+      ["select", "id", { count: "exact", head: true }],
+      ["eq", "status", "pending"],
+    ]);
+  });
+
+  it("counts none as 0", async () => {
+    const { supabase } = clientCounting({ count: null, error: null });
+    expect(await countPendingVerifications(supabase)).toBe(0);
+  });
+
+  it("is null when the count failed, so no badge shows", async () => {
+    const { supabase } = clientCounting({
+      count: null,
+      error: { message: "network error" },
+    });
+    expect(await countPendingVerifications(supabase)).toBeNull();
   });
 });

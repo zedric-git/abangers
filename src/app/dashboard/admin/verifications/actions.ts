@@ -36,9 +36,11 @@ export async function reviewVerificationAction(
 
     const result = await reviewVerification(supabase, user.id, input);
 
-    // The list drops the submission now that it's reviewed.
+    // The submission is reviewed now: refresh the admin layout and every
+    // page under it, so the list drops it, and the sidebar's badge and the
+    // home page's numbers count one fewer (#309).
     if (result.ok) {
-      revalidatePath(ADMIN_DASHBOARD_PATH);
+      revalidatePath(ADMIN_DASHBOARD_PATH, "layout");
     }
     return result;
   } catch (err) {
