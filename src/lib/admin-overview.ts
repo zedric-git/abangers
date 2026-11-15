@@ -184,7 +184,9 @@ export function overviewStats(overview: AdminOverview): OverviewStat[] {
           ? UNKNOWN_DETAIL
           : landlords === null
             ? "Can post listings"
-            : `Of ${countOf(landlords, "landlord", "landlords")}: they can post listings`,
+            : // Reads on from the number above it: "1 / of 9 landlords can
+              // post listings".
+              `of ${countOf(landlords, "landlord", "landlords")} can post listings`,
       highlight: false,
     },
   ];

@@ -37,15 +37,13 @@ describe("the admin home's stat cards (#309)", () => {
     const stats = statsByKey(seedLike);
     expect(stats.users.detail).toBe("3 renters · 3 landlords");
     expect(stats.listings.detail).toBe("3 available · 2 almost full · 1 full");
-    expect(stats.verified.detail).toBe(
-      "Of 3 landlords: they can post listings",
-    );
+    expect(stats.verified.detail).toBe("of 3 landlords can post listings");
   });
 
   it("uses the singular for one", () => {
     const stats = statsByKey({ ...seedLike, renters: 1, landlords: 1 });
     expect(stats.users.detail).toBe("1 renter · 1 landlord");
-    expect(stats.verified.detail).toBe("Of 1 landlord: they can post listings");
+    expect(stats.verified.detail).toBe("of 1 landlord can post listings");
   });
 
   it("highlights the pending card only when something is waiting", () => {
