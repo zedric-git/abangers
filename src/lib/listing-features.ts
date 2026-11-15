@@ -8,7 +8,8 @@ import {
  *
  * This is the single source of truth shared between:
  * - LandlordListingForm (saving listings)
- * - ListingFilterControls (discovery filters)
+ * - PublicListingsView (the filters on /listings and the renter's Find a
+ *   Place, #309)
  * - Filter query logic & alias normalization
  *
  * Keeping them in one module ensures filter choices cannot drift from
@@ -73,7 +74,8 @@ export interface FeatureCategoryConfig {
 }
 
 /**
- * Metadata descriptor for each feature category group rendered in filter controls.
+ * Metadata descriptor for each feature category group rendered in the
+ * filters (PublicListingsView's accordions).
  */
 export const FEATURE_CATEGORIES: readonly FeatureCategoryConfig[] = [
   {

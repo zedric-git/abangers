@@ -3,8 +3,8 @@ import { AlertTriangle, RefreshCw } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import PublicListingsView from "@/components/PublicListingsView";
 import MissingListingNote from "@/components/MissingListingNote";
-import { PUBLIC_LISTING_COLUMNS } from "@/app/listings/page";
 import { MISSING_LISTING_NOTICE } from "@/lib/listing-lookup";
+import { loadBrowsableListings } from "@/lib/public-listings";
 import type { ListingPreview } from "@/types/listing";
 import { parseListingFilterParams } from "@/lib/validations/listing-filters";
 
@@ -30,15 +30,14 @@ export default async function RenterDashboardPage({
     data: { user },
   } = await supabase.auth.getUser();
 
+  // The renter's saved listings, for the hearts, and the same listings as
+  // /listings: available and almost full, newest first
+  // (src/lib/public-listings.ts).
   const [{ data: favRows }, { data: rows, error }] = await Promise.all([
     user
       ? supabase.from("favorites").select("listing_id").eq("renter_id", user.id)
       : Promise.resolve({ data: [] }),
-    supabase
-      .from("listings")
-      .select(PUBLIC_LISTING_COLUMNS)
-      .eq("availability_status", "available")
-      .order("created_at", { ascending: false }),
+    loadBrowsableListings(supabase),
   ]);
 
   const favoritedIds = (favRows ?? []).map((r) => r.listing_id);

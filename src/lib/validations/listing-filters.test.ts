@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   listingFilterParamsSchema,
+  listingFilterSearchParams,
   parseListingFilterParams,
+  type ListingFilterParams,
 } from "./listing-filters";
 
 describe("listingFilterParamsSchema", () => {
@@ -9,6 +11,7 @@ describe("listingFilterParamsSchema", () => {
     const result = listingFilterParamsSchema.parse({});
     expect(result).toEqual({
       q: "",
+      min_rent: undefined,
       max_rent: undefined,
       property_type: undefined,
       occupancy: undefined,
@@ -49,6 +52,18 @@ describe("listingFilterParamsSchema", () => {
     ).toBeUndefined();
   });
 
+  it("parses min_rent the same way (#309)", () => {
+    expect(listingFilterParamsSchema.parse({ min_rent: "2500" }).min_rent).toBe(
+      2500,
+    );
+    for (const value of ["abc", "-500", "0", ""]) {
+      expect(
+        listingFilterParamsSchema.parse({ min_rent: value }).min_rent,
+        value,
+      ).toBeUndefined();
+    }
+  });
+
   it("safely ignores unrecognized enum values", () => {
     const result = listingFilterParamsSchema.parse({
       property_type: "Castle",
@@ -71,11 +86,75 @@ describe("listingFilterParamsSchema", () => {
     ]);
   });
 
+  it("discards features that aren't listing form options (#309)", () => {
+    // #300's own options, which the listing form can't save
+    expect(
+      listingFilterParamsSchema.parse({
+        features: "Wi-Fi Included,Balcony,Bidet",
+      }).features,
+    ).toEqual(["Wi-Fi Included"]);
+    expect(
+      listingFilterParamsSchema.parse({ features: "Balcony" }).features,
+    ).toBeUndefined();
+  });
+
   it("parses and validates house rules, discarding invalid ones", () => {
     const result = listingFilterParamsSchema.parse({
       rules: "No Curfew,Cooking Allowed,Play Loud Drums",
     });
     expect(result.rules).toEqual(["No Curfew", "Cooking Allowed"]);
+  });
+});
+
+describe("listingFilterSearchParams (#309)", () => {
+  const everyFilter: ListingFilterParams = {
+    q: "Talamban",
+    min_rent: 2500,
+    max_rent: 6000,
+    property_type: "Boarding House",
+    occupancy: "Bedspace",
+    gender: "Female Only",
+    features: ["Wi-Fi Included", "Private Bathroom/CR", "Has Parking"],
+    rules: ["No Curfew", "Cooking Allowed"],
+    lat: 10.353,
+    lng: 123.9125,
+    radius_km: 0.5,
+    near: "USC Talamban",
+  };
+
+  it("writes what parseListingFilterParams reads back", () => {
+    const params = listingFilterSearchParams(everyFilter);
+    expect(parseListingFilterParams(params)).toEqual(everyFilter);
+    // and the same after a trip through the address bar
+    expect(
+      parseListingFilterParams(new URLSearchParams(params.toString())),
+    ).toEqual(everyFilter);
+  });
+
+  it("leaves out empty filters", () => {
+    expect(listingFilterSearchParams({ q: "  " }).toString()).toBe("");
+    expect(
+      listingFilterSearchParams({ q: "", features: [], rules: [] }).toString(),
+    ).toBe("");
+  });
+
+  it("writes a radius only with its point", () => {
+    expect(listingFilterSearchParams({ radius_km: 5 }).toString()).toBe("");
+    expect(
+      listingFilterSearchParams({
+        lat: 10.3229,
+        lng: 123.899,
+        radius_km: 1,
+      }).toString(),
+    ).toBe("lat=10.32290&lng=123.89900&radius_km=1");
+  });
+
+  it("joins lists with commas", () => {
+    expect(
+      listingFilterSearchParams({ features: ["CCTV", "Has Kitchen"] }).get(
+        "features",
+      ),
+    ).toBe("CCTV,Has Kitchen");
   });
 });
 

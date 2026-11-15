@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -10,7 +10,6 @@ import {
   MapPin,
   // Renamed so it doesn't hide JavaScript's own Map, used below.
   Map as MapIcon,
-  ShieldCheck,
   Building2,
   X,
   RotateCcw,
@@ -21,9 +20,29 @@ import {
   Loader2,
 } from "lucide-react";
 import type { ListingPreview } from "@/types/listing";
-import type { ListingFilterParams } from "@/lib/validations/listing-filters";
+import {
+  listingFilterSearchParams,
+  type ListingFilterParams,
+} from "@/lib/validations/listing-filters";
+import {
+  GENDER_POLICIES,
+  OCCUPANCY_TYPES,
+  PROPERTY_TYPES,
+  type GenderPolicy,
+  type OccupancyType,
+  type PropertyType,
+} from "@/lib/validations/listing";
+import {
+  AMENITIES_OPTIONS,
+  FEATURE_CATEGORIES,
+  HOUSE_RULES_OPTIONS,
+} from "@/lib/listing-features";
+import {
+  matchesListingFeatures,
+  matchesListingHouseRules,
+} from "@/lib/filter-listings";
+import { listingStatusView } from "@/lib/listing-status-view";
 import { matchesListingSearch } from "@/lib/search-listings";
-import { parseHouseRules } from "@/lib/house-rules";
 import {
   DEFAULT_SEARCH_RADIUS_KM,
   formatDistance,
@@ -43,71 +62,6 @@ import LandlordAuthModal from "@/components/LandlordAuthModal";
 import NearbySearch from "@/components/NearbySearch";
 import { ListingsMap } from "@/components/map";
 import type { MapPinItem } from "@/components/map/ListingsMap";
-
-// Filter option constants matching .Abangers UI & database schema
-const UTILITY_OPTIONS = [
-  "Wi-Fi",
-  "Electric Sub-meter",
-  "Water Sub-meter",
-] as const;
-
-const ROOM_OPTIONS = [
-  "Air Conditioning",
-  "Electric Fan",
-  "Bed & Mattress",
-  "Study Desk",
-  "Closet / Cabinet",
-  "Balcony",
-] as const;
-
-const BATHROOM_OPTIONS = [
-  "Private CR",
-  "Shared CR",
-  "Water Heater",
-  "Bidet",
-] as const;
-
-const KITCHEN_OPTIONS = [
-  "Shared Kitchen",
-  "Private Kitchen",
-  "Refrigerator",
-  "Drinking Water",
-] as const;
-
-const LAUNDRY_OPTIONS = ["Laundry Area", "Washing Machine"] as const;
-
-const SAFETY_OPTIONS = [
-  "CCTV",
-  "24/7 Security / Guard",
-  "Biometric / Keycard Access",
-  "Fire Extinguisher",
-  "Fire Alarm / Sprinkler",
-] as const;
-
-const PROPERTY_TYPES = [
-  "Boarding House",
-  "Dormitory",
-  "Apartment",
-  "Condo",
-  "House",
-] as const;
-
-const OCCUPANCY_TYPES = [
-  "Bedspace",
-  "Single Room",
-  "Shared Room",
-  "Studio",
-] as const;
-
-const GENDER_OPTIONS = ["Male Only", "Female Only", "Any / Co-ed"] as const;
-
-const HOUSE_RULE_OPTIONS = [
-  "Cooking Allowed",
-  "Visitors Allowed",
-  "Pets Allowed",
-  "No Curfew",
-  "Smoking Allowed",
-] as const;
 
 function getMapThumbnailPhoto(locationText: string = ""): string {
   const q = locationText.trim().toLowerCase();
@@ -147,98 +101,22 @@ function getMapThumbnailPhoto(locationText: string = ""): string {
   return "/maps/cebu.png";
 }
 
-type AccordionCategoryKey =
-  | "utilities"
-  | "room"
-  | "bathroom"
-  | "kitchen"
-  | "laundry"
-  | "safety"
-  | "propertyType"
-  | "occupancyType"
-  | "allowedGender"
-  | "houseRules";
+// The amenity groups, as accordions: the listing form's own groups and
+// options (src/lib/listing-features.ts), so every option is one a landlord
+// can tick. #300 had lists of its own, and some of their options could
+// never match a listing (#309). Parking ("Parking & Property") is a plain
+// checkbox above the accordions.
+const FEATURE_ACCORDIONS = FEATURE_CATEGORIES.filter(
+  (category) => category.column !== "amenities",
+);
 
-// Aliases so seed listings (which store some items in `amenities`) and form-created listings both match
-const FEATURE_ALIASES: Record<string, string[]> = {
-  "Wi-Fi": ["wi-fi", "wifi", "free wi-fi", "high-speed wi-fi"],
-  "Electric Sub-meter": ["electric sub-meter", "own electric sub-meter"],
-  "Water Sub-meter": ["water sub-meter", "own water sub-meter"],
-  "Air Conditioning": ["air conditioning", "aircon", "a/c"],
-  "Electric Fan": ["electric fan", "fan"],
-  "Bed & Mattress": ["bed & mattress", "bed frame & mattress", "mattress"],
-  "Study Desk": ["study desk", "study desk & chair", "study area"],
-  "Closet / Cabinet": ["closet / cabinet", "cabinet / locker", "closet"],
-  Balcony: ["balcony", "window / balcony"],
-  "Private CR": ["private cr", "private bathroom (en-suite)", "own cr"],
-  "Shared CR": ["shared cr", "shared bathroom"],
-  "Water Heater": ["water heater", "hot & cold shower"],
-  Bidet: ["bidet"],
-  "Shared Kitchen": ["shared kitchen", "common kitchen"],
-  "Private Kitchen": ["private kitchen", "kitchenette", "kitchen sink"],
-  Refrigerator: ["refrigerator", "shared refrigerator", "fridge"],
-  "Drinking Water": [
-    "drinking water",
-    "water dispenser",
-    "free drinking water",
-  ],
-  "Laundry Area": [
-    "laundry area",
-    "laundry / drying area",
-    "roof deck drying area",
-  ],
-  "Washing Machine": ["washing machine"],
-  CCTV: ["cctv", "24/7 cctv"],
-  "24/7 Security / Guard": [
-    "24/7 security / guard",
-    "24/7 security",
-    "security guard",
-  ],
-  "Biometric / Keycard Access": [
-    "biometric / keycard access",
-    "biometric access",
-    "RFID / keycard entry",
-    "keycard access",
-  ],
-  "Fire Extinguisher": ["fire extinguisher", "fire extinguishers"],
-  "Fire Alarm / Sprinkler": [
-    "fire alarm / sprinkler",
-    "fire alarm & emergency lights",
-    "smoke detector",
-  ],
-};
-
-function matchesFeature(
-  targetOption: string,
-  categoryValues: string[] | null | undefined,
-  amenitiesValues: string[] | null | undefined,
-): boolean {
-  const pool = [...(categoryValues ?? []), ...(amenitiesValues ?? [])].map(
-    (item) => item.toLowerCase().trim(),
-  );
-  if (pool.length === 0) return false;
-
-  const aliases = FEATURE_ALIASES[targetOption] ?? [targetOption.toLowerCase()];
-  return aliases.some((alias) =>
-    pool.some((item) => item === alias || item.includes(alias)),
-  );
-}
-
-function matchesHouseRuleOption(
-  ruleOption: string,
-  rawHouseRules: string | null | undefined,
-): boolean {
-  if (!rawHouseRules) return false;
-  const parsed = parseHouseRules(rawHouseRules);
-  if (parsed.rules.some((r) => r.toLowerCase() === ruleOption.toLowerCase())) {
-    return true;
-  }
-  const lowerRaw = rawHouseRules.toLowerCase();
-  const lowerRule = ruleOption.toLowerCase();
-  if (lowerRaw.includes(`no ${lowerRule}`)) {
-    return false;
-  }
-  return lowerRaw.includes(lowerRule);
+// A rent box's limit: "4500" gives 4500. Empty, zero, negative or not a
+// number gives undefined, which means no limit.
+function rentLimit(value: string): number | undefined {
+  const trimmed = value.trim();
+  if (trimmed === "") return undefined;
+  const num = Number(trimmed);
+  return Number.isFinite(num) && num > 0 ? num : undefined;
 }
 
 // A listing's page for whoever is browsing. Renters have their own, inside
@@ -333,13 +211,19 @@ export default function PublicListingsView({
       ? placeLookup.status
       : null;
 
-  // Rent Range
-  const [minRent, setMinRent] = useState<string>("");
+  // Rent Range: what's in the two boxes
+  const [minRent, setMinRent] = useState<string>(
+    initialFilters?.min_rent !== undefined
+      ? String(initialFilters.min_rent)
+      : "",
+  );
   const [maxRent, setMaxRent] = useState<string>(
     initialFilters?.max_rent !== undefined
       ? String(initialFilters.max_rent)
       : "",
   );
+  const minRentLimit = rentLimit(minRent);
+  const maxRentLimit = rentLimit(maxRent);
 
   // The radius search (S2-10, #102): the point to measure from (null until
   // one is picked) and how far around it to look. Both come from the URL
@@ -359,42 +243,42 @@ export default function PublicListingsView({
   // Bumped by "Reset", to start the Location section's "Near" box afresh.
   const [filtersResetCount, setFiltersResetCount] = useState(0);
 
-  // Amenities (Parking)
-  const [hasParking, setHasParking] = useState<boolean>(false);
-
-  // Accordion Category States
-  const [selectedUtilities, setSelectedUtilities] = useState<string[]>([]);
-  const [selectedRoom, setSelectedRoom] = useState<string[]>([]);
-  const [selectedBathroom, setSelectedBathroom] = useState<string[]>([]);
-  const [selectedKitchen, setSelectedKitchen] = useState<string[]>([]);
-  const [selectedLaundry, setSelectedLaundry] = useState<string[]>([]);
-  const [selectedSafety, setSelectedSafety] = useState<string[]>([]);
-  const [selectedPropertyTypes, setSelectedPropertyTypes] = useState<string[]>(
-    initialFilters?.property_type ? [initialFilters.property_type] : [],
+  // Amenities (#18): the ticked options of every group, Parking included,
+  // named as the listing form saves them (src/lib/listing-features.ts).
+  const [selectedFeatures, setSelectedFeatures] = useState<string[]>(
+    initialFilters?.features ?? [],
   );
+  const [selectedHouseRules, setSelectedHouseRules] = useState<string[]>(
+    initialFilters?.rules ?? [],
+  );
+  const [selectedPropertyTypes, setSelectedPropertyTypes] = useState<
+    PropertyType[]
+  >(initialFilters?.property_type ? [initialFilters.property_type] : []);
   const [selectedOccupancyTypes, setSelectedOccupancyTypes] = useState<
-    string[]
+    OccupancyType[]
   >(initialFilters?.occupancy ? [initialFilters.occupancy] : []);
-  const [selectedGenders, setSelectedGenders] = useState<string[]>(
+  const [selectedGenders, setSelectedGenders] = useState<GenderPolicy[]>(
     initialFilters?.gender ? [initialFilters.gender] : [],
   );
-  const [selectedHouseRules, setSelectedHouseRules] = useState<string[]>([]);
 
-  // Open/Closed state for the 10 accordion sections in Filters
-  const [openAccordions, setOpenAccordions] = useState<
-    Record<AccordionCategoryKey, boolean>
-  >({
-    utilities: false,
-    room: false,
-    bathroom: false,
-    kitchen: false,
-    laundry: false,
-    safety: false,
-    propertyType: Boolean(initialFilters?.property_type),
-    occupancyType: Boolean(initialFilters?.occupancy),
-    allowedGender: Boolean(initialFilters?.gender),
-    houseRules: false,
-  });
+  // Open/Closed state for the accordion sections in Filters, by key. A
+  // section starts open when the URL ticked something in it.
+  const [openAccordions, setOpenAccordions] = useState<Record<string, boolean>>(
+    () => ({
+      ...Object.fromEntries(
+        FEATURE_ACCORDIONS.map((category) => [
+          category.id,
+          category.options.some((option) =>
+            (initialFilters?.features ?? []).includes(option),
+          ),
+        ]),
+      ),
+      propertyType: Boolean(initialFilters?.property_type),
+      occupancyType: Boolean(initialFilters?.occupancy),
+      allowedGender: Boolean(initialFilters?.gender),
+      houseRules: (initialFilters?.rules ?? []).length > 0,
+    }),
+  );
 
   // View Mode: Grid vs Map
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
@@ -420,80 +304,81 @@ export default function PublicListingsView({
     });
   };
 
-  const toggleAccordion = (key: AccordionCategoryKey) => {
+  const toggleAccordion = (key: string) => {
     setOpenAccordions((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const toggleArrayItem = (
-    setter: React.Dispatch<React.SetStateAction<string[]>>,
-    item: string,
+  // Ticks or unticks one option of a filter. The list's own type decides
+  // what goes in it (NoInfer), so "Has Parking" can go in a string[].
+  const toggleItem = <T extends string>(
+    setter: React.Dispatch<React.SetStateAction<T[]>>,
+    item: NoInfer<T>,
   ) => {
     setter((prev) =>
       prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item],
     );
   };
 
-  // Puts the search in the URL, so a reload or a shared link opens the same
-  // search. It uses the browser's History API, which Next 16 supports,
-  // rather than router.replace: the filtering all happens here in the
-  // browser, so there's no need to re-run the page's server query on every
-  // change, like each tap on the map (S2-10).
-  const syncUrlParams = (overrides?: {
-    q?: string;
-    max_rent?: string;
-    propertyTypes?: string[];
-    occupancyTypes?: string[];
-    genders?: string[];
-    center?: SearchCenter | null;
-    radiusKm?: SearchRadiusKm;
-  }) => {
-    const params = new URLSearchParams();
-    const qVal = (overrides?.q ?? searchQuery).trim();
-    const maxRentVal = (overrides?.max_rent ?? maxRent).trim();
-    const propTypes = overrides?.propertyTypes ?? selectedPropertyTypes;
-    const occTypes = overrides?.occupancyTypes ?? selectedOccupancyTypes;
-    const genTypes = overrides?.genders ?? selectedGenders;
-
-    if (qVal) params.set("q", qVal);
-    if (maxRentVal && Number(maxRentVal) > 0) {
-      params.set("max_rent", maxRentVal);
-    }
-    if (propTypes.length === 1) {
-      params.set("property_type", propTypes[0]);
-    }
-    if (occTypes.length === 1) {
-      params.set("occupancy", occTypes[0]);
-    }
-    if (genTypes.length === 1) {
-      params.set("gender", genTypes[0]);
-    }
-
-    // The radius search (S2-10): only with a point, since a radius on its
-    // own means nothing. Five decimals is about a meter.
-    const center =
-      overrides && "center" in overrides ? overrides.center : searchCenter;
-    if (center) {
-      params.set("lat", center.lat.toFixed(5));
-      params.set("lng", center.lng.toFixed(5));
-      params.set("radius_km", String(overrides?.radiusKm ?? radiusKm));
-      if (center.label) params.set("near", center.label);
-    }
-
+  // The URL keeps the whole search, and follows every change, so a reload
+  // or a shared link opens the same search (#309: the checkboxes used to
+  // reach it only when Search was pressed, and the amenities never did).
+  // It uses the browser's History API, which Next 16 supports, rather than
+  // router.replace: the filtering all happens here in the browser, so
+  // there's no need to re-run the page's server query on every change,
+  // like each tap on the map (S2-10).
+  useEffect(() => {
+    const params = listingFilterSearchParams({
+      q: searchQuery,
+      min_rent: minRentLimit,
+      max_rent: maxRentLimit,
+      // The URL holds one of each. With two or more ticked, they stay on
+      // this page only, as before.
+      property_type:
+        selectedPropertyTypes.length === 1
+          ? selectedPropertyTypes[0]
+          : undefined,
+      occupancy:
+        selectedOccupancyTypes.length === 1
+          ? selectedOccupancyTypes[0]
+          : undefined,
+      gender: selectedGenders.length === 1 ? selectedGenders[0] : undefined,
+      features: selectedFeatures,
+      rules: selectedHouseRules,
+      ...(searchCenter && {
+        lat: searchCenter.lat,
+        lng: searchCenter.lng,
+        radius_km: radiusKm,
+        near: searchCenter.label ?? undefined,
+      }),
+    });
     const queryString = params.toString();
-    const targetUrl = queryString ? `${pathname}?${queryString}` : pathname;
-    window.history.replaceState(null, "", targetUrl);
-  };
+    window.history.replaceState(
+      null,
+      "",
+      queryString ? `${pathname}?${queryString}` : pathname,
+    );
+  }, [
+    pathname,
+    searchQuery,
+    minRentLimit,
+    maxRentLimit,
+    selectedPropertyTypes,
+    selectedOccupancyTypes,
+    selectedGenders,
+    selectedFeatures,
+    selectedHouseRules,
+    searchCenter,
+    radiusKm,
+  ]);
 
   // The radius search (S2-10, #102): the point comes from the "Near" box, a
   // tap on the map or a drag of the point, and null clears it.
   const changeSearchCenter = (center: SearchCenter | null) => {
     setSearchCenter(center);
-    syncUrlParams({ center });
   };
 
   const changeRadius = (radius: SearchRadiusKm) => {
     setRadiusKm(radius);
-    syncUrlParams({ radiusKm: radius });
   };
 
   // Empties the search bar: its X, and the map message's "Clear search".
@@ -501,21 +386,17 @@ export default function PublicListingsView({
     placeLookupIdRef.current += 1;
     setPlaceLookup(null);
     setSearchQuery("");
-    syncUrlParams({ q: "" });
   };
 
   // Search, or Enter in the search bar. Words that some listing's name,
-  // address or description has just filter the listings, as before. Words
-  // that no listing has are looked up as a place, with one Nominatim
-  // lookup per press, and the search becomes "within the radius of that
-  // place" (plan update on #28).
+  // address or description has just filter the listings, as they already
+  // do while typing. Words that no listing has are looked up as a place,
+  // with one Nominatim lookup per press, and the search becomes "within
+  // the radius of that place" (plan update on #28).
   const handleSearchSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const words = searchQuery.trim();
-    if (!wordsMatchNoListing) {
-      syncUrlParams();
-      return;
-    }
+    if (!wordsMatchNoListing) return;
     if (lookupStatus === "searching") return;
 
     const lookupId = ++placeLookupIdRef.current;
@@ -531,58 +412,42 @@ export default function PublicListingsView({
 
       if (!place) {
         setPlaceLookup({ words, status: "not-found" });
-        syncUrlParams();
         return;
       }
 
       // Found it: search around the place instead. The words go, since
       // they'd hide every listing near it that doesn't mention them.
-      const center: SearchCenter = {
+      setPlaceLookup(null);
+      setSearchQuery("");
+      setSearchCenter({
         lat: place.lat,
         lng: place.lng,
         label: place.shortName,
-      };
-      setPlaceLookup(null);
-      setSearchQuery("");
-      setSearchCenter(center);
-      syncUrlParams({ q: "", center });
+      });
     } catch (error) {
       console.error("Place lookup failed:", error);
       if (lookupId !== placeLookupIdRef.current) return;
       setPlaceLookup({ words, status: "failed" });
-      syncUrlParams();
     }
   };
 
   // Count active filters
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    if (minRent.trim() !== "") count++;
-    if (maxRent.trim() !== "") count++;
+    if (minRentLimit !== undefined) count++;
+    if (maxRentLimit !== undefined) count++;
     if (searchCenter) count++;
-    if (hasParking) count++;
-    count += selectedUtilities.length;
-    count += selectedRoom.length;
-    count += selectedBathroom.length;
-    count += selectedKitchen.length;
-    count += selectedLaundry.length;
-    count += selectedSafety.length;
+    count += selectedFeatures.length;
     count += selectedPropertyTypes.length;
     count += selectedOccupancyTypes.length;
     count += selectedGenders.length;
     count += selectedHouseRules.length;
     return count;
   }, [
-    minRent,
-    maxRent,
+    minRentLimit,
+    maxRentLimit,
     searchCenter,
-    hasParking,
-    selectedUtilities,
-    selectedRoom,
-    selectedBathroom,
-    selectedKitchen,
-    selectedLaundry,
-    selectedSafety,
+    selectedFeatures,
     selectedPropertyTypes,
     selectedOccupancyTypes,
     selectedGenders,
@@ -598,149 +463,65 @@ export default function PublicListingsView({
     setSearchCenter(null);
     setRadiusKm(DEFAULT_SEARCH_RADIUS_KM);
     setFiltersResetCount((count) => count + 1);
-    setHasParking(false);
-    setSelectedUtilities([]);
-    setSelectedRoom([]);
-    setSelectedBathroom([]);
-    setSelectedKitchen([]);
-    setSelectedLaundry([]);
-    setSelectedSafety([]);
+    setSelectedFeatures([]);
     setSelectedPropertyTypes([]);
     setSelectedOccupancyTypes([]);
     setSelectedGenders([]);
     setSelectedHouseRules([]);
-    window.history.replaceState(null, "", pathname);
   };
 
   // The listings that pass every filter except the radius search
   const listingsMatchingFilters = useMemo(() => {
     return listings.filter((listing) => {
-      // 1. Search bar query
-      if (searchQuery.trim() !== "") {
-        if (!matchesListingSearch(listing, searchQuery)) return false;
-      }
-
-      // 2. Rent Range
-      const parsedMin = minRent.trim() !== "" ? Number(minRent) : null;
-      const parsedMax = maxRent.trim() !== "" ? Number(maxRent) : null;
+      // 1. Search bar words
       if (
-        parsedMin !== null &&
-        !Number.isNaN(parsedMin) &&
-        listing.monthly_rent < parsedMin
+        searchQuery.trim() !== "" &&
+        !matchesListingSearch(listing, searchQuery)
       ) {
         return false;
       }
-      if (
-        parsedMax !== null &&
-        !Number.isNaN(parsedMax) &&
-        parsedMax > 0 &&
-        listing.monthly_rent > parsedMax
-      ) {
+
+      // 2. Rent Range
+      if (minRentLimit !== undefined && listing.monthly_rent < minRentLimit) {
+        return false;
+      }
+      if (maxRentLimit !== undefined && listing.monthly_rent > maxRentLimit) {
         return false;
       }
 
       // 3. Location: the radius search, applied below (S2-10). The "Near"
       // box used to be a second text search; the search bar does that.
 
-      // 4. Parking
-      if (hasParking) {
-        const hasParkingAmenity = (listing.amenities ?? []).some((a) =>
-          a.toLowerCase().includes("parking"),
-        );
-        if (!hasParkingAmenity) return false;
-      }
-
-      // 5. Utilities (must match all selected)
-      if (
-        selectedUtilities.length > 0 &&
-        !selectedUtilities.every((u) =>
-          matchesFeature(u, listing.utilities, listing.amenities),
-        )
-      ) {
+      // 4. Amenities, Parking included: every ticked option, also when the
+      // listing words it differently, like the seed's "WiFi"
+      // (src/lib/filter-listings.ts, #309).
+      if (!matchesListingFeatures(listing, selectedFeatures)) {
         return false;
       }
 
-      // 6. Room features
-      if (
-        selectedRoom.length > 0 &&
-        !selectedRoom.every((r) =>
-          matchesFeature(r, listing.room_features, listing.amenities),
-        )
-      ) {
-        return false;
-      }
-
-      // 7. Bathroom features
-      if (
-        selectedBathroom.length > 0 &&
-        !selectedBathroom.every((b) =>
-          matchesFeature(b, listing.bathroom_features, listing.amenities),
-        )
-      ) {
-        return false;
-      }
-
-      // 8. Kitchen features
-      if (
-        selectedKitchen.length > 0 &&
-        !selectedKitchen.every((k) =>
-          matchesFeature(k, listing.kitchen_features, listing.amenities),
-        )
-      ) {
-        return false;
-      }
-
-      // 9. Laundry features
-      if (
-        selectedLaundry.length > 0 &&
-        !selectedLaundry.every((l) =>
-          matchesFeature(l, listing.laundry_features, listing.amenities),
-        )
-      ) {
-        return false;
-      }
-
-      // 10. Safety features
-      if (
-        selectedSafety.length > 0 &&
-        !selectedSafety.every((s) =>
-          matchesFeature(s, listing.safety_features, listing.amenities),
-        )
-      ) {
-        return false;
-      }
-
-      // 11. Property Type (OR within category)
+      // 5. Property type, room type and gender: any of the ticked ones
       if (
         selectedPropertyTypes.length > 0 &&
-        !selectedPropertyTypes.includes(listing.property_type ?? "")
+        !selectedPropertyTypes.some((type) => type === listing.property_type)
       ) {
         return false;
       }
-
-      // 12. Room / Occupancy Type (OR within category)
       if (
         selectedOccupancyTypes.length > 0 &&
-        !selectedOccupancyTypes.includes(listing.occupancy_type ?? "")
+        !selectedOccupancyTypes.some((type) => type === listing.occupancy_type)
       ) {
         return false;
       }
-
-      // 13. Allowed Gender (OR within category)
       if (
         selectedGenders.length > 0 &&
-        !selectedGenders.includes(listing.allowed_gender ?? "")
+        !selectedGenders.some((gender) => gender === listing.allowed_gender)
       ) {
         return false;
       }
 
-      // 14. House Rules (AND within category)
-      if (
-        selectedHouseRules.length > 0 &&
-        !selectedHouseRules.every((hr) =>
-          matchesHouseRuleOption(hr, listing.house_rules),
-        )
-      ) {
+      // 6. House rules: every ticked rule, and only rules the landlord
+      // ticked in the form, never free text (parseHouseRules, #309).
+      if (!matchesListingHouseRules(listing, selectedHouseRules)) {
         return false;
       }
 
@@ -749,15 +530,9 @@ export default function PublicListingsView({
   }, [
     listings,
     searchQuery,
-    minRent,
-    maxRent,
-    hasParking,
-    selectedUtilities,
-    selectedRoom,
-    selectedBathroom,
-    selectedKitchen,
-    selectedLaundry,
-    selectedSafety,
+    minRentLimit,
+    maxRentLimit,
+    selectedFeatures,
     selectedPropertyTypes,
     selectedOccupancyTypes,
     selectedGenders,
@@ -838,17 +613,11 @@ export default function PublicListingsView({
   // comes back for a new search.
   const searchSignature = JSON.stringify([
     searchQuery.trim(),
-    minRent,
-    maxRent,
+    minRentLimit,
+    maxRentLimit,
     searchCenter,
     radiusKm,
-    hasParking,
-    selectedUtilities,
-    selectedRoom,
-    selectedBathroom,
-    selectedKitchen,
-    selectedLaundry,
-    selectedSafety,
+    selectedFeatures,
     selectedPropertyTypes,
     selectedOccupancyTypes,
     selectedGenders,
@@ -981,9 +750,9 @@ export default function PublicListingsView({
                 {filteredListings.length}{" "}
                 {filteredListings.length === 1 ? "match" : "matches"}:
               </span>
-              {(minRent || maxRent) && (
+              {(minRentLimit !== undefined || maxRentLimit !== undefined) && (
                 <FilterPill
-                  label={`Rent: ₱${minRent || "0"} - ₱${maxRent || "Any"}`}
+                  label={`Rent: ₱${minRentLimit ?? 0} - ₱${maxRentLimit ?? "Any"}`}
                   onRemove={() => {
                     setMinRent("");
                     setMaxRent("");
@@ -996,54 +765,39 @@ export default function PublicListingsView({
                   onRemove={() => changeSearchCenter(null)}
                 />
               )}
-              {hasParking && (
-                <FilterPill
-                  label="Parking"
-                  onRemove={() => setHasParking(false)}
-                />
-              )}
               {selectedPropertyTypes.map((t) => (
                 <FilterPill
                   key={t}
                   label={t}
-                  onRemove={() => toggleArrayItem(setSelectedPropertyTypes, t)}
+                  onRemove={() => toggleItem(setSelectedPropertyTypes, t)}
                 />
               ))}
               {selectedOccupancyTypes.map((t) => (
                 <FilterPill
                   key={t}
                   label={t}
-                  onRemove={() => toggleArrayItem(setSelectedOccupancyTypes, t)}
+                  onRemove={() => toggleItem(setSelectedOccupancyTypes, t)}
                 />
               ))}
               {selectedGenders.map((g) => (
                 <FilterPill
                   key={g}
                   label={g}
-                  onRemove={() => toggleArrayItem(setSelectedGenders, g)}
+                  onRemove={() => toggleItem(setSelectedGenders, g)}
                 />
               ))}
-              {[
-                ...selectedUtilities,
-                ...selectedRoom,
-                ...selectedBathroom,
-                ...selectedKitchen,
-                ...selectedLaundry,
-                ...selectedSafety,
-                ...selectedHouseRules,
-              ].map((item) => (
+              {selectedFeatures.map((feature) => (
                 <FilterPill
-                  key={item}
-                  label={item}
-                  onRemove={() => {
-                    setSelectedUtilities((p) => p.filter((x) => x !== item));
-                    setSelectedRoom((p) => p.filter((x) => x !== item));
-                    setSelectedBathroom((p) => p.filter((x) => x !== item));
-                    setSelectedKitchen((p) => p.filter((x) => x !== item));
-                    setSelectedLaundry((p) => p.filter((x) => x !== item));
-                    setSelectedSafety((p) => p.filter((x) => x !== item));
-                    setSelectedHouseRules((p) => p.filter((x) => x !== item));
-                  }}
+                  key={`feature:${feature}`}
+                  label={feature}
+                  onRemove={() => toggleItem(setSelectedFeatures, feature)}
+                />
+              ))}
+              {selectedHouseRules.map((rule) => (
+                <FilterPill
+                  key={`rule:${rule}`}
+                  label={rule}
+                  onRemove={() => toggleItem(setSelectedHouseRules, rule)}
                 />
               ))}
               <button
@@ -1160,144 +914,62 @@ export default function PublicListingsView({
                   />
                 </div>
 
-                {/* Amenities Section */}
+                {/* Amenities Section: the listing form's options (#309) */}
                 <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
                   <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
                     Amenities
                   </p>
 
-                  {/* Parking Checkbox */}
-                  <label className="mb-2 flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/60">
-                    <input
-                      type="checkbox"
-                      checked={hasParking}
-                      onChange={(e) => setHasParking(e.target.checked)}
-                      className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-purple-600 focus:ring-purple-500"
-                    />
-                    <span>Parking</span>
-                  </label>
+                  {/* Parking & Property: plain checkboxes */}
+                  {AMENITIES_OPTIONS.map((option) => (
+                    <label
+                      key={option}
+                      className="mb-2 flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/60"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedFeatures.includes(option)}
+                        onChange={() => toggleItem(setSelectedFeatures, option)}
+                        className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-purple-600 focus:ring-purple-500"
+                      />
+                      <span>{option}</span>
+                    </label>
+                  ))}
 
                   {/* Accordion Categories */}
                   <div className="divide-y divide-zinc-200/60 dark:divide-zinc-800/80">
-                    {/* 1. Utilities */}
-                    <FilterAccordion
-                      label="Utilities"
-                      count={selectedUtilities.length}
-                      isOpen={openAccordions.utilities}
-                      onToggle={() => toggleAccordion("utilities")}
-                    >
-                      {UTILITY_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedUtilities.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedUtilities, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
+                    {/* Utilities, Room Features, Bathroom, Kitchen, Laundry,
+                        Safety & Security */}
+                    {FEATURE_ACCORDIONS.map((category) => (
+                      <FilterAccordion
+                        key={category.id}
+                        label={category.title}
+                        count={
+                          category.options.filter((option) =>
+                            selectedFeatures.includes(option),
+                          ).length
+                        }
+                        isOpen={Boolean(openAccordions[category.id])}
+                        onToggle={() => toggleAccordion(category.id)}
+                      >
+                        {category.options.map((option) => (
+                          <CheckboxOption
+                            key={option}
+                            label={option}
+                            checked={selectedFeatures.includes(option)}
+                            onChange={() =>
+                              toggleItem(setSelectedFeatures, option)
+                            }
+                          />
+                        ))}
+                      </FilterAccordion>
+                    ))}
 
-                    {/* 2. Room */}
-                    <FilterAccordion
-                      label="Room"
-                      count={selectedRoom.length}
-                      isOpen={openAccordions.room}
-                      onToggle={() => toggleAccordion("room")}
-                    >
-                      {ROOM_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedRoom.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedRoom, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 3. Bathroom */}
-                    <FilterAccordion
-                      label="Bathroom"
-                      count={selectedBathroom.length}
-                      isOpen={openAccordions.bathroom}
-                      onToggle={() => toggleAccordion("bathroom")}
-                    >
-                      {BATHROOM_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedBathroom.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedBathroom, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 4. Kitchen & Food */}
-                    <FilterAccordion
-                      label="Kitchen & Food"
-                      count={selectedKitchen.length}
-                      isOpen={openAccordions.kitchen}
-                      onToggle={() => toggleAccordion("kitchen")}
-                    >
-                      {KITCHEN_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedKitchen.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedKitchen, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 5. Laundry */}
-                    <FilterAccordion
-                      label="Laundry"
-                      count={selectedLaundry.length}
-                      isOpen={openAccordions.laundry}
-                      onToggle={() => toggleAccordion("laundry")}
-                    >
-                      {LAUNDRY_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedLaundry.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedLaundry, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 6. Safety & Security */}
-                    <FilterAccordion
-                      label="Safety & Security"
-                      count={selectedSafety.length}
-                      isOpen={openAccordions.safety}
-                      onToggle={() => toggleAccordion("safety")}
-                    >
-                      {SAFETY_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedSafety.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedSafety, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* 7. Property Type */}
+                    {/* Property Type */}
                     <FilterAccordion
                       label="Property Type"
                       count={selectedPropertyTypes.length}
-                      isOpen={openAccordions.propertyType}
+                      isOpen={Boolean(openAccordions.propertyType)}
                       onToggle={() => toggleAccordion("propertyType")}
                     >
                       {PROPERTY_TYPES.map((item) => (
@@ -1306,17 +978,17 @@ export default function PublicListingsView({
                           label={item}
                           checked={selectedPropertyTypes.includes(item)}
                           onChange={() =>
-                            toggleArrayItem(setSelectedPropertyTypes, item)
+                            toggleItem(setSelectedPropertyTypes, item)
                           }
                         />
                       ))}
                     </FilterAccordion>
 
-                    {/* 8. Room/Occupancy Type */}
+                    {/* Room/Occupancy Type */}
                     <FilterAccordion
                       label="Room/Occupancy Type"
                       count={selectedOccupancyTypes.length}
-                      isOpen={openAccordions.occupancyType}
+                      isOpen={Boolean(openAccordions.occupancyType)}
                       onToggle={() => toggleAccordion("occupancyType")}
                     >
                       {OCCUPANCY_TYPES.map((item) => (
@@ -1325,45 +997,43 @@ export default function PublicListingsView({
                           label={item}
                           checked={selectedOccupancyTypes.includes(item)}
                           onChange={() =>
-                            toggleArrayItem(setSelectedOccupancyTypes, item)
+                            toggleItem(setSelectedOccupancyTypes, item)
                           }
                         />
                       ))}
                     </FilterAccordion>
 
-                    {/* 9. Allowed Gender */}
+                    {/* Allowed Gender */}
                     <FilterAccordion
                       label="Allowed Gender"
                       count={selectedGenders.length}
-                      isOpen={openAccordions.allowedGender}
+                      isOpen={Boolean(openAccordions.allowedGender)}
                       onToggle={() => toggleAccordion("allowedGender")}
                     >
-                      {GENDER_OPTIONS.map((item) => (
+                      {GENDER_POLICIES.map((item) => (
                         <CheckboxOption
                           key={item}
                           label={item}
                           checked={selectedGenders.includes(item)}
-                          onChange={() =>
-                            toggleArrayItem(setSelectedGenders, item)
-                          }
+                          onChange={() => toggleItem(setSelectedGenders, item)}
                         />
                       ))}
                     </FilterAccordion>
 
-                    {/* 10. House Rules */}
+                    {/* House Rules: the ones landlords tick in the form */}
                     <FilterAccordion
                       label="House Rules"
                       count={selectedHouseRules.length}
-                      isOpen={openAccordions.houseRules}
+                      isOpen={Boolean(openAccordions.houseRules)}
                       onToggle={() => toggleAccordion("houseRules")}
                     >
-                      {HOUSE_RULE_OPTIONS.map((item) => (
+                      {HOUSE_RULES_OPTIONS.map((item) => (
                         <CheckboxOption
                           key={item}
                           label={item}
                           checked={selectedHouseRules.includes(item)}
                           onChange={() =>
-                            toggleArrayItem(setSelectedHouseRules, item)
+                            toggleItem(setSelectedHouseRules, item)
                           }
                         />
                       ))}
@@ -1452,9 +1122,20 @@ export default function PublicListingsView({
               }`}
             >
               {filteredListings.map((listing) => {
-                const isAvailable =
-                  listing.availability_status === "available" &&
-                  listing.available_rooms > 0;
+                // The availability badge, in listingStatusView's colours
+                // (#232). Almost-full listings show here too, and used to
+                // say "Fully Occupied" (#309).
+                const statusView = listingStatusView(
+                  listing.availability_status,
+                );
+                const roomsLeft = `${listing.available_rooms} ${
+                  listing.available_rooms === 1 ? "room" : "rooms"
+                } left`;
+                const isFull =
+                  statusView.group === "occupied" ||
+                  listing.available_rooms <= 0;
+                const isAlmostFull =
+                  !isFull && statusView.status === "almost_full";
                 const coverImage =
                   listing.cover_image ||
                   (listing.images && listing.images.length > 0
@@ -1510,23 +1191,27 @@ export default function PublicListingsView({
                       <div className="absolute top-3 left-3 flex flex-wrap items-center gap-1.5">
                         <span
                           className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold backdrop-blur-md ${
-                            isAvailable
-                              ? "bg-emerald-500/90 text-white"
-                              : "bg-zinc-900/85 text-zinc-200"
+                            isFull
+                              ? "bg-zinc-900/85 text-zinc-200"
+                              : isAlmostFull
+                                ? statusView.badgeClassName
+                                : "bg-emerald-500/90 text-white"
                           }`}
                         >
                           <span
                             className={`h-1.5 w-1.5 rounded-full ${
-                              isAvailable
-                                ? "animate-pulse bg-white"
-                                : "bg-rose-400"
+                              isFull
+                                ? "bg-rose-400"
+                                : isAlmostFull
+                                  ? "bg-amber-950"
+                                  : "animate-pulse bg-white"
                             }`}
                           />
-                          {isAvailable
-                            ? `${listing.available_rooms} ${
-                                listing.available_rooms === 1 ? "room" : "rooms"
-                              } left`
-                            : "Fully Occupied"}
+                          {isFull
+                            ? "Fully Occupied"
+                            : isAlmostFull
+                              ? `${statusView.label} · ${roomsLeft}`
+                              : roomsLeft}
                         </span>
                       </div>
 
@@ -1565,19 +1250,13 @@ export default function PublicListingsView({
                       <div className="space-y-3">
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="text-xs font-semibold tracking-wide text-purple-600 uppercase dark:text-purple-400">
-                                {listing.property_type} •{" "}
-                                {listing.occupancy_type}
-                              </span>
-                              <span
-                                title="Verified Landlord"
-                                className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
-                              >
-                                <ShieldCheck className="h-3 w-3" />
-                                Verified Landlord
-                              </span>
-                            </div>
+                            {/* No "Verified Landlord" badge: it was on every
+                                card. Guests and renters can't read the
+                                landlords' verifications, so a real badge
+                                needs a story of its own (#309). */}
+                            <span className="text-xs font-semibold tracking-wide text-purple-600 uppercase dark:text-purple-400">
+                              {listing.property_type} • {listing.occupancy_type}
+                            </span>
 
                             <h2 className="mt-1 line-clamp-1 text-lg font-bold text-zinc-900 transition-colors group-hover:text-purple-600 dark:text-zinc-50 dark:group-hover:text-purple-400">
                               <Link
@@ -1619,24 +1298,15 @@ export default function PublicListingsView({
                       </div>
 
                       {/* Card Footer Actions */}
-                      <div className="mt-5 flex items-center justify-between gap-2 border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
-                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                          Landlord:{" "}
-                          <span className="font-semibold text-zinc-800 dark:text-zinc-200">
-                            Verified Host
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Link
-                            href={listingPage}
-                            onClick={(e) => handleListingLinkClick(e, listing)}
-                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 py-2 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-500"
-                          >
-                            <Eye className="h-3.5 w-3.5" />
-                            View
-                          </Link>
-                        </div>
+                      <div className="mt-5 flex items-center justify-end gap-2 border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
+                        <Link
+                          href={listingPage}
+                          onClick={(e) => handleListingLinkClick(e, listing)}
+                          className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl bg-purple-600 px-3.5 py-2 text-xs font-semibold text-white shadow-2xs transition-colors hover:bg-purple-700 dark:bg-purple-600 dark:hover:bg-purple-500"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          View
+                        </Link>
                       </div>
                     </div>
                   </article>
