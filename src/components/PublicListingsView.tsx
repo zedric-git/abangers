@@ -62,6 +62,13 @@ import LandlordAuthModal from "@/components/LandlordAuthModal";
 import NearbySearch from "@/components/NearbySearch";
 import { ListingsMap } from "@/components/map";
 import type { MapPinItem } from "@/components/map/ListingsMap";
+import {
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 function getMapThumbnailPhoto(locationText: string = ""): string {
   const q = locationText.trim().toLowerCase();
@@ -109,6 +116,11 @@ function getMapThumbnailPhoto(locationText: string = ""): string {
 const FEATURE_ACCORDIONS = FEATURE_CATEGORIES.filter(
   (category) => category.column !== "amenities",
 );
+
+// Tailwind's `lg` breakpoint (64rem, 1024px), for the code that can't use
+// the `lg:` classes: from here up the filters are a sidebar beside the
+// listings, and below it a drawer over them (#316).
+const FILTER_SIDEBAR_MEDIA_QUERY = "(min-width: 64rem)";
 
 // A rent box's limit: "4500" gives 4500. Empty, zero, negative or not a
 // number gives undefined, which means no limit.
@@ -182,7 +194,33 @@ export default function PublicListingsView({
 
   // Search & Filter Panel States
   const [searchQuery, setSearchQuery] = useState(resolvedInitialQuery);
+  // The filters show in one of two places (#316): from lg (1024px) up, a
+  // sidebar beside the listings, open at first; below lg, a drawer over
+  // them, closed at first, so a phone or a tablet opens on the listings.
+  // Each has its own open state.
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(true);
+  const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
+  // The button that opened the drawer, and the toolbar's Filters button:
+  // where the focus goes back to when the drawer closes.
+  const filterDrawerOpenerRef = useRef<HTMLButtonElement | null>(null);
+  const filtersButtonRef = useRef<HTMLButtonElement>(null);
+
+  const openFilterDrawer = (event: React.MouseEvent<HTMLButtonElement>) => {
+    filterDrawerOpenerRef.current = event.currentTarget;
+    setIsFilterDrawerOpen(true);
+  };
+
+  // The drawer is only for screens under lg. If the window is widened to
+  // lg or more while it's open, close it, and the sidebar takes over
+  // rather than the filters showing twice.
+  useEffect(() => {
+    const sidebarWidth = window.matchMedia(FILTER_SIDEBAR_MEDIA_QUERY);
+    const closeDrawer = () => {
+      if (sidebarWidth.matches) setIsFilterDrawerOpen(false);
+    };
+    sidebarWidth.addEventListener("change", closeDrawer);
+    return () => sidebarWidth.removeEventListener("change", closeDrawer);
+  }, []);
 
   // The search bar's place lookup (plan update on #28): Search with words
   // that no listing has looks them up as a place. `words` says which words
@@ -624,6 +662,204 @@ export default function PublicListingsView({
     selectedHouseRules,
   ]);
 
+  // The filters themselves, written once for the two places they show
+  // (#316): the sidebar beside the listings from lg up, and the drawer
+  // over them below lg.
+  const filterControls = (
+    <div className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-5 pr-3">
+      {/* Rent Section */}
+      <div>
+        <p className="mb-2 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
+          Rent
+        </p>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={0}
+            value={minRent}
+            onChange={(e) => setMinRent(e.target.value)}
+            aria-label="Minimum monthly rent"
+            placeholder="Min (₱2,500)"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+          />
+          <span className="text-xs font-bold text-zinc-400">-</span>
+          <input
+            type="number"
+            min={0}
+            value={maxRent}
+            onChange={(e) => setMaxRent(e.target.value)}
+            aria-label="Maximum monthly rent"
+            placeholder="Max (₱5,000)"
+            className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
+          />
+        </div>
+      </div>
+
+      {/* Location Section: the radius search (S2-10, #102) */}
+      <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
+        <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
+          Location
+        </p>
+        <NearbySearch
+          key={filtersResetCount}
+          center={searchCenter}
+          radiusKm={radiusKm}
+          onCenterChange={changeSearchCenter}
+          onRadiusChange={changeRadius}
+        />
+      </div>
+
+      {/* Amenities Section: the listing form's options (#309) */}
+      <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
+        <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
+          Amenities
+        </p>
+
+        {/* Parking & Property: plain checkboxes */}
+        {AMENITIES_OPTIONS.map((option) => (
+          <label
+            key={option}
+            className="mb-2 flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/60"
+          >
+            <input
+              type="checkbox"
+              checked={selectedFeatures.includes(option)}
+              onChange={() => toggleItem(setSelectedFeatures, option)}
+              className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-purple-600 focus:ring-purple-500"
+            />
+            <span>{option}</span>
+          </label>
+        ))}
+
+        {/* Accordion Categories */}
+        <div className="divide-y divide-zinc-200/60 dark:divide-zinc-800/80">
+          {/* Utilities, Room Features, Bathroom, Kitchen, Laundry,
+              Safety & Security */}
+          {FEATURE_ACCORDIONS.map((category) => (
+            <FilterAccordion
+              key={category.id}
+              label={category.title}
+              count={
+                category.options.filter((option) =>
+                  selectedFeatures.includes(option),
+                ).length
+              }
+              isOpen={Boolean(openAccordions[category.id])}
+              onToggle={() => toggleAccordion(category.id)}
+            >
+              {category.options.map((option) => (
+                <CheckboxOption
+                  key={option}
+                  label={option}
+                  checked={selectedFeatures.includes(option)}
+                  onChange={() => toggleItem(setSelectedFeatures, option)}
+                />
+              ))}
+            </FilterAccordion>
+          ))}
+
+          {/* Property Type */}
+          <FilterAccordion
+            label="Property Type"
+            count={selectedPropertyTypes.length}
+            isOpen={Boolean(openAccordions.propertyType)}
+            onToggle={() => toggleAccordion("propertyType")}
+          >
+            {PROPERTY_TYPES.map((item) => (
+              <CheckboxOption
+                key={item}
+                label={item}
+                checked={selectedPropertyTypes.includes(item)}
+                onChange={() => toggleItem(setSelectedPropertyTypes, item)}
+              />
+            ))}
+          </FilterAccordion>
+
+          {/* Room/Occupancy Type */}
+          <FilterAccordion
+            label="Room/Occupancy Type"
+            count={selectedOccupancyTypes.length}
+            isOpen={Boolean(openAccordions.occupancyType)}
+            onToggle={() => toggleAccordion("occupancyType")}
+          >
+            {OCCUPANCY_TYPES.map((item) => (
+              <CheckboxOption
+                key={item}
+                label={item}
+                checked={selectedOccupancyTypes.includes(item)}
+                onChange={() => toggleItem(setSelectedOccupancyTypes, item)}
+              />
+            ))}
+          </FilterAccordion>
+
+          {/* Allowed Gender */}
+          <FilterAccordion
+            label="Allowed Gender"
+            count={selectedGenders.length}
+            isOpen={Boolean(openAccordions.allowedGender)}
+            onToggle={() => toggleAccordion("allowedGender")}
+          >
+            {GENDER_POLICIES.map((item) => (
+              <CheckboxOption
+                key={item}
+                label={item}
+                checked={selectedGenders.includes(item)}
+                onChange={() => toggleItem(setSelectedGenders, item)}
+              />
+            ))}
+          </FilterAccordion>
+
+          {/* House Rules: the ones landlords tick in the form */}
+          <FilterAccordion
+            label="House Rules"
+            count={selectedHouseRules.length}
+            isOpen={Boolean(openAccordions.houseRules)}
+            onToggle={() => toggleAccordion("houseRules")}
+          >
+            {HOUSE_RULES_OPTIONS.map((item) => (
+              <CheckboxOption
+                key={item}
+                label={item}
+                checked={selectedHouseRules.includes(item)}
+                onChange={() => toggleItem(setSelectedHouseRules, item)}
+              />
+            ))}
+          </FilterAccordion>
+        </div>
+      </div>
+
+      {/* Clear Filters Button */}
+      <div className="border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
+        <button
+          type="button"
+          onClick={clearAllFilters}
+          disabled={activeFilterCount === 0 && searchQuery.trim() === ""}
+          className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-bold text-zinc-700 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-45 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300 dark:hover:border-rose-900/50 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Clear Filters
+        </button>
+      </div>
+    </div>
+  );
+
+  // The rest of the filters' header, after its title: how many filters are
+  // on, and Reset. The sidebar and the drawer both show them (#316).
+  const filterCountBadge = activeFilterCount > 0 && (
+    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-purple-600 px-1.5 text-[11px] font-bold text-white">
+      {activeFilterCount}
+    </span>
+  );
+  const filterResetButton = activeFilterCount > 0 && (
+    <button
+      type="button"
+      onClick={clearAllFilters}
+      className="cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-purple-600 transition-colors hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/40"
+    >
+      Reset
+    </button>
+  );
+
   return (
     <div className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       {/* Area 1: Top Header & Search Bar (Shrink-0, Fixed at Top, Solid Background, Never Scrolls) */}
@@ -670,12 +906,26 @@ export default function PublicListingsView({
           onSubmit={handleSearchSubmit}
           className="flex items-center gap-3"
         >
-          {/* Toggle Filter Button on the LEFT side */}
+          {/* Filter buttons on the LEFT side (#316). Below lg: opens the
+              filters drawer. */}
+          <button
+            ref={filtersButtonRef}
+            type="button"
+            onClick={openFilterDrawer}
+            aria-haspopup="dialog"
+            aria-expanded={isFilterDrawerOpen}
+            className="inline-flex h-11 shrink-0 cursor-pointer items-center gap-2 rounded-2xl border border-zinc-200 bg-white px-4 text-xs font-semibold text-zinc-700 shadow-2xs transition-all hover:border-purple-300 hover:bg-purple-50/70 hover:text-purple-700 lg:hidden dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-purple-800 dark:hover:bg-purple-950/20"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span>Filters</span>
+            {filterCountBadge}
+          </button>
+          {/* From lg up: shows and hides the sidebar */}
           <button
             type="button"
             onClick={() => setIsFilterPanelOpen((prev) => !prev)}
             aria-expanded={isFilterPanelOpen}
-            className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl border px-4 text-xs font-semibold shadow-2xs transition-all ${
+            className={`hidden h-11 shrink-0 items-center gap-2 rounded-2xl border px-4 text-xs font-semibold shadow-2xs transition-all lg:inline-flex ${
               isFilterPanelOpen
                 ? "border-purple-600 bg-purple-600 text-white shadow-xs"
                 : "border-zinc-200 bg-white text-zinc-700 hover:border-purple-300 hover:bg-purple-50/70 hover:text-purple-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-purple-800 dark:hover:bg-purple-950/20"
@@ -810,10 +1060,21 @@ export default function PublicListingsView({
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Below lg: opens the filters drawer (#316) */}
+              <button
+                type="button"
+                onClick={openFilterDrawer}
+                aria-haspopup="dialog"
+                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold text-purple-600 transition-colors hover:bg-purple-50 lg:hidden dark:text-purple-400 dark:hover:bg-purple-950/40"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Open Filters
+              </button>
+              {/* From lg up: shows and hides the sidebar */}
               <button
                 type="button"
                 onClick={() => setIsFilterPanelOpen((prev) => !prev)}
-                className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold text-purple-600 transition-colors hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/40"
+                className="hidden cursor-pointer items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold text-purple-600 transition-colors hover:bg-purple-50 lg:inline-flex dark:text-purple-400 dark:hover:bg-purple-950/40"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5" />
                 {isFilterPanelOpen
@@ -827,12 +1088,15 @@ export default function PublicListingsView({
 
       {/* Main Layout: 2 Fixed-Height Panels with Independent Scrolling */}
       <div className="flex min-h-0 w-full flex-1 items-stretch gap-6 overflow-hidden">
-        {/* Area 2: Collapsible Filters Sidebar (Independent Scroll, Fixed Width, Fixed Height) */}
+        {/* Area 2: Collapsible Filters Sidebar (Independent Scroll, Fixed
+            Width, Fixed Height), from lg (1024px) up only. Below lg the
+            filters are in the drawer after it, so the listings get the
+            whole width (#316). */}
         {isFilterPanelOpen && (
           <aside
             id="renter-filter-sidebar"
             aria-label="Property filters"
-            className="flex h-full w-full shrink-0 flex-col self-stretch overflow-hidden lg:w-72 xl:w-80"
+            className="hidden h-full shrink-0 flex-col self-stretch overflow-hidden lg:flex lg:w-72 xl:w-80"
           >
             {/* Outer Card: owns rounded-3xl border and clips inner scrollbar cleanly inside */}
             <div className="flex h-full max-h-full min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-zinc-200/90 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
@@ -842,22 +1106,10 @@ export default function PublicListingsView({
                   <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
                     Filters
                   </h2>
-                  {activeFilterCount > 0 && (
-                    <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-purple-600 px-1.5 text-[11px] font-bold text-white">
-                      {activeFilterCount}
-                    </span>
-                  )}
+                  {filterCountBadge}
                 </div>
                 <div className="flex items-center gap-1.5">
-                  {activeFilterCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={clearAllFilters}
-                      className="cursor-pointer rounded-lg px-2 py-1 text-xs font-semibold text-purple-600 transition-colors hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/40"
-                    >
-                      Reset
-                    </button>
-                  )}
+                  {filterResetButton}
                   <button
                     type="button"
                     onClick={() => setIsFilterPanelOpen(false)}
@@ -870,195 +1122,64 @@ export default function PublicListingsView({
                 </div>
               </div>
 
-              {/* Scrollable Filter Body: scrolls smoothly inside the card, never cutting rounded corners */}
-              <div className="custom-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-5 pr-3">
-                {/* Rent Section */}
-                <div>
-                  <p className="mb-2 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
-                    Rent
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={0}
-                      value={minRent}
-                      onChange={(e) => setMinRent(e.target.value)}
-                      aria-label="Minimum monthly rent"
-                      placeholder="Min (₱2,500)"
-                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                    />
-                    <span className="text-xs font-bold text-zinc-400">-</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={maxRent}
-                      onChange={(e) => setMaxRent(e.target.value)}
-                      aria-label="Maximum monthly rent"
-                      placeholder="Max (₱5,000)"
-                      className="w-full rounded-xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 text-xs font-medium text-zinc-900 placeholder:text-zinc-400 focus:border-purple-500 focus:bg-white focus:outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100"
-                    />
-                  </div>
-                </div>
-
-                {/* Location Section: the radius search (S2-10, #102) */}
-                <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
-                  <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
-                    Location
-                  </p>
-                  <NearbySearch
-                    key={filtersResetCount}
-                    center={searchCenter}
-                    radiusKm={radiusKm}
-                    onCenterChange={changeSearchCenter}
-                    onRadiusChange={changeRadius}
-                  />
-                </div>
-
-                {/* Amenities Section: the listing form's options (#309) */}
-                <div className="border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
-                  <p className="mb-2.5 text-xs font-bold tracking-wider text-zinc-700 uppercase dark:text-zinc-300">
-                    Amenities
-                  </p>
-
-                  {/* Parking & Property: plain checkboxes */}
-                  {AMENITIES_OPTIONS.map((option) => (
-                    <label
-                      key={option}
-                      className="mb-2 flex cursor-pointer items-center gap-2.5 rounded-xl px-2 py-1.5 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/60"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedFeatures.includes(option)}
-                        onChange={() => toggleItem(setSelectedFeatures, option)}
-                        className="h-4 w-4 cursor-pointer rounded border-zinc-300 text-purple-600 focus:ring-purple-500"
-                      />
-                      <span>{option}</span>
-                    </label>
-                  ))}
-
-                  {/* Accordion Categories */}
-                  <div className="divide-y divide-zinc-200/60 dark:divide-zinc-800/80">
-                    {/* Utilities, Room Features, Bathroom, Kitchen, Laundry,
-                        Safety & Security */}
-                    {FEATURE_ACCORDIONS.map((category) => (
-                      <FilterAccordion
-                        key={category.id}
-                        label={category.title}
-                        count={
-                          category.options.filter((option) =>
-                            selectedFeatures.includes(option),
-                          ).length
-                        }
-                        isOpen={Boolean(openAccordions[category.id])}
-                        onToggle={() => toggleAccordion(category.id)}
-                      >
-                        {category.options.map((option) => (
-                          <CheckboxOption
-                            key={option}
-                            label={option}
-                            checked={selectedFeatures.includes(option)}
-                            onChange={() =>
-                              toggleItem(setSelectedFeatures, option)
-                            }
-                          />
-                        ))}
-                      </FilterAccordion>
-                    ))}
-
-                    {/* Property Type */}
-                    <FilterAccordion
-                      label="Property Type"
-                      count={selectedPropertyTypes.length}
-                      isOpen={Boolean(openAccordions.propertyType)}
-                      onToggle={() => toggleAccordion("propertyType")}
-                    >
-                      {PROPERTY_TYPES.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedPropertyTypes.includes(item)}
-                          onChange={() =>
-                            toggleItem(setSelectedPropertyTypes, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* Room/Occupancy Type */}
-                    <FilterAccordion
-                      label="Room/Occupancy Type"
-                      count={selectedOccupancyTypes.length}
-                      isOpen={Boolean(openAccordions.occupancyType)}
-                      onToggle={() => toggleAccordion("occupancyType")}
-                    >
-                      {OCCUPANCY_TYPES.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedOccupancyTypes.includes(item)}
-                          onChange={() =>
-                            toggleItem(setSelectedOccupancyTypes, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* Allowed Gender */}
-                    <FilterAccordion
-                      label="Allowed Gender"
-                      count={selectedGenders.length}
-                      isOpen={Boolean(openAccordions.allowedGender)}
-                      onToggle={() => toggleAccordion("allowedGender")}
-                    >
-                      {GENDER_POLICIES.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedGenders.includes(item)}
-                          onChange={() => toggleItem(setSelectedGenders, item)}
-                        />
-                      ))}
-                    </FilterAccordion>
-
-                    {/* House Rules: the ones landlords tick in the form */}
-                    <FilterAccordion
-                      label="House Rules"
-                      count={selectedHouseRules.length}
-                      isOpen={Boolean(openAccordions.houseRules)}
-                      onToggle={() => toggleAccordion("houseRules")}
-                    >
-                      {HOUSE_RULES_OPTIONS.map((item) => (
-                        <CheckboxOption
-                          key={item}
-                          label={item}
-                          checked={selectedHouseRules.includes(item)}
-                          onChange={() =>
-                            toggleItem(setSelectedHouseRules, item)
-                          }
-                        />
-                      ))}
-                    </FilterAccordion>
-                  </div>
-                </div>
-
-                {/* Clear Filters Button */}
-                <div className="border-t border-zinc-200/80 pt-4 dark:border-zinc-800">
-                  <button
-                    type="button"
-                    onClick={clearAllFilters}
-                    disabled={
-                      activeFilterCount === 0 && searchQuery.trim() === ""
-                    }
-                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-xs font-bold text-zinc-700 transition-colors hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-45 dark:border-zinc-800 dark:bg-zinc-800/60 dark:text-zinc-300 dark:hover:border-rose-900/50 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
-                  >
-                    <RotateCcw className="h-3.5 w-3.5" />
-                    Clear Filters
-                  </button>
-                </div>
-              </div>
+              {filterControls}
             </div>
           </aside>
         )}
+
+        {/* Below lg: the filters drawer, over the listings (#316). The
+            Filters buttons open it; its X, Escape, a tap outside it and
+            Show N listings close it. */}
+        <Sheet open={isFilterDrawerOpen} onOpenChange={setIsFilterDrawerOpen}>
+          <SheetContent
+            side="left"
+            aria-describedby={undefined}
+            onOpenAutoFocus={(event) => {
+              // Focus the drawer itself, not its first box: on a phone,
+              // focusing the rent box would open the keyboard over the
+              // filters. Screen readers still start at the drawer.
+              event.preventDefault();
+              (event.currentTarget as HTMLElement | null)?.focus();
+            }}
+            onCloseAutoFocus={(event) => {
+              // Radix gives the focus back to a SheetTrigger, and our
+              // buttons aren't one. Give it to the button that opened the
+              // drawer, or to the toolbar's Filters if that one is gone
+              // (the "Filters active" bar goes when the filters are reset).
+              event.preventDefault();
+              const opener = filterDrawerOpenerRef.current;
+              const focusTarget = opener?.isConnected
+                ? opener
+                : filtersButtonRef.current;
+              focusTarget?.focus();
+            }}
+            className="w-[85vw] max-w-sm gap-0 border-zinc-200 bg-white p-0 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900"
+          >
+            {/* pr-12 leaves room for the drawer's own X, top right */}
+            <SheetHeader className="flex-row items-center justify-between gap-2 border-b border-zinc-100 py-3.5 pr-12 pl-5 dark:border-zinc-800">
+              <div className="flex items-center gap-2">
+                <SheetTitle className="text-sm font-bold text-zinc-900 dark:text-zinc-50">
+                  Filters
+                </SheetTitle>
+                {filterCountBadge}
+              </div>
+              {filterResetButton}
+            </SheetHeader>
+
+            {filterControls}
+
+            <SheetFooter className="border-t border-zinc-100 p-4 dark:border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setIsFilterDrawerOpen(false)}
+                className="w-full cursor-pointer rounded-xl bg-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-purple-700 dark:hover:bg-purple-500"
+              >
+                Show {filteredListings.length}{" "}
+                {filteredListings.length === 1 ? "listing" : "listings"}
+              </button>
+            </SheetFooter>
+          </SheetContent>
+        </Sheet>
 
         {/* Area 3: Right Panel (Independent Scroll, Map View or Cards Grid + Message) */}
         <div
