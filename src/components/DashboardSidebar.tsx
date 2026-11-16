@@ -4,7 +4,7 @@ import { useState, useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Home, ChevronLeft, Sun, Moon, Menu, X } from "lucide-react";
+import { Home, PanelLeft, Sun, Moon, Menu, X } from "lucide-react";
 
 export interface NavItem {
   label: string;
@@ -14,6 +14,8 @@ export interface NavItem {
   isDanger?: boolean;
   position?: "top" | "bottom";
   isActive?: boolean;
+  badge?: number | string;
+  description?: string;
 }
 
 interface DashboardSidebarProps {
@@ -150,6 +152,17 @@ export default function DashboardSidebar({
       <>
         <Icon className="h-5 w-5 shrink-0" />
         <span className="truncate">{item.label}</span>
+        {item.badge !== undefined && (
+          <span
+            className={`ml-auto flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
+              isActive
+                ? "bg-[#6C5CE7] text-white dark:bg-purple-900 dark:text-purple-100"
+                : "bg-white/20 text-white"
+            }`}
+          >
+            {item.badge}
+          </span>
+        )}
       </>
     );
 
@@ -234,6 +247,12 @@ export default function DashboardSidebar({
           ? item.href === activeHref
           : false;
 
+    const tooltipText = item.description
+      ? `${item.label} — ${item.description}`
+      : item.badge !== undefined
+        ? `${item.label} (${item.badge})`
+        : item.label;
+
     // Seamless active tab merging cleanly into the main content
     if (isActive) {
       const activeClasses = collapsed
@@ -282,8 +301,22 @@ export default function DashboardSidebar({
           </svg>
 
           <Icon className="relative z-10 h-5 w-5 shrink-0" />
-          {!collapsed && (
-            <span className="relative z-10 truncate">{item.label}</span>
+          {!collapsed ? (
+            <>
+              <span className="relative z-10 truncate">{item.label}</span>
+              {item.badge !== undefined && (
+                <span className="relative z-10 ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-[#6C5CE7] px-1.5 text-[10px] font-bold text-white shadow-xs dark:bg-[#A78BFA] dark:text-zinc-900">
+                  {item.badge}
+                </span>
+              )}
+            </>
+          ) : (
+            item.badge !== undefined && (
+              <span
+                className="absolute top-2.5 right-2 z-10 flex h-2 w-2 rounded-full bg-[#6C5CE7] dark:bg-[#A78BFA]"
+                aria-label={`${item.label}: ${item.badge}`}
+              />
+            )
           )}
         </>
       );
@@ -294,7 +327,7 @@ export default function DashboardSidebar({
             key={item.href || index}
             href={item.href}
             className={activeClasses}
-            title={collapsed ? item.label : undefined}
+            title={collapsed ? tooltipText : undefined}
           >
             {content}
           </Link>
@@ -307,7 +340,7 @@ export default function DashboardSidebar({
           type="button"
           onClick={item.onClick}
           className={activeClasses}
-          title={collapsed ? item.label : undefined}
+          title={collapsed ? tooltipText : undefined}
         >
           {content}
         </button>
@@ -315,7 +348,7 @@ export default function DashboardSidebar({
     }
 
     // Inactive desktop items: inset with mr-5 so hover rectangles do not collide with curves
-    const inactiveClasses = `flex items-center gap-3 mr-5 py-3 text-sm font-medium rounded-xl transition-colors duration-150 ${desktopRowInset(
+    const inactiveClasses = `relative flex items-center gap-3 mr-5 py-3 text-sm font-medium rounded-xl transition-colors duration-150 ${desktopRowInset(
       collapsed,
     )} ${
       item.isDanger
@@ -326,7 +359,23 @@ export default function DashboardSidebar({
     const content = (
       <>
         <Icon className="h-5 w-5 shrink-0" />
-        {!collapsed && <span className="truncate">{item.label}</span>}
+        {!collapsed ? (
+          <>
+            <span className="truncate">{item.label}</span>
+            {item.badge !== undefined && (
+              <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-white/20 px-1.5 text-[10px] font-bold text-white">
+                {item.badge}
+              </span>
+            )}
+          </>
+        ) : (
+          item.badge !== undefined && (
+            <span
+              className="absolute top-2.5 right-3 flex h-2 w-2 rounded-full bg-amber-300"
+              aria-label={`${item.label}: ${item.badge}`}
+            />
+          )
+        )}
       </>
     );
 
@@ -336,7 +385,7 @@ export default function DashboardSidebar({
           key={item.href || index}
           href={item.href}
           className={inactiveClasses}
-          title={collapsed ? item.label : undefined}
+          title={collapsed ? tooltipText : undefined}
         >
           {content}
         </Link>
@@ -349,7 +398,7 @@ export default function DashboardSidebar({
         type="button"
         onClick={item.onClick}
         className={inactiveClasses}
-        title={collapsed ? item.label : undefined}
+        title={collapsed ? tooltipText : undefined}
       >
         {content}
       </button>
@@ -523,41 +572,52 @@ export default function DashboardSidebar({
           pl-3.5, rows mr-5), so the logo's left edge and the chevron's
           right edge line up with the rows below, in both states.
         */}
-        <div className="flex h-20 shrink-0 items-center justify-between pt-2 pr-5 pl-3.5">
-          <Link href="/" className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#6C5CE7] shadow-sm">
-              <Home className="h-5 w-5" />
-            </div>
-            {!isCollapsed && (
-              // nowrap: while the sidebar is still widening, clip the text instead of wrapping it
-              <div className="flex flex-col leading-tight whitespace-nowrap">
-                <span className="text-base font-extrabold tracking-tight text-white">
-                  Abangers
-                </span>
-                <span className="text-[9px] font-bold tracking-wider text-white/70 uppercase">
-                  {userRoleLabel}
-                </span>
-              </div>
-            )}
-          </Link>
+        {/* Desktop Header / Brand & Collapse Toggle */}
+        <div
+          className={`flex h-20 shrink-0 items-center pt-2 ${
+            isCollapsed ? "justify-center px-0" : "justify-between pr-5 pl-3.5"
+          }`}
+        >
+          {isCollapsed ? (
+            <button
+              type="button"
+              onClick={() => setIsCollapsed(false)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+              title="Expand Sidebar"
+              aria-label="Expand Sidebar"
+            >
+              <PanelLeft className="h-5 w-5" />
+            </button>
+          ) : (
+            <>
+              <Link
+                href="/"
+                className="flex items-center gap-3 overflow-hidden"
+              >
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#6C5CE7] shadow-sm">
+                  <Home className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col leading-tight whitespace-nowrap">
+                  <span className="text-base font-extrabold tracking-tight text-white">
+                    Abangers
+                  </span>
+                  <span className="text-[9px] font-bold tracking-wider text-white/70 uppercase">
+                    {userRoleLabel}
+                  </span>
+                </div>
+              </Link>
 
-          {/* Toggle Collapse Button */}
-          <button
-            type="button"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/15 hover:text-white"
-            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
-            {/* One icon, rotated (not swapped) so it visibly turns to face
-                the direction the sidebar will move, in step with the
-                sidebar's 300ms width animation */}
-            <ChevronLeft
-              className={`h-5 w-5 transition-transform duration-300 ${
-                isCollapsed ? "rotate-180" : ""
-              }`}
-            />
-          </button>
+              <button
+                type="button"
+                onClick={() => setIsCollapsed(true)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/15 hover:text-white"
+                title="Collapse Sidebar"
+                aria-label="Collapse Sidebar"
+              >
+                <PanelLeft className="h-5 w-5" />
+              </button>
+            </>
+          )}
         </div>
 
         {/* Navigation Items: right boundary flush to edge so active tab seamlessly merges into main */}

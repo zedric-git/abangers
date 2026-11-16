@@ -34,8 +34,9 @@ import {
  *      (.png or .webp for those types)
  *   5. only then saves the submission row, with that id, as pending
  * It stops at the first problem. If an upload or the save fails partway,
- * the photos already uploaded stay in the landlord's folder (only an
- * admin can remove them, #207), and trying again uses a new folder. Never
+ * the photos already uploaded stay in the landlord's folder (nobody can
+ * remove them from the app, not even an admin: delete them in the
+ * Supabase dashboard), and trying again uses a new folder. Never
  * save the row first: a pending row whose photos are missing can't be
  * fixed, and it blocks the landlord from submitting again.
  */

@@ -14,6 +14,39 @@ export type Database = {
   };
   public: {
     Tables: {
+      favorites: {
+        Row: {
+          created_at: string;
+          listing_id: string;
+          renter_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          listing_id: string;
+          renter_id: string;
+        };
+        Update: {
+          created_at?: string;
+          listing_id?: string;
+          renter_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "favorites_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "listings";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "favorites_renter_id_fkey";
+            columns: ["renter_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       landlord_verifications: {
         Row: {
           consent_given_at: string;
@@ -24,6 +57,7 @@ export type Database = {
           landlord_id: string;
           rejection_reason: string | null;
           reviewed_at: string | null;
+          reviewed_by: string | null;
           selfie_path: string;
           status: string;
           submitted_at: string;
@@ -37,6 +71,7 @@ export type Database = {
           landlord_id: string;
           rejection_reason?: string | null;
           reviewed_at?: string | null;
+          reviewed_by?: string | null;
           selfie_path: string;
           status?: string;
           submitted_at?: string;
@@ -50,6 +85,7 @@ export type Database = {
           landlord_id?: string;
           rejection_reason?: string | null;
           reviewed_at?: string | null;
+          reviewed_by?: string | null;
           selfie_path?: string;
           status?: string;
           submitted_at?: string;
@@ -58,6 +94,13 @@ export type Database = {
           {
             foreignKeyName: "landlord_verifications_landlord_id_fkey";
             columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "landlord_verifications_reviewed_by_fkey";
+            columns: ["reviewed_by"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
@@ -172,8 +215,10 @@ export type Database = {
           email: string | null;
           facebook_url: string | null;
           full_name: string | null;
+          gender: string | null;
           id: string;
           instagram_url: string | null;
+          occupation_status: string | null;
           profile_completed: boolean;
           role: string;
           x_url: string | null;
@@ -184,8 +229,10 @@ export type Database = {
           email?: string | null;
           facebook_url?: string | null;
           full_name?: string | null;
+          gender?: string | null;
           id: string;
           instagram_url?: string | null;
+          occupation_status?: string | null;
           profile_completed?: boolean;
           role: string;
           x_url?: string | null;
@@ -196,13 +243,85 @@ export type Database = {
           email?: string | null;
           facebook_url?: string | null;
           full_name?: string | null;
+          gender?: string | null;
           id?: string;
           instagram_url?: string | null;
+          occupation_status?: string | null;
           profile_completed?: boolean;
           role?: string;
           x_url?: string | null;
         };
         Relationships: [];
+      };
+      viewing_requests: {
+        Row: {
+          attendees: number;
+          created_at: string;
+          decline_reason: string | null;
+          end_time: string;
+          id: string;
+          landlord_id: string;
+          listing_id: string;
+          message: string | null;
+          renter_id: string;
+          start_time: string;
+          status: string;
+          updated_at: string;
+          viewing_date: string;
+        };
+        Insert: {
+          attendees?: number;
+          created_at?: string;
+          decline_reason?: string | null;
+          end_time: string;
+          id?: string;
+          landlord_id: string;
+          listing_id: string;
+          message?: string | null;
+          renter_id: string;
+          start_time: string;
+          status?: string;
+          updated_at?: string;
+          viewing_date: string;
+        };
+        Update: {
+          attendees?: number;
+          created_at?: string;
+          decline_reason?: string | null;
+          end_time?: string;
+          id?: string;
+          landlord_id?: string;
+          listing_id?: string;
+          message?: string | null;
+          renter_id?: string;
+          start_time?: string;
+          status?: string;
+          updated_at?: string;
+          viewing_date?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "viewing_requests_landlord_id_fkey";
+            columns: ["landlord_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "viewing_requests_listing_id_fkey";
+            columns: ["listing_id"];
+            isOneToOne: false;
+            referencedRelation: "listings";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "viewing_requests_renter_id_fkey";
+            columns: ["renter_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: {

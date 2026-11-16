@@ -68,6 +68,15 @@ describe("filterLandlordListings: tabs", () => {
       filterLandlordListings([old], { tab: "occupied", search: "" }),
     ).toEqual([]);
   });
+
+  it("With Inquiries and Archived return empty for now", () => {
+    expect(
+      filterLandlordListings(listings, { tab: "with_inquiries", search: "" }),
+    ).toEqual([]);
+    expect(
+      filterLandlordListings(listings, { tab: "archived", search: "" }),
+    ).toEqual([]);
+  });
 });
 
 describe("filterLandlordListings: search", () => {
@@ -98,24 +107,24 @@ describe("filterLandlordListings: search", () => {
       titles(
         filterLandlordListings(listings, {
           tab: "all",
-          search: "  ROOM NEAR usc \t",
+          search: "  sAnCiAnGkO  ",
         }),
       ),
     ).toEqual(["Room near USC"]);
   });
 
-  it("treats a search of only spaces as no search", () => {
+  it("matches when city is null", () => {
+    expect(
+      titles(
+        filterLandlordListings(listings, { tab: "all", search: "Talamban" }),
+      ),
+    ).toEqual(["Shared room"]);
+  });
+
+  it("an empty search matches every listing", () => {
     expect(
       filterLandlordListings(listings, { tab: "all", search: "   " }),
     ).toEqual(listings);
-  });
-
-  it("works on a listing with no city", () => {
-    expect(
-      titles(
-        filterLandlordListings(listings, { tab: "all", search: "talamban" }),
-      ),
-    ).toEqual(["Shared room"]);
   });
 
   it("finds nothing when nothing matches", () => {
@@ -145,11 +154,19 @@ describe("countListingsByTab", () => {
     expect(countListingsByTab(listings)).toEqual({
       all: 4,
       active: 3,
+      with_inquiries: 0,
       occupied: 1,
+      archived: 0,
     });
   });
 
   it("is all zeros with no listings", () => {
-    expect(countListingsByTab([])).toEqual({ all: 0, active: 0, occupied: 0 });
+    expect(countListingsByTab([])).toEqual({
+      all: 0,
+      active: 0,
+      with_inquiries: 0,
+      occupied: 0,
+      archived: 0,
+    });
   });
 });

@@ -1,7 +1,8 @@
 /**
  * Storage policy test for the public listing-photos bucket (#234) — runs
- * against the REAL shared Supabase project, signed in as the seed
- * accounts.
+ * against a real Supabase, signed in as the seed accounts: CI's
+ * throwaway one on every PR, and the SHARED project after a database
+ * merge or when run by hand.
  *
  * Checks supabase/migrations/0013_lock_down_listing_photos_bucket.sql
  * (and 0006, whose read policy it keeps):

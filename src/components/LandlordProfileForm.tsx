@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import {
   User,
   Phone,
@@ -9,12 +8,14 @@ import {
   Loader2,
   Save,
   CheckCircle2,
+  Clock,
   Lock,
-  ShieldCheck,
+  BadgeCheck,
 } from "lucide-react";
 import PhMobileNumberInput from "@/components/PhMobileNumberInput";
 import VerificationBadge from "@/components/VerificationBadge";
 import VerificationBanner from "@/components/VerificationBanner";
+import VerifyAccountForm from "@/components/VerifyAccountForm";
 import type { LandlordStatus } from "@/lib/auth/landlord-status";
 import {
   nameFieldView,
@@ -26,7 +27,29 @@ import {
 } from "@/lib/ph-mobile-number";
 import { createClient } from "@/lib/supabase/client";
 import { profileSetupSchema } from "@/lib/validations/profile";
-import { VERIFY_ACCOUNT_PATH } from "@/lib/verify-account";
+import { ID_TYPE_LABELS, type IdType } from "@/lib/validations/verification";
+
+interface VerificationDetails {
+  id_type: string;
+  submitted_at: string;
+  reviewed_at: string | null;
+  status: string;
+}
+
+function formatVerificationDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return "—";
+  }
+}
 
 interface LandlordProfileFormProps {
   /**
@@ -53,10 +76,54 @@ export default function LandlordProfileForm({
   const [facebookUrl, setFacebookUrl] = useState("");
   const [instagramUrl, setInstagramUrl] = useState("");
   const [xUrl, setXUrl] = useState("");
+  const [verificationDetails, setVerificationDetails] =
+    useState<VerificationDetails | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const scrollToVerification = () => {
+    const main = document.querySelector("main");
+    const target = document.getElementById("verify-account");
+    if (main && target) {
+      const mainRect = main.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      main.scrollTo({
+        top: main.scrollTop + (targetRect.top - mainRect.top) - 20,
+        behavior: "smooth",
+      });
+    }
+    if (
+      typeof window !== "undefined" &&
+      (window.scrollY > 0 || window.scrollX > 0)
+    ) {
+      window.scrollTo(0, 0);
+    }
+  };
+
+  useEffect(() => {
+    if (loadingUser) return;
+    const checkHashAndScroll = () => {
+      if (window.location.hash === "#verify-account") {
+        if (
+          typeof window !== "undefined" &&
+          (window.scrollY > 0 || window.scrollX > 0)
+        ) {
+          window.scrollTo(0, 0);
+        }
+        setTimeout(() => {
+          scrollToVerification();
+        }, 100);
+      }
+    };
+
+    checkHashAndScroll();
+    window.addEventListener("hashchange", checkHashAndScroll);
+    return () => {
+      window.removeEventListener("hashchange", checkHashAndScroll);
+    };
+  }, [loadingUser]);
 
   useEffect(() => {
     async function loadProfile() {
@@ -108,6 +175,19 @@ export default function LandlordProfileForm({
             if (user.user_metadata?.instagram_url)
               setInstagramUrl(user.user_metadata.instagram_url);
             if (user.user_metadata?.x_url) setXUrl(user.user_metadata.x_url);
+          }
+
+          // Load latest verification details if existing
+          const { data: verifData } = await supabase
+            .from("landlord_verifications")
+            .select("id_type, submitted_at, reviewed_at, status")
+            .eq("landlord_id", user.id)
+            .order("submitted_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (verifData) {
+            setVerificationDetails(verifData);
           }
         }
       } catch (err) {
@@ -203,11 +283,18 @@ export default function LandlordProfileForm({
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-extrabold text-zinc-950 dark:text-zinc-50">
+          <div className="mb-1 flex items-center gap-1.5 text-xs text-zinc-400 dark:text-zinc-500">
+            <span>Landlord</span>
+            <span>/</span>
+            <span className="font-semibold text-purple-600 dark:text-purple-400">
+              Profile
+            </span>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-950 sm:text-3xl dark:text-zinc-50">
             Landlord Profile
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -216,25 +303,26 @@ export default function LandlordProfileForm({
           </p>
         </div>
 
-        {/* The verification badge (#205). The banner below has the
-            button to the Verify account page (#203). If the status
-            couldn't be read, link there instead, so there's always a way
-            in: that page checks for itself. */}
-        {status ? (
-          <VerificationBadge verification={status.verification} />
-        ) : (
-          <Link
-            href={VERIFY_ACCOUNT_PATH}
-            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-purple-600 px-5 text-sm font-semibold text-white shadow-xs transition-colors hover:bg-purple-700"
-          >
-            <ShieldCheck className="h-4 w-4" />
-            Verify account
-          </Link>
-        )}
+        {/* Verification badge */}
+        <div className="flex flex-wrap items-center gap-2">
+          {status && (
+            <VerificationBadge
+              verification={status.verification}
+              onClick={
+                status.verification !== "verified"
+                  ? scrollToVerification
+                  : undefined
+              }
+            />
+          )}
+        </div>
       </div>
 
       {/* Not verified / Pending / Rejected with the reason; nothing once verified */}
-      <VerificationBanner status={status} />
+      <VerificationBanner
+        status={status}
+        onActionClick={scrollToVerification}
+      />
 
       {/* Alerts */}
       {error && (
@@ -252,7 +340,7 @@ export default function LandlordProfileForm({
       {/* Profile Form Container */}
       <form
         onSubmit={handleSubmit}
-        className="space-y-6 rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8 dark:border-zinc-800 dark:bg-zinc-900"
+        className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xs sm:p-6 dark:border-zinc-800 dark:bg-zinc-900"
       >
         {/* Account Details Section */}
         <div className="space-y-4">
@@ -431,7 +519,7 @@ export default function LandlordProfileForm({
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-purple-700 px-6 text-sm font-semibold text-white transition-colors hover:bg-purple-800 active:bg-purple-900 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-700"
+            className="inline-flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-purple-700 px-6 text-sm font-semibold text-white transition-colors hover:bg-purple-800 active:bg-purple-900 disabled:opacity-50 dark:bg-purple-600 dark:hover:bg-purple-700"
           >
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -444,6 +532,131 @@ export default function LandlordProfileForm({
           </button>
         </div>
       </form>
+
+      {/* Embedded Verification Section */}
+      <div id="verify-account" className="scroll-mt-6">
+        {status?.verification === "verified" ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5 shadow-2xs sm:p-6 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                    <CheckCircle2 className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-emerald-950 dark:text-emerald-100">
+                      Account Verified
+                    </h2>
+                    <p className="text-xs text-emerald-800 dark:text-emerald-300">
+                      Your government ID and selfie have been reviewed and
+                      approved.
+                    </p>
+                  </div>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-100/80 px-2.5 py-1 text-xs font-semibold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">
+                  <BadgeCheck className="h-3.5 w-3.5" />
+                  Verified
+                </span>
+              </div>
+
+              {verificationDetails && (
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                  <div className="rounded-xl border border-emerald-200/80 bg-white/80 p-3 shadow-2xs dark:border-emerald-900/40 dark:bg-zinc-900/70">
+                    <span className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+                      Document Submitted
+                    </span>
+                    <p className="mt-0.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      {ID_TYPE_LABELS[verificationDetails.id_type as IdType] ??
+                        verificationDetails.id_type}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-emerald-200/80 bg-white/80 p-3 shadow-2xs dark:border-emerald-900/40 dark:bg-zinc-900/70">
+                    <span className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+                      Date Submitted
+                    </span>
+                    <p className="mt-0.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      {formatVerificationDate(verificationDetails.submitted_at)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-emerald-200/80 bg-white/80 p-3 shadow-2xs dark:border-emerald-900/40 dark:bg-zinc-900/70">
+                    <span className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+                      Date Approved
+                    </span>
+                    <p className="mt-0.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      {formatVerificationDate(verificationDetails.reviewed_at)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">
+                ✓ You have full access to post, manage, and publish your rental
+                listings.
+              </p>
+            </div>
+          </div>
+        ) : status?.verification === "pending" ? (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/50 p-5 shadow-2xs sm:p-6 dark:border-amber-900/50 dark:bg-amber-950/20">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-amber-950 dark:text-amber-100">
+                      Verification Under Review
+                    </h2>
+                    <p className="text-xs text-amber-800 dark:text-amber-300">
+                      Your verification documents are currently being reviewed
+                      by an admin.
+                    </p>
+                  </div>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100/80 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:border-amber-800 dark:bg-amber-900/50 dark:text-amber-300">
+                  <Clock className="h-3.5 w-3.5" />
+                  Pending
+                </span>
+              </div>
+
+              {verificationDetails && (
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  <div className="rounded-xl border border-amber-200/80 bg-white/80 p-3 shadow-2xs dark:border-amber-900/40 dark:bg-zinc-900/70">
+                    <span className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+                      Document Submitted
+                    </span>
+                    <p className="mt-0.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      {ID_TYPE_LABELS[verificationDetails.id_type as IdType] ??
+                        verificationDetails.id_type}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-amber-200/80 bg-white/80 p-3 shadow-2xs dark:border-amber-900/40 dark:bg-zinc-900/70">
+                    <span className="text-[11px] font-medium tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+                      Date Submitted
+                    </span>
+                    <p className="mt-0.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      {formatVerificationDate(verificationDetails.submitted_at)}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                We&apos;ll notify you once your verification has been reviewed.
+              </p>
+            </div>
+          </div>
+        ) : (
+          userId && (
+            <VerifyAccountForm
+              compact
+              landlordId={userId}
+              profileName={fullName.trim() || null}
+              rejectionReason={status?.rejectionReason ?? null}
+            />
+          )
+        )}
+      </div>
     </div>
   );
 }

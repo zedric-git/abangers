@@ -62,14 +62,14 @@ https://github.com/users/zedric-git/projects/3
   number prefix, not the full filename.** Two files with the same number
   means the second is silently treated as already applied (this
   happened once — see #172, fixed by `0005`). Number new migrations
-  from the highest number + 1, and never run migration SQL by hand in
-  the Supabase dashboard: that's how `0003`/`0004` drifted from what's
-  recorded. Before any `db push`, run
-  `npx supabase migration list --linked` and
-  `npx supabase db push --dry-run` and check only your new file is
-  pending. `scripts/check-migrations.mjs` (part of `npm run check` and
-  CI) fails on duplicate numbers and on any edit, rename, or delete of
-  a migration that's already on the base branch.
+  from the highest number on `dev` + 1, and never run migration SQL by
+  hand in the Supabase dashboard: that's how `0003`/`0004` drifted from
+  what's recorded. `scripts/check-migrations.mjs` (part of
+  `npm run check` and CI) fails on duplicate numbers and on any edit,
+  rename, or delete of a migration that's already on the base branch.
+  After merge, CI's `apply-database` job checks the shared database
+  first and stops, changing nothing, if it has a migration `dev`
+  doesn't (see "Database (Supabase)").
 - **Only three files in `supabase/.temp/` are committed, on purpose.**
   `project-ref`, `linked-project.json` and `pooler-url` are what
   `npx supabase link` saves for the shared project, so every clone and
@@ -79,15 +79,39 @@ https://github.com/users/zedric-git/projects/3
   whole folder — every new worktree would then need
   `npx supabase link` first. If `git status` ever shows `project-ref`
   as changed, someone linked a different project: don't commit it.
+  CI's `apply-database` job reads `project-ref` and `pooler-url` too,
+  to reach the shared project.
+- **`supabase/config.toml` is only for CI's throwaway Supabase.** The
+  `database` job in `.github/workflows/ci.yml` runs `npx supabase start`
+  (Docker), which needs it. It doesn't configure the shared project;
+  the Supabase dashboard does. Never run `supabase config push`: it
+  would copy CI's settings (local URLs, raised rate limits, services
+  turned off) over the shared project's. `.claude/settings.json` blocks
+  it. Keep `[db] major_version` the same as the shared project's
+  Postgres (17), and `[api] auto_expose_new_tables = false`: like the
+  shared project, new tables then get no grants by themselves, so CI
+  catches a migration that forgets its grants (rule 1).
 - **CI builds with placeholder Supabase env vars.** The `Build` step in
   `.github/workflows/ci.yml` has no real keys, which works because no
   page fetches data at build time. If a build fails there with a
   Supabase/network error, make that page dynamic — don't add real keys
   to CI.
 - **The database schema is the source of truth for types.**
-  `src/types/database.ts` is generated from the shared project with
-  `npm run db:types` — never edit it by hand; re-run the script after
-  any migration is pushed. All three Supabase clients in
+  `src/types/database.ts` is generated from the migrations — never edit
+  it by hand, and you don't need to regenerate it either. On every PR,
+  CI's `database` job regenerates it with `npm run db:types`
+  (`scripts/db-types.mjs`, which needs the throwaway Supabase that job
+  starts, so it doesn't run on our own machines). When the file
+  changed, the `database-types` job commits it to the PR's branch as
+  the types bot, and CI runs again on that commit: run `git pull`
+  before you push again (#258). The bot can also commit to a PR that
+  doesn't touch the database: `dev` doesn't make PRs catch up before
+  merging, so when two database PRs merge close together, `dev`'s types
+  can end up out of date. CI on `dev` then warns, and the next PR into
+  `dev` gets the fixed file. `gen types --local` leaves out the
+  `__InternalSupabase` block (the shared project's PostgREST version,
+  which supabase-js types queries against), so the script keeps the
+  committed one. All three Supabase clients in
   `src/lib/supabase/` are typed with it, so a query on a column that
   doesn't exist is a type error. Don't write table types by hand —
   derive them (e.g. `Listing` in `src/types/listing.ts` is the
@@ -105,6 +129,20 @@ https://github.com/users/zedric-git/projects/3
   (`<landlord id>/<submission id>/<file>`): landlords can upload to and
   read only their own folder, and can't replace or delete a file, so a
   resubmission always uploads to a new folder.
+  Admins review the submissions (S2-11, #207; `0014`): an admin can read
+  every submission and every file in the bucket, and can change a
+  pending submission to approved or rejected, recording themselves in
+  `reviewed_by`. Only the four review columns can change, a reviewed
+  submission can't be changed again from the app, and nobody can delete
+  one. The admin's Verifications page (`/dashboard/admin/verifications`,
+  #256) lists the pending ones (the dashboard's home, `/dashboard/admin`,
+  shows the oldest few and real counts, #309) and reviews each through
+  `src/lib/auth/review-verification.ts`:
+  it shows the photos through signed links that work for 10 minutes,
+  made with the admin's own session (no service key), and
+  `<Image unoptimized>`, so Next's image optimizer never downloads or
+  keeps a copy of an ID photo on our server. Keep that for any page that
+  shows a private file.
   Submit with `submitVerification` (`src/lib/auth/submit-verification.ts`,
   #204): it checks the form (`verificationSubmissionSchema`) and that the
   landlord isn't already Pending or Verified, uploads the photos straight
@@ -138,6 +176,29 @@ https://github.com/users/zedric-git/projects/3
   after it (`src/components/PhMobileNumberInput.tsx`), but save it as
   `09` + 9 digits (`09171234567`), which is what the schema and the
   policy check; `src/lib/ph-mobile-number.ts` converts between the two.
+- **Viewing requests (`viewing_requests`, #107) change only in ways a
+  trigger allows.** A renter sends a request as `pending`. After that
+  only its `status` and `decline_reason` can change, and the trigger in
+  `0017_create_viewing_requests.sql` lets the landlord confirm or
+  decline a pending request and mark a confirmed one completed once it
+  has started, and lets the renter cancel a pending or confirmed one
+  before it starts. Anything else is `42501`, and nobody can delete a
+  request. So filter an update by the status you expect
+  (`.eq("status", "pending")`), and treat "no row back" as "it changed
+  in the meantime". The generated types make `landlord_id` required on
+  insert, so send the listing's landlord: another trigger replaces
+  whatever comes in with the listing's own `landlord_id`, so a wrong one
+  can't stick. A pending or confirmed request holds the
+  landlord's date and start time, and a renter can't have two for one
+  listing (`23505`, and the message names the index). "Started" means
+  `viewing_date + start_time` on the Philippine clock
+  (`now() at time zone 'Asia/Manila'`), never the server's UTC `now()`,
+  so compare the same way in app code. Two foreign keys point at
+  `profiles`, so a join names the one it wants
+  (`profiles!viewing_requests_renter_id_fkey`). The seed has seven
+  requests with fixed ids, one in each status, on landlord1's and
+  landlord2's listings, dated from the day it runs. Running it again
+  resets them and deletes the seed renters' other requests.
 - **Storage errors arrive as HTTP 400 — read `error.statusCode`, not
   `error.status`.** Supabase Storage answers every refused request with
   status 400 and puts the real code in the response body, which
@@ -156,23 +217,25 @@ https://github.com/users/zedric-git/projects/3
   the PC, and add a port forwarding rule from `3000` to
   `localhost:3000`. Then open `http://localhost:3000` in Chrome on the
   phone. An iPhone needs real https.
-- **`/dashboard/*` and `/profile-setup` are guarded in the proxy, and
+- **`/dashboard/*`, `/profile-setup` and `/renter/profile-setup` are guarded in the proxy, and
   logout must be a hard navigation.** `updateSession` in
   `src/lib/supabase/middleware.ts` sends signed-out users to the home
   page (`/`), keeps each role on its own dashboard (via
   `resolvePostLoginPath`), and lets only landlords open `/profile-setup`
-  (#233). The decision is `guardRedirect` in
-  `src/lib/auth/route-guard.ts`; guard a new page there. Logout uses
-  `window.location.replace(...)`, not `router.push` — a client-side
-  push leaves the dashboard in history and Next's client cache, so the
-  Back button would show it again after logging out. Even so, pages
-  visited before the logout stay in the history, and Back can show the
-  browser's own copy of one without asking the server (it did in
-  `next dev`, #252). `SignedInOnly` (`src/components/SignedInOnly.tsx`)
-  sends a signed-out browser home from such a copy: the landlord layout
-  and `/profile-setup` render it, and any new page that shows a
-  signed-in user's data outside them (e.g. the renter dashboard's
-  layout) should too.
+  (#233), and keeps incomplete renters on `/renter/profile-setup` (S2-01). The decision is `guardRedirect` in
+  `src/lib/auth/route-guard.ts`; guard a new page there. Each role's
+  dashboard is `/dashboard/<role>` (renter, landlord, admin). Logout is
+  `logOut()` in `src/lib/auth/log-out.ts`, which every dashboard layout's
+  Log Out uses: it calls `window.location.replace(...)`, not
+  `router.push` — a client-side push leaves the dashboard in history and
+  Next's client cache, so the Back button would show it again after
+  logging out. Even so, pages visited before the logout stay in the
+  history, and Back can show the browser's own copy of one without
+  asking the server (it did in `next dev`, #252). `SignedInOnly`
+  (`src/components/SignedInOnly.tsx`) sends a signed-out browser home
+  from such a copy: the landlord and admin layouts, `/profile-setup` and `/renter/profile-setup`
+  render it, and any new page that shows a signed-in user's data outside
+  them (e.g. the renter dashboard's layout) should too.
 - **There are no `/login` or `/signup` pages.** Login and sign-up both
   happen in `src/components/LandlordAuthModal.tsx`, opened from the home
   page. The old `/login` and `/signup` URLs redirect to `/` (see
@@ -188,9 +251,9 @@ https://github.com/users/zedric-git/projects/3
   logic lives in shared helpers — validation (`loginSchema` /
   `signUpSchema` in `src/lib/validations/auth.ts`), sign-up
   (`signUpWithProfile` in `src/lib/auth/sign-up.ts`) and post-login
-  routing (`resolvePostLoginPath` in `src/lib/auth/post-login.ts`). Renter
-  sign-up (Sprint 2) should extend the modal with those helpers rather
-  than bring back a second auth form.
+  routing (`resolvePostLoginPath` in `src/lib/auth/post-login.ts`). Both renter
+  and landlord sign-up extend the modal with those helpers (S2-01) rather
+  than having a second auth form.
 - **Write invisible characters as escapes, never raw.** A no-break
   space, a zero-width space, a byte order mark, a text-direction mark
   and the like look like a normal space, or like nothing at all, in an
@@ -288,7 +351,8 @@ In Claude Code, `/start-task` walks through all of this.
 'landlord')` (see `0007_enforce_roles_in_rls.sql`). Checking only
      `auth.uid() = owner_id` let renters create listings (#173).
      `profiles.role` can't be changed by app users once set (trigger in
-     the same migration).
+     the same migration), and app users can only create a renter's or a
+     landlord's profile (`0014`), so nobody can make themselves an admin.
    - Add a `*.db.test.ts` case for each policy (see
      `src/__tests__/rls-listings.db.test.ts` and `db-helpers.ts`).
 2. **One Zod schema per data entity, used on both client and server.**
@@ -313,8 +377,11 @@ In Claude Code, `/start-task` walks through all of this.
    - `supabase/seed.sql` — dev test accounts + sample listings
    - `supabase/seed-storage.mjs` + `supabase/seed-storage/` — uploads
      the seed data's sample files (placeholder ID photos) to Storage
-   - `scripts/` — repo checks run by `npm run check` and CI (plain
-     Node `.mjs`, no dependencies), plus their unit tests
+   - `supabase/config.toml` — settings for CI's throwaway Supabase only
+   - `scripts/` — repo checks run by `npm run check` and CI, and the
+     scripts CI's database jobs run (`db-types.mjs`,
+     `report-database-apply.mjs`): plain Node `.mjs`, no dependencies,
+     plus their unit tests
    - `.vscode/` — shared editor settings + recommended extensions
      (the team uses VS Code; personal settings stay in your user
      settings)
@@ -329,14 +396,17 @@ Three-tier flow: `feature/*` → `dev` → `main`.
   The same flow applies to non-feature work with a different prefix:
   `fix/<bug>`, `chore/<tooling-or-data>`, `docs/<what>`.
   Open a PR into `dev` when ready; needs a passing CI check to merge.
-  Delete the branch after it merges.
+  Don't delete the branch when it merges: keep every branch from the
+  current sprint, on GitHub and locally, until the sprint is over (the
+  next sprint starts, or `dev` merges into `main`). Delete them after
+  that.
 - **`dev` branch** — the repo's **default branch** and the integration
   branch for the sprint currently in progress. All `feature/*` branches
   merge here first. This is where we test and stabilize everything the
   sprint is supposed to ship. Nothing goes to `main` directly from a
   feature branch. **Protected for everyone, including admins:** changes
-  need a PR with a passing `checks` CI run (no approval required); no
-  direct pushes, force-pushes, or deleting the branch.
+  need a PR whose `checks` and `database` CI runs pass (no approval
+  required); no direct pushes, force-pushes, or deleting the branch.
 - **`main` branch** — protected, always reflects the last stable,
   exam-ready state. `dev` only merges into `main` once every feature for
   the sprint is done and `dev` itself is stable (build/lint/tests all
@@ -353,6 +423,11 @@ right after each exam window closes:
 | Sprint 1 | Now → Midterms        | Midterm Exams (Oct 5–10)  | After Oct 10         |
 | Sprint 2 | Midterms → Pre-Finals | Pre-Final Exams (Nov 5–7) | After Nov 7          |
 | Sprint 3 | Pre-Finals → Finals   | Final Exams (Dec 4–11)    | After Dec 11         |
+
+These dates often slip: unplanned class suspensions extend the sprints
+(Sprint 1 ran well past its dates). A sprint is over when the PM says
+the next one has started, or when `dev` merges into `main`, not when
+its date passes.
 
 If a sprint's features aren't all done and stable on `dev` by its exam
 window, that's a signal to descope for `main` rather than merge
@@ -380,42 +455,104 @@ next sprint instead of forcing the merge.
 ## Database (Supabase)
 
 - **There is one shared, hosted Supabase project** for the whole team.
-  There's no local Supabase/Docker setup — the CLI is linked straight
-  to the shared project (`npx supabase link`). Anything you do to the
-  database affects everyone immediately.
+  There's no local Supabase/Docker setup on our own machines — the CLI
+  is linked straight to the shared project (`npx supabase link`).
+  Anything you do to the database affects everyone immediately. (CI
+  starts a throwaway Supabase of its own to test migrations, below.)
 - **Schema changes only go through new migration files** in
-  `supabase/migrations/` (next number in sequence), applied with
-  `npx supabase db push`. Never edit a migration that's already been
-  pushed — write a new one.
+  `supabase/migrations/` (next number in sequence). CI applies them to
+  the shared project after the PR merges (below): don't
+  `npx supabase db push` them yourself. Never edit a migration that's
+  already on `dev` — write a new one.
+- **CI tests a PR's migrations, then applies them after merge (#258).**
+  You write the migration and merge the PR; nobody runs `db push`,
+  `db:seed`, `db:types` or `test:db` by hand, or has to tell the team.
+  - On every PR, the `database` job starts a throwaway Supabase on the
+    CI machine (`npx supabase start`, settings in `supabase/config.toml`),
+    applies every migration to an empty database, runs the seed twice
+    (it must be safe to re-run) and every `*.db.test.ts` suite, and
+    checks the types (see "The database schema is the source of truth
+    for types").
+  - After a PR that changes `supabase/migrations/`, `seed.sql`,
+    `seed-storage.mjs` or `seed-storage/` merges into `dev`, the
+    `apply-database` job applies it to the shared project, one run at a
+    time and only once `checks` and `database` passed on that commit:
+    `db push --dry-run`, then `db push`, the seed and `test:db`. It
+    comments on the merged PR with what was applied, and @-mentions the
+    team, or with which step failed and what to do next. (Who it
+    mentions is the `TEAM` line in `.github/workflows/ci.yml`: update it
+    if the team changes.)
+  - **When it fails**, read its comment. A failing migration applies
+    nothing (each one runs in a transaction), and `db push` stops there,
+    so a new migration can't jump ahead of it: the PM decides the fix,
+    usually correcting the rows the migration rejects, then "Re-run
+    failed jobs" on that run. Don't edit or delete the merged migration.
+    **Never run `supabase migration repair`**, which the CLI suggests
+    when the shared database has a migration `dev` doesn't: that's drift
+    to fix, not to hide.
+  - The repo variable `DB_AUTO_APPLY` turns the job on (`true`); any
+    other value stops it applying after merges. "Run workflow" on the
+    CI workflow, on `dev`, shows what's pending on the shared project
+    without changing it, or applies it with "apply" ticked.
+- **The shared project's credentials are in the `shared-db` environment**
+  (Settings → Environments), which only jobs on `dev` can use: a PR's
+  workflow, even from a fork, can never read them. The PM set it up
+  once:
+  1. **The environment:** deployment branch `dev` only (set that before
+     adding secrets), with the secrets `SUPABASE_DB_PASSWORD` (the
+     database password; the job connects with `--db-url`, built from
+     `supabase/.temp/pooler-url`, so it needs no personal access token)
+     and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+  2. **The types bot:** `abangers-types-bot`, a GitHub App on the PM's
+     account (Settings → Developer settings → GitHub Apps) that can only
+     write this repo's contents. Its `DB_BOT_APP_ID` (a variable) and
+     `DB_BOT_PRIVATE_KEY` (a secret) are repo-level, because PR runs
+     need them. A commit pushed with the workflow's own token wouldn't
+     start CI, so the required checks would never run on it. To replace
+     the key, generate a new private key on the App's page, update
+     `DB_BOT_PRIVATE_KEY`, then delete the old key there.
+  3. **Then:** `DB_AUTO_APPLY` set to `true`, and `database` required on
+     `dev` and `main` (Settings → Branches), next to `checks`.
 - **`npx supabase db reset --linked` wipes the shared database for the
   whole team** (all accounts and listings), then re-applies migrations
   and runs `supabase/seed.sql` (run `npm run db:seed` after it for the
   sample files). Never run it without asking the team first.
 - **`supabase/seed.sql` must stay idempotent** (safe to re-run with
-  `npm run db:seed`). Seed accounts are matched by email and seed
-  listings by fixed UUID, with `on conflict ... do update`. Follow that
+  `npm run db:seed`): CI runs it twice on every PR, and again on the
+  shared project after every database merge. Seed accounts are matched
+  by email and seed listings by fixed UUID, with
+  `on conflict ... do update`. Follow that
   pattern for any new seed data — no plain `INSERT`s that duplicate on
   a second run. Seed credentials are dev-only; the shared password is in
   the file header.
-- **Seed landlords: landlord1 is verified, landlord2 isn't** (#206).
-  Both have a complete profile; landlord1 also has an approved
-  verification with sample ID photos, so only landlord1 can create
-  listings. The DB tests rely on both, so try the verification flow on
-  landlord2, then re-run `npm run db:seed`: it deletes every other
-  verification the two seed landlords have. Each landlord has three seed
-  listings that fill in everything the listing form requires, so they
-  open in Edit and pass Preview as they are (#243). SQL can't upload
-  files, so `npm run db:seed` runs `supabase/seed-storage.mjs` after
-  `seed.sql`. It signs in as landlord1 and then landlord2 with the anon
-  key (needs `.env.local`), uploads landlord1's sample ID photos and
-  each landlord's sample listing photo (to
+- **Seed landlords: landlord1 is verified, landlord2 isn't, landlord3
+  is waiting for review** (#206, #255). All three have a complete
+  profile; landlord1 also has an approved verification with sample ID
+  photos, so only landlord1 can create listings. landlord3 has a pending
+  verification (a passport, with sample photos) for the admin to review:
+  log in as `admin@abangers.test`, the seed's admin. The DB tests rely on
+  all three, so try the verification flow on landlord2 and the review on
+  landlord3, then re-run `npm run db:seed`: it deletes every other
+  verification the seed landlords have and puts landlord3's back to
+  pending. landlord1 and landlord2 each have three seed listings that
+  fill in everything the listing form requires, so they open in Edit and
+  pass Preview as they are (#243). SQL can't upload files, so
+  `npm run db:seed` runs `supabase/seed-storage.mjs` after `seed.sql`. It
+  signs in as the seed landlords with the anon key (needs `.env.local`),
+  uploads landlord1's and landlord3's sample ID photos and landlord1's
+  and landlord2's sample listing photo (to
   `<landlord id>/seed/listing-sample.jpg`), and sets that photo as the
   photo and cover of their seed listings. It skips files that are
   already there. Running the seed resets the seed listings for everyone,
-  photos included. Put only placeholder images in
-  `supabase/seed-storage/`, never a real ID or photo.
+  photos included, and CI runs it after every database merge. Put only
+  placeholder images in `supabase/seed-storage/`, never a real ID or
+  photo.
 - Supabase Auth only stores email/password. App fields (role, name)
   live in `public.profiles`, one row per `auth.users` row, same `id`.
+  The roles are renter, landlord and admin. Nobody can become an admin
+  from the app (`0014`): make one with SQL in the dashboard, for an
+  account that has signed up
+  (`update public.profiles set role = 'admin' where id = '<user id>';`).
 
 ## Maps and location (OpenStreetMap)
 
@@ -425,14 +562,25 @@ map/geocoding provider without asking the team.
 
 **Library:** Leaflet + `react-leaflet` with OSM tiles. Existing map
 components live in `src/components/map/` (`LocationPicker` is used by
-the add/edit listing form, `ReadOnlyMap` by the listing detail view;
-both are loaded through `DynamicMap` without SSR). Reuse these before
-writing new map code.
+the add/edit listing form, `ReadOnlyMap` by the listing detail view,
+`ListingsMap` by Find a Place and `/listings`; all three are loaded
+through `DynamicMap` without SSR). Reuse these before writing new map
+code, along with `src/lib/geo.ts` (distances) and `src/lib/nominatim.ts`
+(the place lookup both maps' search boxes use).
 
-**Scope beyond that is not decided** (listing pins on search results,
-directions, search by area or distance). Don't assume a scope — check
-the relevant issue/backlog item or ask before building new map
-features.
+**Built so far** (S1-13, S2-10): pinning a listing's location, showing
+it on its page, and on Find a Place and `/listings`, pins for the
+filtered results plus a radius search. A renter or guest taps the map
+or looks a place up (in "Near", or with the search bar when no listing
+has the words), picks 500 m, 1 km or 5 km, and the cards and pins show only
+the listings within that distance, nearest first. The browser
+measures the distance (straight line, `distanceKm`), like the other
+filters, and the point and radius are kept in the URL
+(`listingFilterParamsSchema`).
+
+**Scope beyond that is not decided** (directions, search by a drawn
+area, the visitor's own location). Don't assume a scope — check the
+relevant issue/backlog item or ask before building new map features.
 
 Constraints that come with OSM (keep these in mind when building):
 
@@ -467,9 +615,10 @@ entry in the PR that closes it.
 ## Commands
 
 - **`npm run check` — run this before saying a change is done.** It's
-  everything CI runs except the production build: `next typegen`,
-  `tsc --noEmit`, ESLint, Prettier check, the migration check, the
-  invisible-character check, and the unit tests.
+  everything CI's `checks` job runs except the production build:
+  `next typegen`, `tsc --noEmit`, ESLint, Prettier check, the migration
+  check, the invisible-character check, and the unit tests. (The
+  `database` job needs Docker, so only CI runs it.)
 - `npm run check:migrations` — just the migration check (unique numbers,
   no edits to migrations already on `origin/dev`; `git fetch` first)
 - `npm run check:invisible-chars` — just the invisible-character check
@@ -478,23 +627,40 @@ entry in the PR that closes it.
 - `npm run dev` — local dev server
 - `npm test` — unit tests (`*.test.ts`, Vitest). Put a test next to the
   file it tests; see `src/lib/validations/auth.test.ts` for the pattern.
-- `npm run test:db` — tests that run against the **shared** Supabase
-  project (`*.db.test.ts`), e.g. the listings RLS test. Needs
-  `.env.local` and the seed data. Not run in CI. Any new table's RLS
-  policies should get a test here; DB tests must leave shared data
-  unchanged.
+- `npm run test:db` — tests against a real Supabase (`*.db.test.ts`),
+  e.g. the listings RLS test. CI runs them on every PR (on its
+  throwaway Supabase) and on the shared project after every database
+  merge. Run by hand, they use `.env.local` and the seed data, so they
+  hit the **shared** project. Any new table's RLS policies should get a
+  test here; DB tests must leave shared data unchanged. The files run
+  one at a time (`singleFork` in `vitest.config.ts`, #311): some tests
+  change a seed row for a moment and put it back in a `finally`, and
+  another file running at the same time could read it in between, so
+  keep it that way even though it's slower. They sign in as
+  the seed accounts about 50 times per run, so the shared project's
+  limit on password sign-ins must allow that, or they fail with
+  "Request rate limit reached". In the dashboard (Authentication → Rate
+  Limits) that limit is "token refreshes", not "sign-ups and sign-ins",
+  which covers sign-ups, magic links, password resets and user updates.
+  It allows 30 sign-ins at once from one address, then the setting ÷ 300
+  more per second. The shared project has it at 900; the default, 150,
+  failed #289's apply.
 - `npm run lint` — ESLint
 - `npm run format` — Prettier (auto-runs on commit via Husky)
 - `npm run format:check` — Prettier check only
-- `npm run db:types` — regenerate `src/types/database.ts` from the
-  shared project's schema
+- `npm run db:types` — regenerate `src/types/database.ts` from a local
+  Supabase. CI runs it on every PR; it needs Docker and
+  `npx supabase start`, so you don't run it yourself.
 - `npx shadcn add <component>` — add a new shadcn/ui component
-- `npx supabase db push` — apply pending migrations to the linked project
-  (run `npx supabase link --project-ref <ref>` once first)
+- `npx supabase db push` — don't: CI's `apply-database` job applies
+  merged migrations to the shared project. Only the PM runs it by hand,
+  e.g. while `DB_AUTO_APPLY` is off.
 - `npm run db:seed` — load test accounts + sample listings from
-  `supabase/seed.sql` into the linked project, then upload landlord1's
-  sample verification files (`supabase/seed-storage.mjs`, needs
-  `.env.local`); safe to re-run
+  `supabase/seed.sql` into the linked project, then upload the seed
+  verifications' and listings' sample files (`supabase/seed-storage.mjs`,
+  needs `.env.local`); safe to re-run. CI already runs it after every
+  database merge; run it yourself only to reset seed data you changed
+  while testing.
 
 ## Agent guardrails (Claude Code)
 
@@ -504,8 +670,9 @@ overrides go in the gitignored `.claude/settings.local.json`):
 - **Auto-approved:** read-only and routine commands (`npm run check`,
   `npm test`, `git status/diff/log`, `gh issue/pr view`,
   `npx supabase migration list`, `db push --dry-run`, ...).
-- **Always blocked:** `supabase db reset`, force-pushes, pushing
-  straight to `main`/`dev`, and `git commit --no-verify`.
+- **Always blocked:** `supabase db reset`, `supabase config push`,
+  force-pushes, pushing straight to `main`/`dev`, and
+  `git commit --no-verify`.
 - **Hook:** `.claude/hooks/protect-applied-migrations.mjs` blocks edits
   to any migration that's already on `origin/dev` (run `git fetch` to
   keep that current). New migration files are unaffected.
@@ -526,7 +693,8 @@ follow them too):
   the plan, cut a correctly named branch from the latest `dev`. (If it
   had to wait for approval, run it again once the plan is approved.)
 - `/new-migration <description>` — next migration number, RLS, grants,
-  role checks, a DB test, and the apply steps for the PR.
+  role checks and a DB test. CI tests it on the PR and applies it after
+  merge.
 - `/open-pr [issues]` — `npm run check`, push, open a PR into `dev`
   with `Closes #` lines (they close the issues when it merges) and a
   link to the approved plan.

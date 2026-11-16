@@ -14,8 +14,9 @@ says, update the plan on the issue and get the PM's approval before
 writing it — a schema change affects the whole team.
 
 The database is **one shared project for the whole team** — nothing in
-this skill touches it except the read-only checks. Applying the
-migration happens after the PR is merged (step 6).
+this skill touches it except the read-only checks. CI tests the
+migration on the PR and applies it to the shared project after the PR
+merges (step 6, AGENTS.md "Database (Supabase)", #258).
 
 ## 1. Check the current state (read-only)
 
@@ -25,9 +26,12 @@ npx supabase migration list --linked
 npx supabase db push --linked --dry-run
 ```
 
-The dry run must say nothing is pending. If something is pending that
-isn't yours, **stop and tell the user** — the shared database has
-drifted from `supabase/migrations/` (see #172 for what that looks like).
+The dry run should say nothing is pending. If something is pending,
+**stop and tell the user**: either CI's `apply-database` job failed or
+was off after a merge (its comment on that PR says why), or the shared
+database has drifted from `supabase/migrations/` (see #172 for what that
+looks like). Never run `supabase migration repair`, even if the CLI
+suggests it.
 
 Inspect what exists before changing it:
 
@@ -49,6 +53,9 @@ gh pr list --repo zedric-git/abangers --state open --search "migration"
 
 Filename: `NNNN_<snake_case_description>.sql`. Numbers must be unique —
 Supabase tracks migrations by number, so a duplicate is silently skipped.
+If another open PR's migration takes a lower number and merges after
+yours, the shared database won't apply it out of order: agree with that
+PR's author who renumbers before either merges.
 
 ## 3. Write the migration
 
@@ -87,25 +94,33 @@ Test both what's **allowed** and what's **blocked**. Tests must leave
 shared data unchanged — use blocked writes, write current values back,
 or clean up anything you create in the same test.
 
-The new tests can't pass until the migration is applied, so don't run
-them against the shared DB yet (blocked-write tests would actually
-change data). Say so in the PR.
+Don't run the new tests against the shared DB before merge: the
+migration isn't there yet, and blocked-write tests would actually
+change data. CI's `database` job runs them on the PR instead, on a
+throwaway Supabase with your migration applied.
 
 ## 5. Update app code and docs
 
 - Update `src/lib/validations/` Zod schemas if the shape changed.
+- Don't regenerate `src/types/database.ts` yourself: CI commits it to
+  the branch (step 6).
 - Update `AGENTS.md` if a rule, convention, or known gap changed.
 - Run `npm run check`.
 
-## 6. Tell the user how to apply it
+## 6. What happens on the PR and after merge
 
-Don't push to the database yourself unless the user explicitly asks.
-Put this in the PR description:
+Nothing to run by hand: don't `db push`, `db:types`, `db:seed` or
+`test:db`, and don't put apply steps in the PR.
 
-```bash
-# after the PR is merged into dev — one person, tell the team first
-npx supabase db push --linked --dry-run   # should list only NNNN_...
-npx supabase db push --linked
-npm run db:types                          # then commit src/types/database.ts
-npm run test:db
-```
+- **On the PR,** CI's `database` job applies every migration (yours
+  included) to an empty throwaway Supabase, runs the seed twice and
+  every DB test. If it fails, fix the migration or the test on the
+  branch.
+- **If `src/types/database.ts` changed,** the `database-types` job
+  commits it to the branch, and CI runs again: `git pull` before
+  pushing again.
+- **After merge,** the `apply-database` job applies it to the shared
+  project, re-runs the seed and the DB tests there, and comments on the
+  PR. If the comment says something failed, tell the user and the PM:
+  don't edit the merged migration, and never run
+  `supabase migration repair`.

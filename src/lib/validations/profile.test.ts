@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { landlordProfileSchema, profileSetupSchema } from "./profile";
+import {
+  landlordProfileSchema,
+  profileSetupSchema,
+  renterProfileSchema,
+} from "./profile";
 
 // landlordProfileSchema is checked again in SQL by the listings insert
 // policy (supabase/migrations/0012_require_ph_mobile_number_for_new_listings.sql).
@@ -119,5 +123,105 @@ describe("profileSetupSchema (the profile forms)", () => {
     });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0].path).toEqual(["facebook_url"]);
+  });
+});
+
+describe("renterProfileSchema (S2-01, #78, #82, #83)", () => {
+  const validRenter = {
+    full_name: "Ana Reyes",
+    email: "renter1@abangers.test",
+    gender: "Female" as const,
+    contact_number: "09185550404",
+    occupation_status: "Student" as const,
+  };
+
+  it("accepts a valid complete renter profile", () => {
+    const result = renterProfileSchema.safeParse(validRenter);
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts minimal renter profile (optional phone and occupation omitted)", () => {
+    const result = renterProfileSchema.safeParse({
+      full_name: "Ana Reyes",
+      email: "renter1@abangers.test",
+      gender: "Female",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts empty strings for optional contact number and occupation", () => {
+    const result = renterProfileSchema.safeParse({
+      full_name: "Ana Reyes",
+      email: "renter1@abangers.test",
+      gender: "Female",
+      contact_number: "",
+      occupation_status: "",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.occupation_status).toBeUndefined();
+    }
+  });
+
+  it("requires a full name", () => {
+    const result = renterProfileSchema.safeParse({
+      ...validRenter,
+      full_name: "",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("requires a valid email", () => {
+    const result = renterProfileSchema.safeParse({
+      ...validRenter,
+      email: "invalid-email",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it.each(["Male", "Female", "Other", "Prefer not to say"] as const)(
+    "accepts allowed gender: %s",
+    (gender) => {
+      const result = renterProfileSchema.safeParse({
+        ...validRenter,
+        gender,
+      });
+      expect(result.success).toBe(true);
+    },
+  );
+
+  it("rejects an invalid gender", () => {
+    const result = renterProfileSchema.safeParse({
+      ...validRenter,
+      gender: "Alien",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it.each(["Student", "Worker", "Student & Worker", "Other"] as const)(
+    "accepts allowed occupation status: %s",
+    (occupation_status) => {
+      const result = renterProfileSchema.safeParse({
+        ...validRenter,
+        occupation_status,
+      });
+      expect(result.success).toBe(true);
+    },
+  );
+
+  it("rejects an invalid occupation status", () => {
+    const result = renterProfileSchema.safeParse({
+      ...validRenter,
+      occupation_status: "Astronaut",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an invalid contact number when provided", () => {
+    const result = renterProfileSchema.safeParse({
+      ...validRenter,
+      contact_number: "12345",
+    });
+    expect(result.success).toBe(false);
   });
 });

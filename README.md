@@ -66,8 +66,8 @@ You need **Node.js 22+** (CI uses 22 — see `.nvmrc`) and **npm**.
    Open http://localhost:3000.
 
 The shared database already has the schema and seed data, so you don't
-need to run migrations or the seed just to start developing. Only run
-`db push` when you've added a new migration (see below).
+need to run migrations or the seed to start developing. You never apply
+migrations yourself: CI does it after your PR merges (see below).
 
 ## Test accounts
 
@@ -75,40 +75,45 @@ need to run migrations or the seed just to start developing. Only run
 log in). They all share one password — it's in the header comment of
 `supabase/seed.sql`.
 
-| Email                     | Name          | Role     | Listings | Verified |
-| ------------------------- | ------------- | -------- | -------- | -------- |
-| `landlord1@abangers.test` | Maria Santos  | landlord | 3        | yes      |
-| `landlord2@abangers.test` | Jun Dela Cruz | landlord | 3        | no       |
-| `renter1@abangers.test`   | Ana Reyes     | renter   | —        | —        |
-| `renter2@abangers.test`   | Paolo Garcia  | renter   | —        | —        |
+| Email                     | Name            | Role     | Listings | Verified           |
+| ------------------------- | --------------- | -------- | -------- | ------------------ |
+| `landlord1@abangers.test` | Maria Santos    | landlord | 3        | yes                |
+| `landlord2@abangers.test` | Jun Dela Cruz   | landlord | 3        | no                 |
+| `landlord3@abangers.test` | Rosa Villanueva | landlord | —        | waiting for review |
+| `renter1@abangers.test`   | Ana Reyes       | renter   | —        | —                  |
+| `renter2@abangers.test`   | Paolo Garcia    | renter   | —        | —                  |
+| `admin@abangers.test`     | Abangers Admin  | admin    | —        | —                  |
 
-Both landlords have a complete profile, but only a verified landlord can
-create listings, so use landlord1 for that. Try the verification flow on
-landlord2: the DB tests need landlord1 verified and landlord2 not.
+All three landlords have a complete profile, but only a verified
+landlord can create listings, so use landlord1 for that. Try the
+verification flow on landlord2, and review landlord3's verification as
+the admin: the DB tests need landlord1 verified, landlord2 not, and
+landlord3 waiting for review. Nobody can become an admin from the app;
+the admin account only comes from the seed (or SQL).
 
 If the seed data gets messed up, run `npm run db:seed` — it's safe to
 re-run and puts the seed accounts, listings and verifications back
-without touching anything else. It also uploads landlord1's sample ID
-photos, so it needs `.env.local`.
+without touching anything else. It also uploads the seed verifications'
+sample ID photos, so it needs `.env.local`. CI also re-runs it after
+every PR that changes the database.
 
 ## Everyday commands
 
-| Command                 | What it does                                                      |
-| ----------------------- | ----------------------------------------------------------------- |
-| `npm run dev`           | Local dev server                                                  |
-| `npm run check`         | **Everything CI checks** — run before opening a PR                |
-| `npm test`              | Unit tests (`*.test.ts`, Vitest)                                  |
-| `npm run test:db`       | RLS tests against the shared database (`*.db.test.ts`, not in CI) |
-| `npm run format`        | Auto-format with Prettier                                         |
-| `npm run db:seed`       | Load/reset test accounts + sample data (safe to re-run)           |
-| `npm run db:types`      | Regenerate `src/types/database.ts` after a migration is pushed    |
-| `npx supabase db push`  | Apply new migrations in `supabase/migrations/` to the DB          |
-| `npx shadcn add <name>` | Add a shadcn/ui component                                         |
+| Command                 | What it does                                                             |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `npm run dev`           | Local dev server                                                         |
+| `npm run check`         | **What CI's `checks` job runs** — run before opening a PR                |
+| `npm test`              | Unit tests (`*.test.ts`, Vitest)                                         |
+| `npm run test:db`       | RLS tests (`*.db.test.ts`). CI runs them; by hand they hit the shared DB |
+| `npm run format`        | Auto-format with Prettier                                                |
+| `npm run db:seed`       | Load/reset test accounts + sample data (safe to re-run)                  |
+| `npx shadcn add <name>` | Add a shadcn/ui component                                                |
 
 `npm run check` runs, in order: Next.js type generation, `tsc`, ESLint,
 the Prettier check, the migration check (`scripts/check-migrations.mjs`),
 the invisible-character check (`scripts/check-invisible-chars.mjs`) and
-the unit tests. CI runs the same steps plus a production build. A
+the unit tests. CI's `checks` job runs the same steps plus a production
+build, and its `database` job tests the migrations (below). A
 pre-commit hook (Husky) auto-formats staged files, so most formatting
 happens for you on `git commit`.
 
@@ -151,10 +156,23 @@ git push -u origin feature/listing-search  # 5. then open a PR into dev
 ```
 
 **Changing the database?** Add a new file in `supabase/migrations/`
-(highest number + 1 — never edit an existing one), with RLS policies
-**and** grants, then `npx supabase db push` and `npm run db:types`. The
+(highest number on `dev` + 1 — never edit an existing one), with RLS
+policies **and** grants, and a `*.db.test.ts` case for each policy. Then
+just open the PR. CI does the rest:
+
+- **On your PR**, the `database` job runs every migration, the seed and
+  every DB test on a throwaway Supabase (never the shared one). If
+  `src/types/database.ts` needs updating, a bot commits it to your
+  branch: run `git pull` before you push again.
+- **After it merges**, the `apply-database` job applies it to the shared
+  database, re-runs the seed and the DB tests there, and comments on
+  your PR with the result, tagging the team.
+
+Don't run `npx supabase db push` or `npm run db:types` yourself. The
 full checklist is in
-[`.claude/skills/new-migration/SKILL.md`](./.claude/skills/new-migration/SKILL.md).
+[`.claude/skills/new-migration/SKILL.md`](./.claude/skills/new-migration/SKILL.md),
+and how the automation works is in
+[AGENTS.md](./AGENTS.md#database-supabase).
 
 ### Using Claude Code (optional)
 
@@ -181,13 +199,15 @@ src/
     (auth)/                profile-setup (login/sign-up is the modal on the home page)
     dashboard/landlord/    dashboard, profile (+ profile/verify), listings (new, [id], [id]/edit)
     dashboard/renter/      renter dashboard
+    dashboard/admin/       verifications waiting for review (+ verifications/[id] to review one)
     listings/              public search + listings/[id] detail
   components/ui/           shadcn/ui primitives (generated by the CLI)
   components/map/          Leaflet/OpenStreetMap maps (client-only)
   components/              shared components (listing form, cards, modals, ...)
-  lib/auth/                login routing, sign-up, who can post listings,
-                           submitting a landlord verification, and where
-                           a landlord stands (the dashboard's status)
+  lib/auth/                login routing, sign-up, log out, who can post
+                           listings, submitting a landlord verification,
+                           where a landlord stands (the dashboard's status),
+                           and the admin's review of verifications
   lib/supabase/            Supabase clients (browser, server) + session refresh
   lib/validations/         Zod schemas — single source of truth for data rules
   types/                   database.ts (generated — don't edit) + derived types
@@ -198,7 +218,9 @@ supabase/
   migrations/              SQL migrations, applied in order (0001, 0002, ...)
   seed.sql                 test accounts + sample listings
   seed-storage.mjs         uploads the seed's sample files (seed-storage/)
-scripts/                   repo checks run by `npm run check` and CI
+  config.toml              settings for CI's throwaway Supabase only
+scripts/                   repo checks run by `npm run check` and CI, and
+                           the scripts CI's database jobs run
 .claude/                   shared Claude Code settings, hooks and skills
 ```
 

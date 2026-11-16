@@ -1,6 +1,7 @@
 /**
- * RLS test for public.listings (S1-11.3 / #75) — runs against the REAL
- * shared Supabase project, signed in as the seed landlords.
+ * RLS test for public.listings (S1-11.3 / #75) — runs against a real
+ * Supabase, signed in as the seed landlords: CI's throwaway one on every
+ * PR, and the SHARED project after a database merge or when run by hand.
  *
  * Checks the policies in supabase/migrations/0001_init.sql, 0007 and 0010
  * (0011 rewrote 0010's insert policy with readable escapes, same rule;

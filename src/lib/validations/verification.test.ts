@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   ID_TYPES,
   ID_TYPE_LABELS,
+  REJECTION_REASON_MAX_LENGTH,
   VERIFICATION_PHOTO_MAX_BYTES,
   VERIFICATION_PHOTO_TYPES,
   needsBackPhoto,
+  rejectionSchema,
+  verificationReviewSchema,
   verificationSubmissionSchema,
 } from "./verification";
 
@@ -237,5 +240,121 @@ describe("verificationSubmissionSchema", () => {
     expect(result.success).toBe(false);
     expect(result.error?.issues[0].path).toEqual(["consent"]);
     expect(result.error?.issues[0].message).toContain("Tick the box");
+  });
+});
+
+// #256: the admin's decision. 0008's rejection_reason_matches_status CHECK
+// only refuses a reason that's empty once spaces are removed; this schema
+// has to be at least as strict, so the database never refuses what the
+// Reject dialog accepts.
+describe("verificationReviewSchema", () => {
+  const submissionId = "b1b2c3d4-0000-4000-8000-000000000002";
+
+  /** The first issue's message, or null if the values are valid. */
+  function firstMessage(values: unknown) {
+    const result = verificationReviewSchema.safeParse(values);
+    return result.success ? null : result.error.issues[0].message;
+  }
+
+  it("accepts an approval", () => {
+    expect(
+      verificationReviewSchema.parse({ submissionId, decision: "approve" }),
+    ).toEqual({ submissionId, decision: "approve" });
+  });
+
+  it("drops a reason sent with an approval (an approval has none)", () => {
+    expect(
+      verificationReviewSchema.parse({
+        submissionId,
+        decision: "approve",
+        reason: "Looks fine",
+      }),
+    ).toEqual({ submissionId, decision: "approve" });
+  });
+
+  it("accepts a rejection with a reason, trimmed", () => {
+    expect(
+      verificationReviewSchema.parse({
+        submissionId,
+        decision: "reject",
+        reason: "  The ID photo is blurry.\n",
+      }),
+    ).toEqual({
+      submissionId,
+      decision: "reject",
+      reason: "The ID photo is blurry.",
+    });
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["empty", ""],
+    ["only spaces", "   "],
+    ["only tabs and line breaks", "\t\n\r\n"],
+    ["only no-break and ideographic spaces", "\u00A0\u3000"],
+  ])("refuses a rejection whose reason is %s", (_what, reason) => {
+    expect(firstMessage({ submissionId, decision: "reject", reason })).toBe(
+      "Write the reason the landlord will see, so they know what to fix",
+    );
+  });
+
+  it(`allows a reason of up to ${REJECTION_REASON_MAX_LENGTH} characters`, () => {
+    const longest = "a".repeat(REJECTION_REASON_MAX_LENGTH);
+    expect(
+      firstMessage({ submissionId, decision: "reject", reason: longest }),
+    ).toBeNull();
+    expect(
+      firstMessage({ submissionId, decision: "reject", reason: `${longest}a` }),
+    ).toBe(
+      `Keep the reason to ${REJECTION_REASON_MAX_LENGTH} characters or fewer`,
+    );
+  });
+
+  it("counts the length after trimming", () => {
+    const longest = "a".repeat(REJECTION_REASON_MAX_LENGTH);
+    expect(
+      firstMessage({
+        submissionId,
+        decision: "reject",
+        reason: `  ${longest}  `,
+      }),
+    ).toBeNull();
+  });
+
+  it.each(["", "not-a-uuid", "../landlord_verifications", undefined])(
+    "refuses a submission id that isn't a UUID (%j)",
+    (badId) => {
+      expect(
+        firstMessage({ submissionId: badId, decision: "approve" }),
+      ).toContain("This verification's id isn't valid");
+    },
+  );
+
+  it.each(["pending", "approved", "", undefined])(
+    "refuses any decision but approve or reject (%j)",
+    (decision) => {
+      expect(
+        verificationReviewSchema.safeParse({ submissionId, decision }).success,
+      ).toBe(false);
+    },
+  );
+
+  it("the Reject dialog's part is the same rule", () => {
+    // rejectionSchema is one branch of verificationReviewSchema, so the
+    // dialog and the server can't disagree.
+    expect(
+      rejectionSchema.safeParse({
+        submissionId,
+        decision: "reject",
+        reason: " ",
+      }).success,
+    ).toBe(false);
+    expect(
+      rejectionSchema.parse({
+        submissionId,
+        decision: "reject",
+        reason: " x ",
+      }),
+    ).toEqual({ submissionId, decision: "reject", reason: "x" });
   });
 });

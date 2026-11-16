@@ -31,17 +31,42 @@ const STYLES: Record<VerificationStatus, { icon: Icon; className: string }> = {
 
 /**
  * The verification badge in the Profile page's header (#205): Not
- * verified, Pending review, Rejected or Verified. It isn't a link: the
- * banner under the header has the button to the Verify page.
+ * verified, Pending review, Rejected or Verified. It can also receive an
+ * optional onClick handler to scroll to the verification section.
  *
  * No "use client": it has no state (the Profile form draws it).
  */
 export default function VerificationBadge({
   verification,
+  onClick,
 }: {
   verification: VerificationStatus;
+  onClick?: () => void;
 }) {
   const { icon: StatusIcon, className } = STYLES[verification];
+
+  const content = (
+    <>
+      <StatusIcon className="h-4 w-4" />
+      <span className="sr-only">Account verification: </span>
+      {VERIFICATION_BADGE_LABELS[verification]}
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          "inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 self-start rounded-full border px-3.5 text-xs font-bold transition-opacity hover:opacity-80 sm:self-auto",
+          className,
+        )}
+      >
+        {content}
+      </button>
+    );
+  }
 
   return (
     // self-start: on a phone the header is a column, and the badge would
@@ -52,9 +77,7 @@ export default function VerificationBadge({
         className,
       )}
     >
-      <StatusIcon className="h-4 w-4" />
-      <span className="sr-only">Account verification: </span>
-      {VERIFICATION_BADGE_LABELS[verification]}
+      {content}
     </span>
   );
 }

@@ -1,36 +1,54 @@
 -- Abangers — development seed data
 --
--- Creates a fixed set of test accounts (2 landlords, 2 renters) plus
--- sample boarding house listings around Cebu City, so everyone on the
--- team can log in and see real-looking data right away.
+-- Creates a fixed set of test accounts (3 landlords, 2 renters and an
+-- admin) plus sample boarding house listings around Cebu City and viewing
+-- requests for them, so everyone on the team can log in and see
+-- real-looking data right away.
+--
+-- NEEDS MIGRATION 0017 (viewing requests, #107) on the project.
 --
 -- HOW TO RUN
 --   npm run db:seed              (runs this file against the linked project,
 --                                 then supabase/seed-storage.mjs, which
---                                 uploads landlord1's sample ID photos
---                                 and the seed listings' sample photo)
+--                                 uploads the seed verifications' sample
+--                                 ID photos and the seed listings' sample
+--                                 photo)
 --   npx supabase db reset --linked   (wipes the DB, re-runs migrations, then
 --                                     runs this file automatically; run
 --                                     npm run db:seed afterwards for the
 --                                     photos)
 --
+--   CI runs it too (.github/workflows/ci.yml, #258): twice on every PR,
+--   on its throwaway Supabase (`supabase start` runs it once, then the
+--   database job runs it again to check it's safe to re-run), and on the
+--   shared project after every database merge (the apply-database job).
+--
 -- IDEMPOTENT: safe to run as many times as you like. Running it again
 -- does NOT create duplicates — it brings the seed accounts and listings
 -- back to exactly what's written below (resetting passwords, names,
--- roles, landlord profiles, verifications and listing details). Anything
--- NOT in this file (e.g. accounts you created by signing up in the app)
--- is left alone.
+-- roles, landlord profiles, verifications, listing details and viewing
+-- requests). Anything NOT in this file (e.g. accounts you created by
+-- signing up in the app) is left alone.
 --
 -- TEST ACCOUNTS — every account uses the same password: Abangers123!
 --   landlord1@abangers.test   Maria Santos      (landlord, verified)
 --   landlord2@abangers.test   Jun Dela Cruz     (landlord, NOT verified)
+--   landlord3@abangers.test   Rosa Villanueva   (landlord, verification
+--                                                waiting for review)
 --   renter1@abangers.test     Ana Reyes         (renter)
 --   renter2@abangers.test     Paolo Garcia      (renter)
+--   admin@abangers.test       Abangers Admin    (admin)
 --
--- Both landlords have a complete profile. landlord1 is also verified, so
--- they can create listings; landlord2 isn't, so they can't (S1-15, #206).
--- The DB tests (npm run test:db) rely on both: try the verification flow
--- on landlord2, then run this file again to make them unverified again.
+-- All three landlords have a complete profile. landlord1 is also verified,
+-- so they can create listings; landlord2 isn't, so they can't (S1-15,
+-- #206). landlord3 sent a verification that's waiting for the admin, so
+-- the admin dashboard has one to review (S2-11, #207). The DB tests
+-- (npm run test:db) rely on all three: try the verification flow on
+-- landlord2 and the review on landlord3, then run this file again to put
+-- them back.
+--
+-- The admin can only be made here (or with SQL in the dashboard): the app
+-- never lets anyone create or turn their profile into an admin (0014).
 --
 -- These are fake, dev-only credentials. Never reuse them anywhere real.
 
@@ -53,10 +71,12 @@ begin
     select *
     from (
       values
-        ('landlord1@abangers.test', 'Maria Santos',  'landlord'),
-        ('landlord2@abangers.test', 'Jun Dela Cruz', 'landlord'),
-        ('renter1@abangers.test',   'Ana Reyes',     'renter'),
-        ('renter2@abangers.test',   'Paolo Garcia',  'renter')
+        ('landlord1@abangers.test', 'Maria Santos',    'landlord'),
+        ('landlord2@abangers.test', 'Jun Dela Cruz',   'landlord'),
+        ('landlord3@abangers.test', 'Rosa Villanueva', 'landlord'),
+        ('renter1@abangers.test',   'Ana Reyes',       'renter'),
+        ('renter2@abangers.test',   'Paolo Garcia',    'renter'),
+        ('admin@abangers.test',     'Abangers Admin',  'admin')
     ) as t (email, full_name, role)
   loop
     select id into user_id from auth.users where email = acct.email;
@@ -119,11 +139,12 @@ end $$;
 -- +63 917...) and at least one social media link (landlordProfileSchema
 -- in src/lib/validations/profile.ts), and the listings insert policy
 -- (0012) checks it. The numbers are the ones in
--- their listings below; the links are made up. landlord1 has only a
--- Facebook link and landlord2 only an Instagram one, so the policy's
--- "any of the three links" is tested both ways. email and
--- profile_completed are what the profile forms save too (nothing checks
--- profile_completed). Renters' profiles are left alone.
+-- their listings below (landlord3 has no listings); the links are made
+-- up. landlord1 has only a Facebook link, landlord2 only an Instagram one
+-- and landlord3 only an X one, so the policy's "any of the three links"
+-- is tested all three ways. email and profile_completed are what the
+-- profile forms save too (nothing checks profile_completed). Renters' and
+-- the admin's profiles are left alone.
 update public.profiles as p
 set contact_number    = v.contact_number,
     email             = v.email,
@@ -136,57 +157,110 @@ from (
     ('landlord1@abangers.test', '09175550101',
      'https://www.facebook.com/abangers.test.landlord1', null::text, null::text),
     ('landlord2@abangers.test', '09285550202',
-     null::text, 'https://www.instagram.com/abangers.test.landlord2', null::text)
+     null::text, 'https://www.instagram.com/abangers.test.landlord2', null::text),
+    ('landlord3@abangers.test', '09395550303',
+     null::text, null::text, 'https://x.com/abangers_test_landlord3')
 ) as v (email, contact_number, facebook_url, instagram_url, x_url)
 join auth.users as u on u.email = v.email
 where p.id = u.id;
 
 
--- ── 3. Landlord verification: landlord1 verified, landlord2 not ─────
+-- ── 2b. Renter profiles: complete ───────────────────────────────────
+-- What a renter fills in on profile setup (S2-01). Mark seed renters
+-- complete with sample gender, status and contact numbers so tests and
+-- login go directly to /dashboard/renter. Admin profile is left alone.
+update public.profiles as p
+set contact_number    = v.contact_number,
+    email             = v.email,
+    gender            = v.gender,
+    occupation_status = v.occupation_status,
+    profile_completed = true
+from (
+  values
+    ('renter1@abangers.test', '09185550404', 'Female', 'Student'),
+    ('renter2@abangers.test', '09295550505', 'Male',   'Worker')
+) as v (email, contact_number, gender, occupation_status)
+join auth.users as u on u.email = v.email
+where p.id = u.id;
+
+-- ── 3. Landlord verification ────────────────────────────────────────
 -- "Verified" means the landlord has an approved landlord_verifications
--- row (0008). landlord1 gets exactly one: an approved submission with a
--- fixed id. landlord2 gets none.
+-- row (0008). Every run leaves the seed landlords with exactly this:
+--   landlord1  one submission, approved by the seed admin (verified)
+--   landlord2  none (not verified)
+--   landlord3  one submission waiting for review (pending), for the admin
+--              dashboard (S2-11, #207). It's a passport, so it has only
+--              the photo page and the selfie, no back photo. Approve or
+--              reject it in the app as often as you like: running this
+--              file again puts it back to pending.
+-- Both submissions have fixed ids, so a re-run updates them instead of
+-- adding more. The DB tests use them too (src/__tests__/db-helpers.ts).
 --
--- Anything else the two seed landlords submitted (e.g. while trying the
--- submit form, #204) is deleted first, so every run ends in exactly this
--- state. That also keeps the insert below from clashing with another
--- pending or approved row (a landlord can only have one, 23505). The
--- deleted rows' files stay in the verification-documents bucket: SQL
--- can't delete Storage files, so remove them in the dashboard if needed.
+-- Anything else the seed landlords submitted (e.g. while trying the
+-- submit form, #204) is deleted first. That also keeps the insert below
+-- from clashing with another pending or approved row (a landlord can only
+-- have one, 23505). The deleted rows' files stay in the
+-- verification-documents bucket: SQL can't delete Storage files, so
+-- remove them in the dashboard if needed.
 --
 -- The file paths follow the submit form's folder layout (0009):
 -- <landlord id>/<submission id>/<file>. SQL can't upload files either, so
 -- supabase/seed-storage.mjs uploads the sample images in
 -- supabase/seed-storage/ to these paths (npm run db:seed runs it after
--- this file).
+-- this file). A passport's photo page is called id-front, like the
+-- submit form calls it.
 do $$
 declare
-  -- Fixed id, so a re-run updates this row instead of adding another.
-  -- The DB tests use it too (src/__tests__/db-helpers.ts).
-  submission_id constant uuid := 'b1b2c3d4-0000-4000-8000-000000000001';
+  landlord1_submission_id constant uuid := 'b1b2c3d4-0000-4000-8000-000000000001';
+  landlord3_submission_id constant uuid := 'b1b2c3d4-0000-4000-8000-000000000002';
   landlord1_id uuid;
-  folder text;
+  landlord3_id uuid;
+  admin_id uuid;
+  landlord1_folder text;
+  landlord3_folder text;
 begin
   select id into landlord1_id
   from auth.users
   where email = 'landlord1@abangers.test';
 
-  folder := landlord1_id::text || '/' || submission_id::text || '/';
+  select id into landlord3_id
+  from auth.users
+  where email = 'landlord3@abangers.test';
+
+  select id into admin_id
+  from auth.users
+  where email = 'admin@abangers.test';
+
+  landlord1_folder :=
+    landlord1_id::text || '/' || landlord1_submission_id::text || '/';
+  landlord3_folder :=
+    landlord3_id::text || '/' || landlord3_submission_id::text || '/';
 
   delete from public.landlord_verifications as lv
   using auth.users as u
   where lv.landlord_id = u.id
-    and u.email in ('landlord1@abangers.test', 'landlord2@abangers.test')
-    and lv.id <> submission_id;
+    and u.email in (
+      'landlord1@abangers.test',
+      'landlord2@abangers.test',
+      'landlord3@abangers.test'
+    )
+    and lv.id not in (landlord1_submission_id, landlord3_submission_id);
 
   insert into public.landlord_verifications (
     id, landlord_id, id_type, id_front_path, id_back_path, selfie_path,
-    status, rejection_reason, consent_given_at, submitted_at, reviewed_at
-  ) values (
-    submission_id, landlord1_id, 'national_id',
-    folder || 'id-front.jpg', folder || 'id-back.jpg', folder || 'selfie.jpg',
-    'approved', null, now(), now(), now()
-  )
+    status, rejection_reason, consent_given_at, submitted_at, reviewed_at,
+    reviewed_by
+  ) values
+    -- landlord1: approved by the seed admin.
+    (landlord1_submission_id, landlord1_id, 'national_id',
+     landlord1_folder || 'id-front.jpg', landlord1_folder || 'id-back.jpg',
+     landlord1_folder || 'selfie.jpg',
+     'approved', null, now(), now(), now(), admin_id),
+    -- landlord3: a passport, waiting for review (nobody has reviewed it).
+    (landlord3_submission_id, landlord3_id, 'passport',
+     landlord3_folder || 'id-front.jpg', null,
+     landlord3_folder || 'selfie.jpg',
+     'pending', null, now(), now(), null, null)
   on conflict (id) do update
     set landlord_id      = excluded.landlord_id,
         id_type          = excluded.id_type,
@@ -197,7 +271,8 @@ begin
         rejection_reason = excluded.rejection_reason,
         consent_given_at = excluded.consent_given_at,
         submitted_at     = excluded.submitted_at,
-        reviewed_at      = excluded.reviewed_at;
+        reviewed_at      = excluded.reviewed_at,
+        reviewed_by      = excluded.reviewed_by;
 end $$;
 
 
@@ -302,3 +377,131 @@ on conflict (id) do update
       longitude           = excluded.longitude,
       contact_info        = excluded.contact_info,
       availability_status = excluded.availability_status;
+
+-- ── 5. Viewing requests ─────────────────────────────────────────────
+-- Seven requests from the seed renters (0017, #107), in every status and
+-- on both landlord1's and landlord2's listings, so the viewing pages
+-- (#110, #113) and Renter Management (#284) have something to show, and
+-- the DB tests (src/__tests__/rls-viewing-requests.db.test.ts) have rows
+-- to check against:
+--
+--   1  renter2  Santos Boarding House (landlord1)     pending    in 3 days, 10:00
+--   2  renter1  Lahug bedspace (landlord1)            confirmed  yesterday, 15:00
+--                                                     (ready to mark completed)
+--   3  renter1  Santos Boarding House                 completed  a week ago, 10:00
+--   4  renter2  Lahug bedspace                        declined   in 5 days, 13:00,
+--                                                     with a reason
+--   5  renter1  Santos Boarding House                 cancelled  in 4 days, 11:00
+--   6  renter1  Dela Cruz Dorm (landlord2)            pending    in 3 days, 14:00
+--   7  renter2  Budget Rooms near USJ-R (landlord2)   confirmed  in 2 days, 16:00
+--                                                     (too early to mark completed)
+--
+-- The days count from today on the Philippine clock, the time zone 0017
+-- uses, so each run moves them along: the pending and confirmed requests
+-- stay ahead (except request 2, which stays in the past). Each landlord's
+-- pending and confirmed requests start at different hours, so moving
+-- them a day can never put two of them in one slot (0017's slot lock).
+--
+-- Every request has a fixed id, so a re-run updates it instead of adding
+-- another, and the DB tests use the ids (src/__tests__/db-helpers.ts).
+-- The renters are looked up by email, like the listings' landlords
+-- above, and 0017's trigger fills in landlord_id from the listing.
+--
+-- This runs as postgres, so 0017's RLS and its status-change trigger
+-- don't apply: a request that was confirmed, declined or cancelled in
+-- the app goes back to what's below.
+--
+-- Anything else the seed renters requested (e.g. while trying the form,
+-- #108) is deleted first: nobody can delete a request from the app
+-- (0017), and a leftover pending one could hold a slot or a listing that
+-- a request below needs (23505). Other accounts' requests are left
+-- alone, so if one of them holds one of these slots, this fails with
+-- 23505: cancel that request in the app, then run this file again.
+delete from public.viewing_requests as vr
+using auth.users as u
+where vr.renter_id = u.id
+  and u.email in ('renter1@abangers.test', 'renter2@abangers.test')
+  and vr.id not in (
+    'c1b2c3d4-0000-4000-8000-000000000001',
+    'c1b2c3d4-0000-4000-8000-000000000002',
+    'c1b2c3d4-0000-4000-8000-000000000003',
+    'c1b2c3d4-0000-4000-8000-000000000004',
+    'c1b2c3d4-0000-4000-8000-000000000005',
+    'c1b2c3d4-0000-4000-8000-000000000006',
+    'c1b2c3d4-0000-4000-8000-000000000007'
+  );
+
+insert into public.viewing_requests (
+  id, listing_id, renter_id, viewing_date, start_time, end_time,
+  attendees, message, status, decline_reason
+)
+select
+  v.id::uuid,
+  v.listing_id::uuid,
+  u.id,
+  (now() at time zone 'Asia/Manila')::date + v.days_from_today,
+  v.start_time::time,
+  v.end_time::time,
+  v.attendees,
+  v.message,
+  v.status,
+  v.decline_reason
+from (
+  values
+    ('c1b2c3d4-0000-4000-8000-000000000001',
+     'a1b2c3d4-0000-4000-8000-000000000001', 'renter2@abangers.test',
+     3, '10:00', '11:00', 2,
+     'Hi! Can I bring my older brother along to see the room?',
+     'pending', null),
+
+    ('c1b2c3d4-0000-4000-8000-000000000002',
+     'a1b2c3d4-0000-4000-8000-000000000002', 'renter1@abangers.test',
+     -1, '15:00', '16:00', 1,
+     'I would like to check the aircon and the CR first.',
+     'confirmed', null),
+
+    ('c1b2c3d4-0000-4000-8000-000000000003',
+     'a1b2c3d4-0000-4000-8000-000000000001', 'renter1@abangers.test',
+     -7, '10:00', '11:00', 1,
+     null,
+     'completed', null),
+
+    ('c1b2c3d4-0000-4000-8000-000000000004',
+     'a1b2c3d4-0000-4000-8000-000000000002', 'renter2@abangers.test',
+     5, '13:00', '14:00', 1,
+     'Is the bedspace still available for December?',
+     'declined', 'Sorry, that week is fully booked. Please choose another date.'),
+
+    ('c1b2c3d4-0000-4000-8000-000000000005',
+     'a1b2c3d4-0000-4000-8000-000000000001', 'renter1@abangers.test',
+     4, '11:00', '12:00', 2,
+     null,
+     'cancelled', null),
+
+    ('c1b2c3d4-0000-4000-8000-000000000006',
+     'a1b2c3d4-0000-4000-8000-000000000004', 'renter1@abangers.test',
+     3, '14:00', '15:00', 2,
+     'I am coming with a classmate who is also looking for a room.',
+     'pending', null),
+
+    ('c1b2c3d4-0000-4000-8000-000000000007',
+     'a1b2c3d4-0000-4000-8000-000000000006', 'renter2@abangers.test',
+     2, '16:00', '17:00', 1,
+     null,
+     'confirmed', null)
+) as v (
+  id, listing_id, renter_email, days_from_today, start_time, end_time,
+  attendees, message, status, decline_reason
+)
+join auth.users as u on u.email = v.renter_email
+on conflict (id) do update
+  set listing_id     = excluded.listing_id,
+      renter_id      = excluded.renter_id,
+      landlord_id    = excluded.landlord_id,
+      viewing_date   = excluded.viewing_date,
+      start_time     = excluded.start_time,
+      end_time       = excluded.end_time,
+      attendees      = excluded.attendees,
+      message        = excluded.message,
+      status         = excluded.status,
+      decline_reason = excluded.decline_reason;

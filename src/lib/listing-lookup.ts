@@ -62,6 +62,32 @@ export const MISSING_LISTING_REDIRECT_PATH = `/dashboard/landlord/listings?notic
 export const MISSING_LISTING_NOTE =
   "That listing no longer exists, or it isn't yours.";
 
+/**
+ * Where the public listing page (/listings/[id]) sends someone when the
+ * listing is missing (#93): the public listings directory, with
+ * `?notice=listing-not-found`.
+ */
+export const MISSING_PUBLIC_LISTING_REDIRECT_PATH = `/listings?notice=${MISSING_LISTING_NOTICE}`;
+
+/**
+ * Where the renter's listing page (/dashboard/renter/listings/[id]) sends
+ * a renter when the listing is missing (#309): back to the list they
+ * opened it from, Favorites (`?from=favorites`) or Find a Place, with the
+ * same `?notice=` as /listings, so the list says why they're there.
+ */
+export function missingRenterListingRedirectPath(from?: string): string {
+  const list =
+    from === "favorites" ? "/dashboard/renter/favorites" : "/dashboard/renter";
+  return `${list}?notice=${MISSING_LISTING_NOTICE}`;
+}
+
+/**
+ * The note after either redirect, on /listings and on the renter's Find a
+ * Place and Favorites (MissingListingNote).
+ */
+export const MISSING_PUBLIC_LISTING_NOTE =
+  "That listing no longer exists or is unavailable.";
+
 /** What a listing page shows instead of the listing when the query fails. */
 export const LISTING_LOAD_ERROR_MESSAGE =
   "We couldn't load this listing. Refresh the page to try again.";

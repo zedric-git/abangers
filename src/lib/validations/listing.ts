@@ -17,6 +17,63 @@ export const availabilityStatusSchema = z.enum(AVAILABILITY_STATUSES);
 export type AvailabilityStatus = z.infer<typeof availabilityStatusSchema>;
 
 /**
+ * Shared property types used by both landlord forms and public filters (S2-05, #15).
+ */
+export const PROPERTY_TYPES = [
+  "Boarding House",
+  "Apartment",
+  "Dormitory",
+  "House",
+  "Condo",
+] as const;
+
+export const propertyTypeSchema = z.enum(PROPERTY_TYPES);
+
+export type PropertyType = z.infer<typeof propertyTypeSchema>;
+
+/**
+ * Shared occupancy types used by both landlord forms and public filters (S2-05, #15).
+ */
+export const OCCUPANCY_TYPES = [
+  "Bedspace",
+  "Single Room",
+  "Shared Room",
+  "Studio",
+] as const;
+
+export const occupancyTypeSchema = z.enum(OCCUPANCY_TYPES);
+
+export type OccupancyType = z.infer<typeof occupancyTypeSchema>;
+
+/**
+ * Shared gender policies used by both landlord forms and public filters (S2-05, #15).
+ */
+export const GENDER_POLICIES = [
+  "Any / Co-ed",
+  "Male Only",
+  "Female Only",
+] as const;
+
+export const genderPolicySchema = z.enum(GENDER_POLICIES);
+
+export type GenderPolicy = z.infer<typeof genderPolicySchema>;
+
+export function parsePropertyType(raw: unknown): PropertyType | undefined {
+  const result = propertyTypeSchema.safeParse(raw);
+  return result.success ? result.data : undefined;
+}
+
+export function parseOccupancyType(raw: unknown): OccupancyType | undefined {
+  const result = occupancyTypeSchema.safeParse(raw);
+  return result.success ? result.data : undefined;
+}
+
+export function parseGenderPolicy(raw: unknown): GenderPolicy | undefined {
+  const result = genderPolicySchema.safeParse(raw);
+  return result.success ? result.data : undefined;
+}
+
+/**
  * Each listing field's own rules. listingSchema below adds the rules
  * that compare fields. Zod 4 can't .extend, .pick or .omit a schema
  * after .refine, so build any variant from this one.
@@ -31,9 +88,9 @@ const listingFieldsSchema = z.object({
     .number()
     .int()
     .nonnegative("Available rooms can't be negative"),
-  property_type: z.string().min(1, "Property type is required"),
-  occupancy_type: z.string().min(1, "Occupancy type is required"),
-  allowed_gender: z.string().min(1, "Allowed gender policy is required"),
+  property_type: propertyTypeSchema,
+  occupancy_type: occupancyTypeSchema,
+  allowed_gender: genderPolicySchema,
   amenities: z.array(z.string()).default([]),
   utilities: z.array(z.string()).default([]),
   room_features: z.array(z.string()).default([]),
@@ -124,9 +181,9 @@ export function listingRowToFormValues(row: Listing): Partial<ListingInput> {
     monthly_rent: row.monthly_rent,
     total_rooms: row.total_rooms ?? undefined,
     available_rooms: row.available_rooms,
-    property_type: row.property_type ?? undefined,
-    occupancy_type: row.occupancy_type ?? undefined,
-    allowed_gender: row.allowed_gender ?? undefined,
+    property_type: parsePropertyType(row.property_type),
+    occupancy_type: parseOccupancyType(row.occupancy_type),
+    allowed_gender: parseGenderPolicy(row.allowed_gender),
     amenities: row.amenities,
     utilities: row.utilities ?? [],
     room_features: row.room_features ?? [],
