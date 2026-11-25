@@ -33,12 +33,12 @@ export const LANDLORD_A_SUBMISSION_ID = "b1b2c3d4-0000-4000-8000-000000000001";
 export const LANDLORD_C_SUBMISSION_ID = "b1b2c3d4-0000-4000-8000-000000000002";
 
 /**
- * The seed viewing requests (#107): the fixed ids in supabase/seed.sql
+ * The seed visit requests (#107): the fixed ids in supabase/seed.sql
  * (section 5). Their days count from the day the seed last ran, on the
  * Philippine clock, so run `npm run db:seed` before running the DB tests
  * by hand on a later day.
  */
-export const VIEWING_REQUEST_IDS = {
+export const VISIT_REQUEST_IDS = {
   /** renter2 on landlord1's Santos Boarding House: pending, in 3 days. */
   pending: "c1b2c3d4-0000-4000-8000-000000000001",
   /** renter1 on landlord1's Lahug bedspace: confirmed, yesterday. */

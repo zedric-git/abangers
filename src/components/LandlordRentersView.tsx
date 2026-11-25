@@ -356,7 +356,7 @@ const sampleInterestedRenters: InterestedRenterRecord[] = [
     requestedDate: "Oct 19, 2026",
     requestedTime: "1:00 PM – 1:30 PM",
     status: "confirmed",
-    notes: "Confirmed physical viewing slot.",
+    notes: "Confirmed physical visit slot.",
   },
 ];
 
@@ -960,8 +960,8 @@ export default function LandlordRentersView() {
               </h3>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                 {searchQuery
-                  ? "No viewing inquiries match your search filter."
-                  : "You have no active viewing requests from interested renters."}
+                  ? "No visit inquiries match your search filter."
+                  : "You have no active visit requests from interested renters."}
               </p>
             </div>
           ) : (
@@ -985,7 +985,7 @@ export default function LandlordRentersView() {
                       {r.status === "confirmed" ? (
                         <span className="inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2 py-0.5 text-[11px] font-bold text-purple-700 dark:text-purple-300">
                           <CheckCircle2 className="h-3 w-3" />
-                          Viewing Confirmed
+                          Visit Confirmed
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-300">

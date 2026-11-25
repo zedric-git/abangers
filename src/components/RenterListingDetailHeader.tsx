@@ -18,8 +18,8 @@ interface RenterListingDetailHeaderProps {
  *
  * The listing's title, its tags and the Save button are in
  * ListingDetailView, under this, so they show once (#309). The Book
- * Viewing dialog that used to be here is gone: it said "sent" even when
- * the request failed. #108 builds the real viewing-request form.
+ * Visit dialog that used to be here is gone: it said "sent" even when
+ * the request failed. #108 builds the real visit-request form.
  *
  * A Client Component for the Chat dialog.
  */
@@ -120,7 +120,8 @@ export default function RenterListingDetailHeader({
                   Contact Information
                 </span>
                 <p className="mt-0.5 text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                  {landlordContact || "Phone shared upon viewing confirmation"}
+                  {landlordContact ||
+                    "Phone shared once your visit is confirmed"}
                 </p>
               </div>
             </div>

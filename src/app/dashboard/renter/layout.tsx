@@ -44,11 +44,11 @@ export default function RenterLayout({
       description: "View and manage saved property listings",
     },
     {
-      label: "My Viewings",
-      href: "/dashboard/renter/viewings",
+      label: "My Visits",
+      href: "/dashboard/renter/visits",
       icon: CalendarCheck,
       description:
-        "Schedule property visits, track viewing requests, and cancel appointments.",
+        "Schedule property visits, track visit requests, and cancel appointments.",
     },
     {
       label: "Messages",
@@ -56,7 +56,7 @@ export default function RenterLayout({
       icon: MessageSquare,
       badge: 1,
       description:
-        "Send and receive messages from landlords regarding properties and viewings.",
+        "Send and receive messages from landlords regarding properties and visits.",
     },
 
     // Bottom Group

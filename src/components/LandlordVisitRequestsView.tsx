@@ -18,16 +18,16 @@ import {
 } from "lucide-react";
 import {
   canMarkCompleted,
-  canTransitionViewingStatus,
-  type ViewingStatus,
-} from "@/lib/viewing-status";
-import { ViewingAvailabilityForm } from "./ViewingAvailabilityForm";
+  canTransitionVisitStatus,
+  type VisitStatus,
+} from "@/lib/visit-status";
+import { VisitAvailabilityForm } from "./VisitAvailabilityForm";
 import {
   DECLINE_REASON_MAX_LENGTH,
-  declineViewingSchema,
-} from "@/lib/validations/viewing-request";
+  declineVisitSchema,
+} from "@/lib/validations/visit-request";
 
-export interface ViewingRequest {
+export interface VisitRequest {
   id: string;
   renterName: string;
   renterAvatar: string;
@@ -44,13 +44,13 @@ export interface ViewingRequest {
   requestedDate: string;
   requestedDateIso: string;
   requestedTime: string;
-  status: ViewingStatus;
+  status: VisitStatus;
   submittedAt: string;
   notes: string;
   declineReason?: string;
 }
 
-const initialRequests: ViewingRequest[] = [
+const initialRequests: VisitRequest[] = [
   {
     id: "VR-101",
     renterName: "Maria Clara Santos",
@@ -71,7 +71,7 @@ const initialRequests: ViewingRequest[] = [
     status: "pending",
     submittedAt: "25 mins ago",
     notes:
-      "Hi po! Looking for a quiet study-friendly room near UST Hospital. My mother will join me during the viewing.",
+      "Hi po! Looking for a quiet study-friendly room near UST Hospital. My mother will join me during the visit.",
   },
   {
     id: "VR-102",
@@ -136,7 +136,7 @@ const initialRequests: ViewingRequest[] = [
     status: "confirmed",
     submittedAt: "Yesterday",
     notes:
-      "Scheduled physical viewing. Contacted security lobby for visitor pass.",
+      "Scheduled physical visit. Contacted security lobby for visitor pass.",
   },
   {
     id: "VR-105",
@@ -178,7 +178,7 @@ const initialRequests: ViewingRequest[] = [
     requestedTime: "11:00 AM",
     status: "completed",
     submittedAt: "Last week",
-    notes: "Completed viewing successfully and signed tenancy agreement.",
+    notes: "Completed visit successfully and signed tenancy agreement.",
   },
   {
     id: "VR-107",
@@ -203,7 +203,7 @@ const initialRequests: ViewingRequest[] = [
   },
 ];
 
-const VIEWING_TABS = [
+const VISIT_TABS = [
   { value: "all", label: "All Requests" },
   { value: "pending", label: "Pending" },
   { value: "confirmed", label: "Confirmed" },
@@ -212,18 +212,18 @@ const VIEWING_TABS = [
   { value: "cancelled", label: "Cancelled" },
 ] as const;
 
-type ViewingTab = (typeof VIEWING_TABS)[number]["value"];
+type VisitTab = (typeof VISIT_TABS)[number]["value"];
 
-interface LandlordViewingRequestsViewProps {
+interface LandlordVisitRequestsViewProps {
   /** When true, renders an error alert banner instead of empty state. */
   loadError?: boolean;
 }
 
-export default function LandlordViewingRequestsView({
+export default function LandlordVisitRequestsView({
   loadError = false,
-}: LandlordViewingRequestsViewProps) {
-  const [requests, setRequests] = useState<ViewingRequest[]>(initialRequests);
-  const [activeTab, setActiveTab] = useState<ViewingTab>("all");
+}: LandlordVisitRequestsViewProps) {
+  const [requests, setRequests] = useState<VisitRequest[]>(initialRequests);
+  const [activeTab, setActiveTab] = useState<VisitTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [propertyFilter, setPropertyFilter] = useState("all");
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(
@@ -231,15 +231,16 @@ export default function LandlordViewingRequestsView({
   );
   const [showAvailability, setShowAvailability] = useState(false);
   const [completingRequest, setCompletingRequest] =
-    useState<ViewingRequest | null>(null);
+    useState<VisitRequest | null>(null);
 
   // Decline Dialog state (#110 / #111)
-  const [decliningRequest, setDecliningRequest] =
-    useState<ViewingRequest | null>(null);
+  const [decliningRequest, setDecliningRequest] = useState<VisitRequest | null>(
+    null,
+  );
   const [declineReason, setDeclineReason] = useState("");
   const [declineError, setDeclineError] = useState<string | null>(null);
 
-  const tabCounts: Record<ViewingTab, number> = {
+  const tabCounts: Record<VisitTab, number> = {
     all: requests.length,
     pending: requests.filter((r) => r.status === "pending").length,
     confirmed: requests.filter((r) => r.status === "confirmed").length,
@@ -249,17 +250,17 @@ export default function LandlordViewingRequestsView({
   };
 
   const currentTabObj =
-    VIEWING_TABS.find((t) => t.value === activeTab) ?? VIEWING_TABS[0];
+    VISIT_TABS.find((t) => t.value === activeTab) ?? VISIT_TABS[0];
 
   const handleUpdateStatus = (
     id: string,
-    newStatus: ViewingStatus,
+    newStatus: VisitStatus,
     reason?: string,
   ) => {
     setRequests((prev) =>
       prev.map((r) => {
         if (r.id !== id) return r;
-        if (!canTransitionViewingStatus(r.status, newStatus)) return r;
+        if (!canTransitionVisitStatus(r.status, newStatus)) return r;
         return {
           ...r,
           status: newStatus,
@@ -277,7 +278,7 @@ export default function LandlordViewingRequestsView({
 
   const handleConfirmDecline = () => {
     if (!decliningRequest) return;
-    const validation = declineViewingSchema.safeParse({
+    const validation = declineVisitSchema.safeParse({
       reason: declineReason,
     });
     if (!validation.success) {
@@ -344,12 +345,12 @@ export default function LandlordViewingRequestsView({
             <span className="text-zinc-400 dark:text-zinc-500">Landlord</span>
             <span className="text-zinc-400 dark:text-zinc-500">/</span>
             <span className="font-semibold text-purple-600 dark:text-purple-400">
-              Viewing Requests
+              Visit Requests
             </span>
           </div>
           <div className="mt-1 flex items-center gap-3">
             <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
-              Viewing Requests
+              Visit Requests
             </h1>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-bold text-amber-600 dark:text-amber-400">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400"></span>
@@ -365,30 +366,30 @@ export default function LandlordViewingRequestsView({
         >
           <Settings className="h-4 w-4 text-purple-600 dark:text-purple-400" />
           <span>
-            {showAvailability ? "Back to Requests" : "Configure Viewing Slots"}
+            {showAvailability ? "Back to Requests" : "Configure Visit Slots"}
           </span>
         </button>
       </div>
 
       {showAvailability ? (
-        <ViewingAvailabilityForm />
+        <VisitAvailabilityForm />
       ) : (
         <>
           {/* FILTER BY STATUS / METRIC & Search */}
           <div className="space-y-3">
-            {/* Header & Viewing indicator */}
+            {/* Header & Visit indicator */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
                 FILTER BY STATUS / METRIC
               </span>
               <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
-                Viewing: {currentTabObj.label} ({tabCounts[activeTab]})
+                Visit: {currentTabObj.label} ({tabCounts[activeTab]})
               </span>
             </div>
 
             {/* 6 Pill Buttons spanning grid width (#20 includes Cancelled) */}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-6">
-              {VIEWING_TABS.map((tab) => {
+              {VISIT_TABS.map((tab) => {
                 const isSelected = activeTab === tab.value;
                 const count = tabCounts[tab.value];
 
@@ -444,7 +445,7 @@ export default function LandlordViewingRequestsView({
             </div>
           </div>
 
-          {/* Main Viewing Requests List */}
+          {/* Main Visit Requests List */}
           <div className="space-y-4">
             {loadError ? (
               <div
@@ -454,7 +455,7 @@ export default function LandlordViewingRequestsView({
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                 <div className="space-y-1">
                   <p className="font-semibold">
-                    Couldn&apos;t load viewing requests
+                    Couldn&apos;t load visit requests
                   </p>
                   <p className="text-xs text-rose-600 dark:text-rose-400">
                     Please refresh the page to try again.
@@ -467,12 +468,12 @@ export default function LandlordViewingRequestsView({
                   <Clock className="h-6 w-6" />
                 </div>
                 <h3 className="mt-4 text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  No viewing requests found
+                  No visit requests found
                 </h3>
                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                   {searchQuery
                     ? "No appointments match your search criteria."
-                    : `There are currently no ${activeTab === "all" ? "" : activeTab} viewing requests.`}
+                    : `There are currently no ${activeTab === "all" ? "" : activeTab} visit requests.`}
                 </p>
               </div>
             ) : (
@@ -579,7 +580,7 @@ export default function LandlordViewingRequestsView({
                                 </button>
                               ) : (
                                 <span
-                                  title="Mark as Completed becomes available on or after the scheduled viewing date."
+                                  title="Mark as Completed becomes available on or after the scheduled visit date."
                                   className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-[11px] font-semibold text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-400"
                                 >
                                   Scheduled (Future)
@@ -646,7 +647,7 @@ export default function LandlordViewingRequestsView({
 
           {/* Drawer Container */}
           <aside
-            aria-label="Viewing request details"
+            aria-label="Visit request details"
             className="fixed top-0 right-0 z-50 flex h-full w-full max-w-md flex-col justify-between border-l border-zinc-200 bg-white shadow-2xl transition-transform duration-200 ease-in-out dark:border-zinc-800 dark:bg-zinc-900"
           >
             {/* Header with Navigation Stepper & Close */}
@@ -675,7 +676,7 @@ export default function LandlordViewingRequestsView({
 
               <div className="flex items-center gap-2">
                 <span className="rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-bold text-purple-700 uppercase dark:bg-purple-950/60 dark:text-purple-300">
-                  Viewing Dossier
+                  Visit Dossier
                 </span>
                 <button
                   type="button"
@@ -871,7 +872,7 @@ export default function LandlordViewingRequestsView({
               {selectedRequest.status === "completed" && (
                 <div className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                   <CheckCircle2 className="h-4 w-4" />
-                  Viewing Completed
+                  Visit Completed
                 </div>
               )}
 
@@ -885,7 +886,7 @@ export default function LandlordViewingRequestsView({
               {selectedRequest.status === "cancelled" && (
                 <div className="flex h-10 flex-1 items-center justify-center gap-1.5 rounded-xl border border-zinc-300 bg-zinc-100 text-xs font-bold text-zinc-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400">
                   <XCircle className="h-4 w-4" />
-                  Viewing Cancelled by Renter
+                  Visit Cancelled by Renter
                 </div>
               )}
             </div>
@@ -903,7 +904,7 @@ export default function LandlordViewingRequestsView({
               </div>
               <div className="space-y-1">
                 <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-                  Mark Viewing as Completed?
+                  Mark Visit as Completed?
                 </h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   Confirm that the property tour with{" "}
@@ -950,10 +951,10 @@ export default function LandlordViewingRequestsView({
               </div>
               <div className="space-y-1">
                 <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-                  Decline Viewing Request
+                  Decline Visit Request
                 </h3>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Provide a reason for declining the viewing appointment with{" "}
+                  Provide a reason for declining the visit appointment with{" "}
                   <strong className="text-zinc-800 dark:text-zinc-200">
                     {decliningRequest.renterName}
                   </strong>

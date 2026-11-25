@@ -1,10 +1,11 @@
 /**
- * RLS test for public.viewing_requests (S3-02.1 / #107) — runs against a
+ * RLS test for public.visit_requests (S3-02.1 / #107) — runs against a
  * real Supabase, signed in as the seed accounts: CI's throwaway one on
  * every PR, and the SHARED project after a database merge or when run by
  * hand.
  *
- * Checks supabase/migrations/0017_create_viewing_requests.sql:
+ * Checks supabase/migrations/0017_create_viewing_requests.sql, which
+ * created the table as viewing_requests (0018 renamed it, #321):
  * - Requesting: only a renter, only for themselves, only as a plain
  *   pending request, only for a slot that hasn't started (Philippine
  *   time), and not on a fully occupied listing. Landlords, the admin and
@@ -23,7 +24,7 @@
  *   people's requests, other columns, and deleting.
  *
  * SEED DATA (supabase/seed.sql, section 5): seven requests with fixed
- * ids, VIEWING_REQUEST_IDS in db-helpers.ts. Their days count from the
+ * ids, VISIT_REQUEST_IDS in db-helpers.ts. Their days count from the
  * day the seed ran, so if the first test here fails, run
  * `npm run db:seed` and try again.
  *
@@ -53,14 +54,14 @@ import {
   LANDLORD_B_EMAIL,
   RENTER_B_EMAIL,
   RENTER_EMAIL,
-  VIEWING_REQUEST_IDS,
+  VISIT_REQUEST_IDS,
   newClient,
   signedInAs,
   type SeedUser,
 } from "./db-helpers";
 
-const TABLE = "viewing_requests";
-const ids = VIEWING_REQUEST_IDS;
+const TABLE = "visit_requests";
+const ids = VISIT_REQUEST_IDS;
 
 // Seed listings (supabase/seed.sql, section 4).
 /** landlord1's Santos Boarding House near USC Talamban: available. */
@@ -90,7 +91,7 @@ function requestFrom(renterId: string) {
   return {
     listing_id: SANTOS_BOARDING_HOUSE,
     renter_id: renterId,
-    viewing_date: manilaDate(30),
+    visit_date: manilaDate(30),
     start_time: "16:00",
     end_time: "17:00",
     attendees: 1,
@@ -154,17 +155,17 @@ beforeAll(async () => {
   ]);
 });
 
-describe("viewing_requests: the seed requests", () => {
+describe("visit_requests: the seed requests", () => {
   it("are in place, as the other tests expect (if not, run npm run db:seed)", async () => {
     const [{ data: landlordARows }, { data: landlordBRows }] =
       await Promise.all([
         landlordA.client
           .from(TABLE)
-          .select("id, status, viewing_date")
+          .select("id, status, visit_date")
           .in("id", Object.values(ids)),
         landlordB.client
           .from(TABLE)
-          .select("id, status, viewing_date")
+          .select("id, status, visit_date")
           .in("id", Object.values(ids)),
       ]);
     const rows = [...(landlordARows ?? []), ...(landlordBRows ?? [])];
@@ -172,7 +173,7 @@ describe("viewing_requests: the seed requests", () => {
       rows.map((row) => [row.id, row.status]),
     );
     const dates = Object.fromEntries(
-      rows.map((row) => [row.id, row.viewing_date]),
+      rows.map((row) => [row.id, row.visit_date]),
     );
 
     expect(statuses).toEqual({
@@ -184,15 +185,15 @@ describe("viewing_requests: the seed requests", () => {
       [ids.landlordBPending]: "pending",
       [ids.confirmedSoon]: "confirmed",
     });
-    // The time-based tests below need one confirmed viewing in the past
+    // The time-based tests below need one confirmed visit in the past
     // and one still ahead.
     expect(dates[ids.confirmedYesterday] < manilaDate(0)).toBe(true);
     expect(dates[ids.confirmedSoon] > manilaDate(0)).toBe(true);
   });
 });
 
-describe("viewing_requests: requesting a viewing", () => {
-  it("RLS lets a renter request a viewing for themselves", async () => {
+describe("visit_requests: requesting a visit", () => {
+  it("RLS lets a renter request a visit for themselves", async () => {
     const error = await request(renterA.client, {
       ...requestFrom(renterA.userId),
       ...UNSAVEABLE,
@@ -202,7 +203,7 @@ describe("viewing_requests: requesting a viewing", () => {
     expect(error?.message).toContain("attendees_in_range");
   });
 
-  it("a renter cannot request a viewing for another renter", async () => {
+  it("a renter cannot request a visit for another renter", async () => {
     const error = await request(renterA.client, {
       ...requestFrom(renterB.userId),
       ...UNSAVEABLE,
@@ -210,7 +211,7 @@ describe("viewing_requests: requesting a viewing", () => {
     expect(error?.code).toBe("42501");
   });
 
-  it("landlords and the admin cannot request a viewing", async () => {
+  it("landlords and the admin cannot request a visit", async () => {
     for (const user of [landlordA, landlordB, admin]) {
       const error = await request(user.client, {
         ...requestFrom(user.userId),
@@ -242,12 +243,12 @@ describe("viewing_requests: requesting a viewing", () => {
     const error = await request(renterA.client, {
       ...requestFrom(renterA.userId),
       ...UNSAVEABLE,
-      viewing_date: manilaDate(-1),
+      visit_date: manilaDate(-1),
     });
     expect(error?.code).toBe("42501");
   });
 
-  it("a renter cannot request a viewing of a fully occupied listing", async () => {
+  it("a renter cannot request a visit of a fully occupied listing", async () => {
     const error = await request(renterA.client, {
       ...requestFrom(renterA.userId),
       ...UNSAVEABLE,
@@ -256,7 +257,7 @@ describe("viewing_requests: requesting a viewing", () => {
     expect(error?.code).toBe("42501");
   });
 
-  it("anonymous visitors cannot request or read viewing requests", async () => {
+  it("anonymous visitors cannot request or read visit requests", async () => {
     const anon = newClient();
 
     // anon has no grants on this table at all (0017), so both are
@@ -272,13 +273,13 @@ describe("viewing_requests: requesting a viewing", () => {
   });
 });
 
-describe("viewing_requests: the slot lock and one request per listing", () => {
+describe("visit_requests: the slot lock and one request per listing", () => {
   it("a pending request holds the landlord's slot, whatever landlord_id the app sends", async () => {
     // The slot of the seed's pending request: renter2 on landlord1's
     // Santos Boarding House.
     const { data: held, error: readError } = await landlordA.client
       .from(TABLE)
-      .select("viewing_date, start_time, end_time")
+      .select("visit_date, start_time, end_time")
       .eq("id", ids.pending)
       .single();
     expect(readError).toBeNull();
@@ -291,13 +292,13 @@ describe("viewing_requests: the slot lock and one request per listing", () => {
     const error = await request(renterA.client, {
       ...requestFrom(renterA.userId),
       landlord_id: landlordB.userId,
-      viewing_date: held?.viewing_date,
+      visit_date: held?.visit_date,
       start_time: held?.start_time,
       end_time: held?.end_time,
     });
     expect(error?.code).toBe("23505");
     expect(error?.message).toContain(
-      "viewing_requests_one_active_request_per_slot",
+      "visit_requests_one_active_request_per_slot",
     );
   });
 
@@ -307,12 +308,12 @@ describe("viewing_requests: the slot lock and one request per listing", () => {
     const error = await request(renterB.client, requestFrom(renterB.userId));
     expect(error?.code).toBe("23505");
     expect(error?.message).toContain(
-      "viewing_requests_one_active_request_per_listing",
+      "visit_requests_one_active_request_per_listing",
     );
   });
 });
 
-describe("viewing_requests: reading", () => {
+describe("visit_requests: reading", () => {
   it("a renter reads only their own requests", async () => {
     const { data, error } = await renterA.client
       .from(TABLE)
@@ -370,14 +371,14 @@ describe("viewing_requests: reading", () => {
     expect(seenByB).not.toContain(ids.pending);
   });
 
-  it("the admin reads no viewing requests", async () => {
+  it("the admin reads no visit requests", async () => {
     const { data, error } = await admin.client.from(TABLE).select("id");
     expect(error).toBeNull();
     expect(data).toEqual([]);
   });
 });
 
-describe("viewing_requests: status changes", () => {
+describe("visit_requests: status changes", () => {
   // Allowed changes. Each one carries a value that breaks a CHECK rule,
   // so a 23514 proves RLS and 0017's trigger let it through, and nothing
   // is saved.
@@ -399,7 +400,7 @@ describe("viewing_requests: status changes", () => {
     expect(decline.error?.code).toBe("23514");
   });
 
-  it("a landlord can mark a confirmed viewing completed once it has started", async () => {
+  it("a landlord can mark a confirmed visit completed once it has started", async () => {
     const { error } = await update(landlordA.client, ids.confirmedYesterday, {
       status: "completed",
       ...STRAY_REASON,
@@ -423,7 +424,7 @@ describe("viewing_requests: status changes", () => {
 
   // Refused changes: 0017's trigger answers 42501.
 
-  it("a landlord cannot complete a viewing that hasn't started, or isn't confirmed", async () => {
+  it("a landlord cannot complete a visit that hasn't started, or isn't confirmed", async () => {
     const early = await update(landlordB.client, ids.confirmedSoon, {
       status: "completed",
       ...STRAY_REASON,
@@ -461,7 +462,7 @@ describe("viewing_requests: status changes", () => {
     expect(complete.error?.code).toBe("42501");
   });
 
-  it("a renter cannot cancel once the viewing has started", async () => {
+  it("a renter cannot cancel once the visit has started", async () => {
     const { error } = await update(renterA.client, ids.confirmedYesterday, {
       status: "cancelled",
       ...STRAY_REASON,
@@ -514,7 +515,7 @@ describe("viewing_requests: status changes", () => {
     // 0017's column grants refuse any other column before the trigger
     // even runs: "permission denied".
     const date = await update(landlordA.client, ids.pending, {
-      viewing_date: manilaDate(10),
+      visit_date: manilaDate(10),
     });
     expect(date.error?.code).toBe("42501");
     expect(date.error?.message).toContain("permission denied");

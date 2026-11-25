@@ -264,13 +264,13 @@ export default function RenterFavoritesList({
                       </div>
                     </div>
 
-                    {/* Row 2: Schedule Viewing full-width button */}
+                    {/* Row 2: Schedule Visit full-width button */}
                     <Link
-                      href="/dashboard/renter/viewings"
+                      href="/dashboard/renter/visits"
                       className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-purple-600 py-2 text-xs font-semibold text-white shadow-xs transition-colors hover:bg-purple-700 active:bg-purple-800"
                     >
                       <CalendarCheck className="h-3.5 w-3.5" />
-                      <span>Schedule Viewing</span>
+                      <span>Schedule Visit</span>
                     </Link>
                   </div>
                 }

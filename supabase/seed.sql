@@ -1,11 +1,12 @@
 -- Abangers — development seed data
 --
 -- Creates a fixed set of test accounts (3 landlords, 2 renters and an
--- admin) plus sample boarding house listings around Cebu City and viewing
+-- admin) plus sample boarding house listings around Cebu City and visit
 -- requests for them, so everyone on the team can log in and see
 -- real-looking data right away.
 --
--- NEEDS MIGRATION 0017 (viewing requests, #107) on the project.
+-- NEEDS MIGRATIONS 0017 AND 0018 (visit requests, #107, #321) on the
+-- project.
 --
 -- HOW TO RUN
 --   npm run db:seed              (runs this file against the linked project,
@@ -26,7 +27,7 @@
 -- IDEMPOTENT: safe to run as many times as you like. Running it again
 -- does NOT create duplicates — it brings the seed accounts and listings
 -- back to exactly what's written below (resetting passwords, names,
--- roles, landlord profiles, verifications, listing details and viewing
+-- roles, landlord profiles, verifications, listing details and visit
 -- requests). Anything NOT in this file (e.g. accounts you created by
 -- signing up in the app) is left alone.
 --
@@ -378,12 +379,13 @@ on conflict (id) do update
       contact_info        = excluded.contact_info,
       availability_status = excluded.availability_status;
 
--- ── 5. Viewing requests ─────────────────────────────────────────────
--- Seven requests from the seed renters (0017, #107), in every status and
--- on both landlord1's and landlord2's listings, so the viewing pages
--- (#110, #113) and Renter Management (#284) have something to show, and
--- the DB tests (src/__tests__/rls-viewing-requests.db.test.ts) have rows
--- to check against:
+-- ── 5. Visit requests ───────────────────────────────────────────────
+-- Seven requests from the seed renters (0017, #107; renamed in 0018,
+-- #321), in every status and on both landlord1's and landlord2's
+-- listings, so the visit pages (#110, #113) and Renter Management (#284)
+-- have something to show, and the DB tests
+-- (src/__tests__/rls-visit-requests.db.test.ts) have rows to check
+-- against:
 --
 --   1  renter2  Santos Boarding House (landlord1)     pending    in 3 days, 10:00
 --   2  renter1  Lahug bedspace (landlord1)            confirmed  yesterday, 15:00
@@ -417,7 +419,7 @@ on conflict (id) do update
 -- a request below needs (23505). Other accounts' requests are left
 -- alone, so if one of them holds one of these slots, this fails with
 -- 23505: cancel that request in the app, then run this file again.
-delete from public.viewing_requests as vr
+delete from public.visit_requests as vr
 using auth.users as u
 where vr.renter_id = u.id
   and u.email in ('renter1@abangers.test', 'renter2@abangers.test')
@@ -431,8 +433,8 @@ where vr.renter_id = u.id
     'c1b2c3d4-0000-4000-8000-000000000007'
   );
 
-insert into public.viewing_requests (
-  id, listing_id, renter_id, viewing_date, start_time, end_time,
+insert into public.visit_requests (
+  id, listing_id, renter_id, visit_date, start_time, end_time,
   attendees, message, status, decline_reason
 )
 select
@@ -498,7 +500,7 @@ on conflict (id) do update
   set listing_id     = excluded.listing_id,
       renter_id      = excluded.renter_id,
       landlord_id    = excluded.landlord_id,
-      viewing_date   = excluded.viewing_date,
+      visit_date     = excluded.visit_date,
       start_time     = excluded.start_time,
       end_time       = excluded.end_time,
       attendees      = excluded.attendees,
