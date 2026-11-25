@@ -377,13 +377,13 @@ export default function LandlordVisitRequestsView({
         <>
           {/* FILTER BY STATUS / METRIC & Search */}
           <div className="space-y-3">
-            {/* Header & Visit indicator */}
+            {/* Header & "Viewing:" (showing) indicator, like My Listings' */}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase dark:text-zinc-500">
                 FILTER BY STATUS / METRIC
               </span>
               <span className="text-xs font-semibold text-purple-600 dark:text-purple-400">
-                Visit: {currentTabObj.label} ({tabCounts[activeTab]})
+                Viewing: {currentTabObj.label} ({tabCounts[activeTab]})
               </span>
             </div>
 
