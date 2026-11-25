@@ -176,10 +176,14 @@ https://github.com/users/zedric-git/projects/3
   after it (`src/components/PhMobileNumberInput.tsx`), but save it as
   `09` + 9 digits (`09171234567`), which is what the schema and the
   policy check; `src/lib/ph-mobile-number.ts` converts between the two.
-- **Viewing requests (`viewing_requests`, #107) change only in ways a
-  trigger allows.** A renter sends a request as `pending`. After that
-  only its `status` and `decline_reason` can change, and the trigger in
-  `0017_create_viewing_requests.sql` lets the landlord confirm or
+- **Visit requests (`visit_requests`, #107) change only in ways a
+  trigger allows.** The app calls an in-person visit to a place a
+  "visit", never a "viewing" (#321): `0017_create_viewing_requests.sql`
+  created the table as `viewing_requests`, and `0018` renamed it and
+  everything in it, so read 0017's "viewing" names as "visit". Write
+  "visit" in new code, pages and issues. A renter sends a request as
+  `pending`. After that only its `status` and `decline_reason` can
+  change, and the trigger (0017, renamed in 0018) lets the landlord confirm or
   decline a pending request and mark a confirmed one completed once it
   has started, and lets the renter cancel a pending or confirmed one
   before it starts. Anything else is `42501`, and nobody can delete a
@@ -191,11 +195,11 @@ https://github.com/users/zedric-git/projects/3
   can't stick. A pending or confirmed request holds the
   landlord's date and start time, and a renter can't have two for one
   listing (`23505`, and the message names the index). "Started" means
-  `viewing_date + start_time` on the Philippine clock
+  `visit_date + start_time` on the Philippine clock
   (`now() at time zone 'Asia/Manila'`), never the server's UTC `now()`,
   so compare the same way in app code. Two foreign keys point at
   `profiles`, so a join names the one it wants
-  (`profiles!viewing_requests_renter_id_fkey`). The seed has seven
+  (`profiles!visit_requests_renter_id_fkey`). The seed has seven
   requests with fixed ids, one in each status, on landlord1's and
   landlord2's listings, dated from the day it runs. Running it again
   resets them and deletes the seed renters' other requests.

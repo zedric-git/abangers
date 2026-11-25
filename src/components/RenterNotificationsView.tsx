@@ -19,7 +19,7 @@ import {
 
 export interface RenterNotificationItem {
   id: string;
-  category: "viewing" | "message" | "saved" | "system";
+  category: "visit" | "message" | "saved" | "system";
   title: string;
   description: string;
   time: string;
@@ -31,10 +31,10 @@ export interface RenterNotificationItem {
 const initialNotifications: RenterNotificationItem[] = [
   {
     id: "NOTIF-R1",
-    category: "viewing",
-    title: "Viewing Visit Confirmed!",
+    category: "visit",
+    title: "Visit Confirmed!",
     description:
-      "Landlord Rodrigo D. Alonzo confirmed your viewing appointment for Sampaloc Scholar Suites on Oct 23 at 2:00 PM.",
+      "Landlord Rodrigo D. Alonzo confirmed your visit appointment for Sampaloc Scholar Suites on Oct 23 at 2:00 PM.",
     time: "15 mins ago",
     unread: true,
     actionUrl: "/dashboard/renter",
@@ -67,7 +67,7 @@ const initialNotifications: RenterNotificationItem[] = [
     category: "system",
     title: "Student Verification Status",
     description:
-      "Your uploaded student ID (UST BS Nursing) was successfully verified. You now enjoy fast-track viewing approvals!",
+      "Your uploaded student ID (UST BS Nursing) was successfully verified. You now enjoy fast-track visit approvals!",
     time: "3 days ago",
     unread: false,
     actionUrl: "/dashboard/renter/profile",
@@ -80,7 +80,7 @@ export default function RenterNotificationsView() {
   const [notifications, setNotifications] =
     useState<RenterNotificationItem[]>(initialNotifications);
   const [filter, setFilter] = useState<
-    "all" | "viewing" | "message" | "saved" | "system"
+    "all" | "visit" | "message" | "saved" | "system"
   >("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -146,7 +146,7 @@ export default function RenterNotificationsView() {
 
   const getCategoryIcon = (category: RenterNotificationItem["category"]) => {
     switch (category) {
-      case "viewing":
+      case "visit":
         return <CalendarCheck className="h-5 w-5" />;
       case "message":
         return <MessageSquare className="h-5 w-5" />;
@@ -159,7 +159,7 @@ export default function RenterNotificationsView() {
 
   const getCategoryStyle = (category: RenterNotificationItem["category"]) => {
     switch (category) {
-      case "viewing":
+      case "visit":
         return "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300";
       case "message":
         return "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300";
@@ -223,7 +223,7 @@ export default function RenterNotificationsView() {
       <div className="flex flex-wrap items-center gap-2">
         {[
           { id: "all", label: "All Notifications" },
-          { id: "viewing", label: "Viewing Requests" },
+          { id: "visit", label: "Visit Requests" },
           { id: "message", label: "Messages" },
           { id: "saved", label: "Saved Properties" },
           { id: "system", label: "System Alerts" },

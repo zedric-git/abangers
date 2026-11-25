@@ -20,7 +20,7 @@ import {
 
 export interface LandlordNotificationItem {
   id: string;
-  category: "viewing" | "message" | "payment" | "listing" | "system";
+  category: "visit" | "message" | "payment" | "listing" | "system";
   title: string;
   description: string;
   time: string;
@@ -32,13 +32,13 @@ export interface LandlordNotificationItem {
 const initialNotifications: LandlordNotificationItem[] = [
   {
     id: "NOTIF-L1",
-    category: "viewing",
-    title: "New Viewing Appointment Request",
+    category: "visit",
+    title: "New Visit Appointment Request",
     description:
       "Maria Santos requested a scheduled visit for 'Banilad Garden Studio' on Oct 24 at 10:30 AM.",
     time: "10 mins ago",
     unread: true,
-    actionUrl: "/dashboard/landlord/viewing-requests",
+    actionUrl: "/dashboard/landlord/visit-requests",
     actionLabel: "Review Request",
   },
   {
@@ -92,7 +92,7 @@ export default function LandlordNotificationsView() {
   const [notifications, setNotifications] =
     useState<LandlordNotificationItem[]>(initialNotifications);
   const [filter, setFilter] = useState<
-    "all" | "viewing" | "message" | "payment" | "listing" | "system"
+    "all" | "visit" | "message" | "payment" | "listing" | "system"
   >("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -158,7 +158,7 @@ export default function LandlordNotificationsView() {
 
   const getCategoryIcon = (category: LandlordNotificationItem["category"]) => {
     switch (category) {
-      case "viewing":
+      case "visit":
         return <CalendarCheck className="h-5 w-5" />;
       case "message":
         return <MessageSquare className="h-5 w-5" />;
@@ -173,7 +173,7 @@ export default function LandlordNotificationsView() {
 
   const getCategoryStyle = (category: LandlordNotificationItem["category"]) => {
     switch (category) {
-      case "viewing":
+      case "visit":
         return "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300";
       case "message":
         return "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300";
@@ -239,7 +239,7 @@ export default function LandlordNotificationsView() {
       <div className="flex flex-wrap items-center gap-2">
         {[
           { id: "all", label: "All Notifications" },
-          { id: "viewing", label: "Viewing Requests" },
+          { id: "visit", label: "Visit Requests" },
           { id: "message", label: "Messages" },
           { id: "payment", label: "Payments" },
           { id: "listing", label: "Listings" },

@@ -35,11 +35,11 @@ interface Conversation {
   online: boolean;
   roleLabel: string;
   phone: string;
-  category: "viewing" | "inquiry" | "renter";
+  category: "visit" | "inquiry" | "renter";
   categoryBadge: string;
   propertyTitle: string;
   monthlyRent: string;
-  viewingSlot?: string;
+  visitSlot?: string;
   unreadCount: number;
   lastTime: string;
   messages: MessageItem[];
@@ -54,11 +54,11 @@ const initialConversations: Conversation[] = [
     online: true,
     roleLabel: "3rd Year BS Nursing â€¢ UST",
     phone: "+63 917 842 1109",
-    category: "viewing",
-    categoryBadge: "Viewing Request",
+    category: "visit",
+    categoryBadge: "Visit Request",
     propertyTitle: "Sampaloc Scholar Suites â€¢ Rm 204",
     monthlyRent: "â‚±4,200 / mo",
-    viewingSlot: "Oct 20, 2026 â€¢ 2:00 PM â€“ 2:30 PM",
+    visitSlot: "Oct 20, 2026 â€¢ 2:00 PM â€“ 2:30 PM",
     unreadCount: 2,
     lastTime: "10m ago",
     messages: [
@@ -71,13 +71,13 @@ const initialConversations: Conversation[] = [
       {
         id: 2,
         sender: "renter",
-        text: "I submitted a viewing request for Tuesday (Oct 20) at 2:00 PM. Are parents allowed inside during the room inspection?",
+        text: "I submitted a visit request for Tuesday (Oct 20) at 2:00 PM. Are parents allowed inside during the room inspection?",
         time: "1:46 PM",
       },
       {
         id: 3,
         sender: "landlord",
-        text: "Hello Maria! Yes, parents or guardians are very welcome during the viewing. Just bring 1 valid ID for the lobby guard.",
+        text: "Hello Maria! Yes, parents or guardians are very welcome during the visit. Just bring 1 valid ID for the lobby guard.",
         time: "2:00 PM",
       },
       {
@@ -89,7 +89,7 @@ const initialConversations: Conversation[] = [
       {
         id: 5,
         sender: "renter",
-        text: "Hoping you can approve the viewing slot so my mom can file her leave. Thanks po!",
+        text: "Hoping you can approve the visit slot so my mom can file her leave. Thanks po!",
         time: "2:14 PM",
       },
     ],
@@ -106,7 +106,7 @@ const initialConversations: Conversation[] = [
     categoryBadge: "Property Inquiry",
     propertyTitle: "Katipunan Prime Studio â€¢ Unit 3B",
     monthlyRent: "â‚±8,500 / mo",
-    viewingSlot: "Oct 21, 2026 â€¢ 10:30 AM",
+    visitSlot: "Oct 21, 2026 â€¢ 10:30 AM",
     unreadCount: 1,
     lastTime: "1h ago",
     messages: [
@@ -161,18 +161,18 @@ const initialConversations: Conversation[] = [
     online: false,
     roleLabel: "CPA Reviewee",
     phone: "+63 927 551 0923",
-    category: "viewing",
-    categoryBadge: "Confirmed Viewing",
+    category: "visit",
+    categoryBadge: "Confirmed Visit",
     propertyTitle: "Sampaloc Scholar Suites â€¢ Rm 301",
     monthlyRent: "â‚±6,000 / mo",
-    viewingSlot: "Oct 19, 2026 â€¢ 10:00 AM",
+    visitSlot: "Oct 19, 2026 â€¢ 10:00 AM",
     unreadCount: 0,
     lastTime: "Yesterday",
     messages: [
       {
         id: 1,
         sender: "renter",
-        text: "Hi! Just confirming our viewing appointment tomorrow at 10:00 AM.",
+        text: "Hi! Just confirming our visit appointment tomorrow at 10:00 AM.",
         time: "Yesterday",
       },
       {
@@ -267,7 +267,7 @@ export default function LandlordMessagesView() {
     .reduce((acc, c) => acc + c.unreadCount, 0);
 
   const filteredConversations = conversations.filter((c) => {
-    // If viewing archived category
+    // If visit archived category
     if (filterCategory === "archived") {
       return archivedConvIds.includes(c.id);
     }
@@ -488,7 +488,7 @@ export default function LandlordMessagesView() {
               {[
                 { id: "all", label: "All" },
                 { id: "unread", label: "Unread" },
-                { id: "viewing", label: "Viewings" },
+                { id: "visit", label: "Visits" },
                 { id: "inquiry", label: "Inquiries" },
                 { id: "renter", label: "Renters" },
                 ...(archivedConvIds.length > 0
@@ -663,7 +663,7 @@ export default function LandlordMessagesView() {
                 </span>
                 <span className="text-zinc-400">â€¢</span>
                 <span className="truncate text-zinc-500 dark:text-zinc-400">
-                  {activeConv.viewingSlot || activeConv.monthlyRent}
+                  {activeConv.visitSlot || activeConv.monthlyRent}
                 </span>
               </div>
               <ChevronDown
@@ -686,10 +686,10 @@ export default function LandlordMessagesView() {
                       {activeConv.phone}
                     </div>
                   </div>
-                  {activeConv.viewingSlot && (
+                  {activeConv.visitSlot && (
                     <div className="inline-flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1 text-[11px] font-semibold text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
                       <CalendarCheck className="h-3.5 w-3.5" />
-                      <span>{activeConv.viewingSlot}</span>
+                      <span>{activeConv.visitSlot}</span>
                     </div>
                   )}
                 </div>
@@ -768,9 +768,9 @@ export default function LandlordMessagesView() {
                   <div className="font-bold text-purple-700 dark:text-purple-400">
                     {activeConv.monthlyRent}
                   </div>
-                  {activeConv.viewingSlot && (
+                  {activeConv.visitSlot && (
                     <div className="pt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                      ðŸ“… Scheduled: {activeConv.viewingSlot}
+                      ðŸ“… Scheduled: {activeConv.visitSlot}
                     </div>
                   )}
                 </div>

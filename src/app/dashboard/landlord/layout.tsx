@@ -38,8 +38,8 @@ export default function LandlordLayout({
       description: "Manage properties and listings",
     },
     {
-      label: "Viewing Requests",
-      href: "/dashboard/landlord/viewing-requests",
+      label: "Visit Requests",
+      href: "/dashboard/landlord/visit-requests",
       icon: CalendarCheck,
       description: "Scheduled visits and inquiries",
     },

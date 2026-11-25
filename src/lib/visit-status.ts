@@ -1,17 +1,17 @@
-export type ViewingStatus =
+export type VisitStatus =
   "pending" | "confirmed" | "completed" | "declined" | "cancelled";
 
 /**
- * Validates whether a viewing request can legally transition from current to next status.
+ * Validates whether a visit request can legally transition from current to next status.
  *
  * Rules:
  * - Pending can transition to confirmed, declined, or cancelled.
  * - Confirmed can transition to completed (tour finished), declined, or cancelled.
  * - Completed, Declined, and Cancelled are terminal states that cannot be transitioned from.
  */
-export function canTransitionViewingStatus(
-  current: ViewingStatus,
-  next: ViewingStatus,
+export function canTransitionVisitStatus(
+  current: VisitStatus,
+  next: VisitStatus,
 ): boolean {
   if (current === next) return false;
 
@@ -37,17 +37,17 @@ export function canTransitionViewingStatus(
  * Helper to determine if an appointment can be marked as completed by the landlord (#122, #27).
  * Requirements:
  * 1. Must be in 'confirmed' status.
- * 2. If viewingDate is provided, the appointment date must be today or in the past (per #27: "after it happens").
+ * 2. If visitDate is provided, the appointment date must be today or in the past (per #27: "after it happens").
  */
 export function canMarkCompleted(
-  status: ViewingStatus,
-  viewingDate?: string | Date,
+  status: VisitStatus,
+  visitDate?: string | Date,
   referenceDate?: string | Date,
 ): boolean {
   if (status !== "confirmed") return false;
-  if (!viewingDate) return true;
+  if (!visitDate) return true;
 
-  const vDate = new Date(viewingDate);
+  const vDate = new Date(visitDate);
   if (isNaN(vDate.getTime())) return false;
 
   const refDate = referenceDate ? new Date(referenceDate) : new Date();

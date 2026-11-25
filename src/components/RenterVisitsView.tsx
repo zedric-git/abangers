@@ -10,7 +10,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 
-interface ViewingItem {
+interface VisitItem {
   id: string;
   propertyTitle: string;
   roomLabel: string;
@@ -24,7 +24,7 @@ interface ViewingItem {
   meetingNotes: string;
 }
 
-const initialViewings: ViewingItem[] = [
+const initialVisits: VisitItem[] = [
   {
     id: "VR-101",
     propertyTitle: "Sampaloc Scholar Suites",
@@ -68,22 +68,23 @@ const initialViewings: ViewingItem[] = [
   },
 ];
 
-export default function RenterViewingsView() {
-  const [viewings, setViewings] = useState<ViewingItem[]>(initialViewings);
+export default function RenterVisitsView() {
+  const [visits, setVisits] = useState<VisitItem[]>(initialVisits);
   const [activeTab, setActiveTab] = useState<
     "confirmed" | "pending" | "completed" | "cancelled"
   >("confirmed");
-  const [cancellingViewing, setCancellingViewing] =
-    useState<ViewingItem | null>(null);
+  const [cancellingVisit, setCancellingVisit] = useState<VisitItem | null>(
+    null,
+  );
 
   const handleCancelAppointment = (id: string) => {
-    setViewings((prev) =>
+    setVisits((prev) =>
       prev.map((v) => (v.id === id ? { ...v, status: "cancelled" } : v)),
     );
-    setCancellingViewing(null);
+    setCancellingVisit(null);
   };
 
-  const filtered = viewings.filter((v) => v.status === activeTab);
+  const filtered = visits.filter((v) => v.status === activeTab);
 
   return (
     <div className="w-full space-y-6">
@@ -93,15 +94,15 @@ export default function RenterViewingsView() {
           <span className="text-zinc-400 dark:text-zinc-500">Renter</span>
           <span className="text-zinc-400 dark:text-zinc-500">/</span>
           <span className="font-semibold text-purple-600 dark:text-purple-400">
-            My Viewings
+            My Visits
           </span>
         </div>
         <div className="mt-1 flex items-center gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50">
-            My Viewing Appointments
+            My Visit Appointments
           </h1>
           <span className="inline-flex items-center rounded-full bg-purple-500/10 px-2.5 py-0.5 text-xs font-bold text-purple-600 dark:text-purple-400">
-            {viewings.filter((v) => v.status === "confirmed").length} Confirmed
+            {visits.filter((v) => v.status === "confirmed").length} Confirmed
           </span>
         </div>
       </div>
@@ -114,7 +115,7 @@ export default function RenterViewingsView() {
           { id: "completed", label: "Completed" },
           { id: "cancelled", label: "Cancelled" },
         ].map((tab) => {
-          const count = viewings.filter((v) => v.status === tab.id).length;
+          const count = visits.filter((v) => v.status === tab.id).length;
           return (
             <button
               key={tab.id}
@@ -195,7 +196,7 @@ export default function RenterViewingsView() {
                     item.status !== "completed" && (
                       <button
                         type="button"
-                        onClick={() => setCancellingViewing(item)}
+                        onClick={() => setCancellingVisit(item)}
                         className="inline-flex h-9 items-center gap-1 rounded-xl border border-rose-200 px-3 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:border-rose-900/50 dark:text-rose-400"
                       >
                         <XCircle className="h-3.5 w-3.5" />
@@ -224,36 +225,36 @@ export default function RenterViewingsView() {
               No appointments in this tab
             </h3>
             <p className="mx-auto mt-1 max-w-sm text-xs text-zinc-500 dark:text-zinc-400">
-              Find a place you like and book a room viewing visit anytime.
+              Find a place you like and book a visit anytime.
             </p>
           </div>
         )}
       </div>
 
       {/* Cancel Confirmation Modal */}
-      {cancellingViewing && (
+      {cancellingVisit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
           <div className="w-full max-w-sm rounded-3xl border border-zinc-200 bg-white p-6 shadow-2xl dark:border-zinc-800 dark:bg-zinc-900">
             <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-50">
-              Cancel Viewing Appointment?
+              Cancel Visit Appointment?
             </h3>
             <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
               Are you sure you want to cancel your visit to{" "}
-              <strong>{cancellingViewing.propertyTitle}</strong> on{" "}
-              {cancellingViewing.scheduledDate}?
+              <strong>{cancellingVisit.propertyTitle}</strong> on{" "}
+              {cancellingVisit.scheduledDate}?
             </p>
 
             <div className="mt-6 flex items-center justify-end gap-2.5">
               <button
                 type="button"
-                onClick={() => setCancellingViewing(null)}
+                onClick={() => setCancellingVisit(null)}
                 className="rounded-xl border border-zinc-200 px-4 py-2 text-xs font-semibold text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300"
               >
                 Keep Appointment
               </button>
               <button
                 type="button"
-                onClick={() => handleCancelAppointment(cancellingViewing.id)}
+                onClick={() => handleCancelAppointment(cancellingVisit.id)}
                 className="rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-rose-700"
               >
                 Yes, Cancel Visit

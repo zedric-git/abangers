@@ -2,32 +2,32 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   DECLINE_REASON_MAX_LENGTH,
-  declineViewingSchema,
+  declineVisitSchema,
   MAX_ATTENDEES,
   MAX_DECLINE_REASON_LENGTH,
   MAX_MESSAGE_LENGTH,
   MIN_ATTENDEES,
-  VIEWING_REQUEST_STATUSES,
+  VISIT_REQUEST_STATUSES,
   timeToSeconds,
-  viewingRequestSchema,
-} from "./viewing-request";
+  visitRequestSchema,
+} from "./visit-request";
 
 const validRequest = {
   listing_id: "a1b2c3d4-0000-4000-8000-000000000001",
-  viewing_date: "2026-12-01",
+  visit_date: "2026-12-01",
   start_time: "10:00",
   end_time: "11:00",
   attendees: 2,
   message: "Can I bring my brother?",
 };
 
-describe("viewingRequestSchema", () => {
+describe("visitRequestSchema", () => {
   it("accepts a valid request", () => {
-    expect(viewingRequestSchema.safeParse(validRequest).success).toBe(true);
+    expect(visitRequestSchema.safeParse(validRequest).success).toBe(true);
   });
 
   it("accepts times the way Postgres sends them back (HH:MM:SS)", () => {
-    const result = viewingRequestSchema.safeParse({
+    const result = visitRequestSchema.safeParse({
       ...validRequest,
       start_time: "10:00:00",
       end_time: "11:00:00",
@@ -37,7 +37,7 @@ describe("viewingRequestSchema", () => {
 
   it("rejects a slot that ends when or before it starts", () => {
     for (const end_time of ["10:00", "10:00:00", "09:00"]) {
-      const result = viewingRequestSchema.safeParse({
+      const result = visitRequestSchema.safeParse({
         ...validRequest,
         end_time,
       });
@@ -48,7 +48,7 @@ describe("viewingRequestSchema", () => {
 
   it("rejects times that aren't times of day", () => {
     for (const start_time of ["24:00", "9:00", "10:60", "10", ""]) {
-      const result = viewingRequestSchema.safeParse({
+      const result = visitRequestSchema.safeParse({
         ...validRequest,
         start_time,
       });
@@ -58,14 +58,14 @@ describe("viewingRequestSchema", () => {
 
   it("needs 1 to 5 attendees, as a whole number", () => {
     for (const attendees of [MIN_ATTENDEES, MAX_ATTENDEES, "3"]) {
-      const result = viewingRequestSchema.safeParse({
+      const result = visitRequestSchema.safeParse({
         ...validRequest,
         attendees,
       });
       expect(result.success).toBe(true);
     }
     for (const attendees of [MIN_ATTENDEES - 1, MAX_ATTENDEES + 1, 2.5, ""]) {
-      const result = viewingRequestSchema.safeParse({
+      const result = visitRequestSchema.safeParse({
         ...validRequest,
         attendees,
       });
@@ -75,7 +75,7 @@ describe("viewingRequestSchema", () => {
 
   it("trims the message, and turns an empty one into null", () => {
     const parse = (message: unknown) =>
-      viewingRequestSchema.parse({ ...validRequest, message }).message;
+      visitRequestSchema.parse({ ...validRequest, message }).message;
     expect(parse("  Can I bring my brother?  ")).toBe(
       "Can I bring my brother?",
     );
@@ -86,13 +86,13 @@ describe("viewingRequestSchema", () => {
   });
 
   it("rejects a message over 500 characters", () => {
-    const longest = viewingRequestSchema.safeParse({
+    const longest = visitRequestSchema.safeParse({
       ...validRequest,
       message: "x".repeat(MAX_MESSAGE_LENGTH),
     });
     expect(longest.success).toBe(true);
 
-    const tooLong = viewingRequestSchema.safeParse({
+    const tooLong = visitRequestSchema.safeParse({
       ...validRequest,
       message: "x".repeat(MAX_MESSAGE_LENGTH + 1),
     });
@@ -101,7 +101,7 @@ describe("viewingRequestSchema", () => {
 
   it("rejects a listing id that isn't a UUID", () => {
     for (const listing_id of ["", "not-a-uuid", undefined]) {
-      const result = viewingRequestSchema.safeParse({
+      const result = visitRequestSchema.safeParse({
         ...validRequest,
         listing_id,
       });
@@ -110,19 +110,19 @@ describe("viewingRequestSchema", () => {
   });
 
   it("rejects a date that isn't a real YYYY-MM-DD date", () => {
-    for (const viewing_date of ["2026-13-01", "2026-02-30", "12/01/2026", ""]) {
-      const result = viewingRequestSchema.safeParse({
+    for (const visit_date of ["2026-13-01", "2026-02-30", "12/01/2026", ""]) {
+      const result = visitRequestSchema.safeParse({
         ...validRequest,
-        viewing_date,
+        visit_date,
       });
       expect(result.success).toBe(false);
     }
   });
 });
 
-describe("declineViewingSchema", () => {
+describe("declineVisitSchema", () => {
   it("accepts valid decline reasons", () => {
-    const result = declineViewingSchema.safeParse({
+    const result = declineVisitSchema.safeParse({
       reason:
         "The requested time slot conflicts with scheduled building maintenance.",
     });
@@ -130,7 +130,7 @@ describe("declineViewingSchema", () => {
   });
 
   it("trims whitespace from reasons", () => {
-    const result = declineViewingSchema.safeParse({
+    const result = declineVisitSchema.safeParse({
       reason: "   Slot no longer available.   ",
     });
     expect(result.success).toBe(true);
@@ -140,14 +140,14 @@ describe("declineViewingSchema", () => {
   });
 
   it("rejects reasons shorter than 3 characters", () => {
-    const result = declineViewingSchema.safeParse({
+    const result = declineVisitSchema.safeParse({
       reason: "No",
     });
     expect(result.success).toBe(false);
   });
 
   it("rejects whitespace-only reasons", () => {
-    const result = declineViewingSchema.safeParse({
+    const result = declineVisitSchema.safeParse({
       reason: "    ",
     });
     expect(result.success).toBe(false);
@@ -155,7 +155,7 @@ describe("declineViewingSchema", () => {
 
   it(`rejects reasons exceeding ${DECLINE_REASON_MAX_LENGTH} characters`, () => {
     const tooLong = "A".repeat(DECLINE_REASON_MAX_LENGTH + 1);
-    const result = declineViewingSchema.safeParse({
+    const result = declineVisitSchema.safeParse({
       reason: tooLong,
     });
     expect(result.success).toBe(false);
@@ -170,7 +170,7 @@ describe("timeToSeconds", () => {
   });
 });
 
-// The lists and limits in viewing-request.ts have to match the CHECK
+// The lists and limits in visit-request.ts have to match the CHECK
 // rules in the migration, or the form would accept a request the database
 // refuses (or the other way round). If a later migration changes those
 // rules, point this at it.
@@ -195,7 +195,7 @@ describe("matches 0017's CHECK rules", () => {
       /constraint status_is_known check \(\s*status in \(([^)]*)\)/,
     );
     const statuses = list.split(",").map((s) => s.trim().replace(/'/g, ""));
-    expect(statuses).toEqual([...VIEWING_REQUEST_STATUSES]);
+    expect(statuses).toEqual([...VISIT_REQUEST_STATUSES]);
   });
 
   it("has the same number of attendees", () => {

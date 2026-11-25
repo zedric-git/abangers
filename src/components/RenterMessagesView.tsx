@@ -36,7 +36,7 @@ interface Conversation {
   propertyTitle: string;
   room: string;
   monthlyRent: string;
-  viewingSlot?: string;
+  visitSlot?: string;
   unreadCount: number;
   lastTime: string;
   messages: MessageItem[];
@@ -51,7 +51,7 @@ const initialConversations: Conversation[] = [
     propertyTitle: "Sampaloc Scholar Suites",
     room: "Room 204 • Female Bedspace",
     monthlyRent: "₱4,200 / mo",
-    viewingSlot: "Tomorrow (Oct 23) • 2:00 PM",
+    visitSlot: "Tomorrow (Oct 23) • 2:00 PM",
     unreadCount: 1,
     lastTime: "15m ago",
     messages: [
@@ -64,7 +64,7 @@ const initialConversations: Conversation[] = [
       {
         id: 2,
         sender: "renter",
-        text: "I booked a viewing visit for tomorrow at 2:00 PM. Are parents allowed to come inspect with me?",
+        text: "I booked a visit for tomorrow at 2:00 PM. Are parents allowed to come inspect with me?",
         time: "1:46 PM",
       },
       {
@@ -89,7 +89,7 @@ const initialConversations: Conversation[] = [
     propertyTitle: "Katipunan Prime Studio",
     room: "Unit 3B • Solo Studio",
     monthlyRent: "₱8,500 / mo",
-    viewingSlot: "Oct 25 (Saturday) • 10:30 AM",
+    visitSlot: "Oct 25 (Saturday) • 10:30 AM",
     unreadCount: 0,
     lastTime: "2h ago",
     messages: [
@@ -550,10 +550,10 @@ export default function RenterMessagesView() {
                       {activeConv.monthlyRent}
                     </div>
                   </div>
-                  {activeConv.viewingSlot && (
+                  {activeConv.visitSlot && (
                     <div className="inline-flex items-center gap-1.5 rounded-lg bg-purple-50 px-2.5 py-1 text-[11px] font-semibold text-purple-700 dark:bg-purple-950/50 dark:text-purple-300">
                       <CalendarCheck className="h-3.5 w-3.5" />
-                      <span>{activeConv.viewingSlot}</span>
+                      <span>{activeConv.visitSlot}</span>
                     </div>
                   )}
                 </div>
@@ -637,14 +637,14 @@ export default function RenterMessagesView() {
                   </div>
                 </div>
 
-                {activeConv.viewingSlot && (
+                {activeConv.visitSlot && (
                   <div className="space-y-1 rounded-xl border border-purple-100 bg-purple-50/70 p-3 text-xs dark:border-purple-900/40 dark:bg-purple-950/30">
                     <div className="flex items-center gap-1.5 font-bold text-purple-900 dark:text-purple-200">
                       <CalendarCheck className="h-3.5 w-3.5 text-purple-600" />
-                      <span>Viewing Appointment</span>
+                      <span>Visit Appointment</span>
                     </div>
                     <div className="text-[11px] text-purple-700 dark:text-purple-300">
-                      {activeConv.viewingSlot}
+                      {activeConv.visitSlot}
                     </div>
                   </div>
                 )}
