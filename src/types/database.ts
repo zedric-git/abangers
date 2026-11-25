@@ -253,7 +253,7 @@ export type Database = {
         };
         Relationships: [];
       };
-      viewing_requests: {
+      visit_requests: {
         Row: {
           attendees: number;
           created_at: string;
@@ -267,7 +267,7 @@ export type Database = {
           start_time: string;
           status: string;
           updated_at: string;
-          viewing_date: string;
+          visit_date: string;
         };
         Insert: {
           attendees?: number;
@@ -282,7 +282,7 @@ export type Database = {
           start_time: string;
           status?: string;
           updated_at?: string;
-          viewing_date: string;
+          visit_date: string;
         };
         Update: {
           attendees?: number;
@@ -297,25 +297,25 @@ export type Database = {
           start_time?: string;
           status?: string;
           updated_at?: string;
-          viewing_date?: string;
+          visit_date?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "viewing_requests_landlord_id_fkey";
+            foreignKeyName: "visit_requests_landlord_id_fkey";
             columns: ["landlord_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "viewing_requests_listing_id_fkey";
+            foreignKeyName: "visit_requests_listing_id_fkey";
             columns: ["listing_id"];
             isOneToOne: false;
             referencedRelation: "listings";
             referencedColumns: ["id"];
           },
           {
-            foreignKeyName: "viewing_requests_renter_id_fkey";
+            foreignKeyName: "visit_requests_renter_id_fkey";
             columns: ["renter_id"];
             isOneToOne: false;
             referencedRelation: "profiles";
