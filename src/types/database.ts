@@ -107,6 +107,41 @@ export type Database = {
           },
         ];
       };
+      landlord_visit_availability: {
+        Row: {
+          available_days: number[];
+          created_at: string;
+          end_time: string;
+          landlord_id: string;
+          start_time: string;
+          updated_at: string;
+        };
+        Insert: {
+          available_days: number[];
+          created_at?: string;
+          end_time: string;
+          landlord_id: string;
+          start_time: string;
+          updated_at?: string;
+        };
+        Update: {
+          available_days?: number[];
+          created_at?: string;
+          end_time?: string;
+          landlord_id?: string;
+          start_time?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "landlord_visit_availability_landlord_id_fkey";
+            columns: ["landlord_id"];
+            isOneToOne: true;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       listings: {
         Row: {
           address: string;

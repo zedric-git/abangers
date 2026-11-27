@@ -5,8 +5,8 @@
 -- requests for them, so everyone on the team can log in and see
 -- real-looking data right away.
 --
--- NEEDS MIGRATIONS 0017 AND 0018 (visit requests, #107, #321) on the
--- project.
+-- NEEDS MIGRATIONS 0017, 0018 AND 0019 (visit requests and availability,
+-- #107, #321, #104) on the project.
 --
 -- HOW TO RUN
 --   npm run db:seed              (runs this file against the linked project,
@@ -507,3 +507,35 @@ on conflict (id) do update
       message        = excluded.message,
       status         = excluded.status,
       decline_reason = excluded.decline_reason;
+
+
+-- ── 6. Visit availability ───────────────────────────────────────────
+-- landlord1 and landlord2 get open hours every day of the week
+-- (09:00-17:00) so section 5's moving visit dates and #108/#109 tests
+-- always fall inside their schedule.
+--
+-- landlord3's hours are cleared on every run so #106's "no hours yet"
+-- empty state (and first-time insert) can always be tested again.
+delete from public.landlord_visit_availability as lva
+using auth.users as u
+where lva.landlord_id = u.id
+  and u.email = 'landlord3@abangers.test';
+
+insert into public.landlord_visit_availability (
+  landlord_id, available_days, start_time, end_time
+)
+select
+  u.id,
+  v.available_days,
+  v.start_time::time,
+  v.end_time::time
+from (
+  values
+    ('landlord1@abangers.test', array[1, 2, 3, 4, 5, 6, 7]::smallint[], '09:00', '17:00'),
+    ('landlord2@abangers.test', array[1, 2, 3, 4, 5, 6, 7]::smallint[], '09:00', '17:00')
+) as v (landlord_email, available_days, start_time, end_time)
+join auth.users as u on u.email = v.landlord_email
+on conflict (landlord_id) do update
+  set available_days = excluded.available_days,
+      start_time     = excluded.start_time,
+      end_time       = excluded.end_time;
